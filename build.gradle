@@ -1,12 +1,17 @@
-
-println "version: $version"
+println "version: $project.version $foo"
 
 task prepare(type: Copy) {
-    from('src')
+    from('src/js')
     from('.') {
         include 'readme.md', 'license', 'history.md', 'package.json'
     }
     into(buildDir)
+
+    doLast {
+        exec {
+            commandLine 'npm', 'version', version
+        }
+    }
 }
 
 task build(dependsOn: prepare) {
