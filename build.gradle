@@ -1,0 +1,19 @@
+
+println "version: $version"
+
+task prepare(type: Copy) {
+    from('src')
+    from('.') {
+        include 'readme.md', 'license', 'history.md', 'package.json'
+    }
+    into(buildDir)
+}
+
+task build(dependsOn: prepare) {
+}
+
+task pack(dependsOn: build, type: Exec) {
+    workingDir = buildDir
+
+    commandLine 'npm', 'pack'
+}
