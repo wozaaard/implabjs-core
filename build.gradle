@@ -1,12 +1,51 @@
 
 println "version: $version"
 
+String makePackageName(String group, String name, String ver) {
+    def sb = new StringBuilder();
+    if(group)
+        sb
+            .append('@')
+            .append(group)
+            .append('/');
+
+    sb.append(name);
+
+    if (ver)
+        sb.append('@').append(ver);
+
+    return sb.toString();
+}
+
+configurations {
+    compile
+    peer
+    dev
+}
+
+dependencies {
+    compile ":eslint:1.x || >=2.5.0 || 5.0.0 - 7.2.3"
+    compile (name: 'foo') {
+        ext.location = "http://some/package/location"
+    }
+    peer "dojo:core"
+}
+
 task prepare(type: Copy) {
-    from('src')
+    from('src/js/')
     from('.') {
         include 'readme.md', 'license', 'history.md', 'package.json'
     }
     into(buildDir)
+}
+
+task installDeps {
+    configurations.compile.allDependencies.forEach { d ->
+        println makePackageName(d.group, d.name, d.version);
+        if(d.hasProperty('location')) {
+            println d.location
+        }
+    }
 }
 
 task build(dependsOn: prepare) {
