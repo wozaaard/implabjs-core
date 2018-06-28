@@ -1,54 +1,59 @@
 
 println "version: $version"
 
-String makePackageName(String group, String name, String ver) {
-    def sb = new StringBuilder();
-    if(group)
-        sb
-            .append('@')
-            .append(group)
-            .append('/');
+def distDir = "$buildDir/dist"
+def testDir = "$buildDir/test"
 
-    sb.append(name);
-
-    if (ver)
-        sb.append('@').append(ver);
-
-    return sb.toString();
-}
-
-configurations {
-    compile
-    peer
-    dev
-}
-
-dependencies {
-    compile ":eslint:1.x || >=2.5.0 || 5.0.0 - 7.2.3"
-    compile (name: 'foo') {
-        ext.location = "http://some/package/location"
+task clean {
+    doLast {
+        delete buildDir
     }
-    peer "dojo:core"
 }
 
-task prepare(type: Copy) {
-    from('src/js/')
-    from('.') {
-        include 'readme.md', 'license', 'history.md', 'package.json'
+task cleanNpm {
+    doLast {
+        delete 'node_modules'
     }
-    into(buildDir)
 }
 
-task installDeps {
-    configurations.compile.allDependencies.forEach { d ->
-        println makePackageName(d.group, d.name, d.version);
-        if(d.hasProperty('location')) {
-            println d.location
+task _npmInstall() {
+    inputs.file("package.json")
+    outputs.dir("node_modules")
+    doLast {
+        exec {
+            commandLine 'npm', 'install'
         }
     }
 }
 
-task build(dependsOn: prepare) {
+task _legacyJs(type:Copy) {
+    from 'src/js/'
+    into distDir
+}
+
+task _packageMeta(type: Copy) {
+    inputs.property("version", version)
+    from('.') {
+        include 'package.json', 'readme.md', 'license', 'history.md'
+    }
+    into distDir
+    doLast {
+        exec {
+            workingDir distDir
+            commandLine 'npm', 'version', version
+        }
+    }
+}
+
+task build(dependsOn: [_npmInstall, _legacyJs, _packageMeta]) {
+
+}
+
+task _localInstall(dependsOn: build, type: Exec) {
+    inputs.file("$distDir/package.json")
+    outputs.upToDateWhen { true }
+
+    commandLine 'npm', 'install', '--no-save', '--force', distDir
 }
 
 task pack(dependsOn: build, type: Exec) {

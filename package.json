@@ -1,6 +1,6 @@
 {
   "name": "@implab/core",
-  "version": "1.0.1",
+  "version": "0.0.1-dev",
   "description": "Dependency injection, logging, simple and fast text template engine",
   "main": "main.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "template engine",
     "dependency injection"
   ],
-  "author": "Sergey Smirnov",
-  "license": "MIT"
+  "author": "Implab team",
+  "license": "BSD",
+  "repository": "https://bitbucket.org/implab/implabjs"
 }

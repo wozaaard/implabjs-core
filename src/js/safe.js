@@ -179,7 +179,7 @@ define([],
                     return wrapresult(fn.apply(thisArg, arguments));
                 } catch (e) {
                     return wrapresult(null, e);
-                };
+                }
             },
 
             create: function () {
