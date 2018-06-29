@@ -11,12 +11,18 @@
     "dependency injection"
   ],
   "author": "Implab team",
-  "license": "BSD",
+  "license": "BSD-2-Clause",
   "repository": "https://bitbucket.org/implab/implabjs",
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
     "dojo": "^1.10.0"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "tape": "latest",
+    "@types/tape": "latest",
+    "requirejs": "latest"
   }
 }
