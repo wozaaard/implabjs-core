@@ -1,5 +1,11 @@
-import * as test from 'tape';
+import * as tape from 'tape';
 
-test('simple', function(assert){
-    assert.pass("I'm alive");
+tape('simple', function(t){
+    t.pass("sync assert");
+    setTimeout(() => {
+        t.pass("async assert");
+
+        // end should be called after the last assertion
+        t.end();
+    }, 100);
 });

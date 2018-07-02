@@ -23,6 +23,7 @@
     "typescript": "latest",
     "tape": "latest",
     "@types/tape": "latest",
-    "requirejs": "latest"
+    "requirejs": "latest",
+    "faucet": "latest"
   }
 }

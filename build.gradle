@@ -56,8 +56,25 @@ task _localInstall(dependsOn: build, type: Exec) {
     commandLine 'npm', 'install', '--no-save', '--force', distDir
 }
 
+task copyJsTests(type: Copy) {
+    from 'test/js'
+    into testDir
+}
+
+task buildTests(dependsOn: _localInstall, type: Exec) {
+    inputs.dir('test/ts')
+    inputs.file('tsc.test.json')
+    outputs.dir(testDir)
+
+    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.test.json'
+}
+
+task test(dependsOn: [copyJsTests, buildTests], type: Exec) {
+    commandLine 'node', 'run-amd-tests.js'
+}
+
 task pack(dependsOn: build, type: Exec) {
-    workingDir = buildDir
+    workingDir = distDir
 
     commandLine 'npm', 'pack'
 }
