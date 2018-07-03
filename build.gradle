@@ -31,6 +31,14 @@ task _legacyJs(type:Copy) {
     into distDir
 }
 
+task _buildTs(dependsOn: _npmInstall, type:Exec) {
+    inputs.dir('src/ts')
+    inputs.file('tsc.json')
+    outputs.dir(distDir)
+
+    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.json'
+}
+
 task _packageMeta(type: Copy) {
     inputs.property("version", version)
     from('.') {
@@ -45,13 +53,15 @@ task _packageMeta(type: Copy) {
     }
 }
 
-task build(dependsOn: [_npmInstall, _legacyJs, _packageMeta]) {
+task build(dependsOn: [_npmInstall, _buildTs, _legacyJs, _packageMeta]) {
 
 }
 
 task _localInstall(dependsOn: build, type: Exec) {
     inputs.file("$distDir/package.json")
-    outputs.upToDateWhen { true }
+    outputs.upToDateWhen {
+        new File("$projectDir/node_modules/@implab/core").exists()
+    }
 
     commandLine 'npm', 'install', '--no-save', '--force', distDir
 }

@@ -1,3 +1,0 @@
-declare([], function(){
-    // does nothing yet...
-});
