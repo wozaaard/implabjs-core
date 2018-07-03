@@ -25,5 +25,6 @@
     "@types/tape": "latest",
     "requirejs": "latest",
     "faucet": "latest"
-  }
+  },
+  "types": "main.d.ts"
 }
