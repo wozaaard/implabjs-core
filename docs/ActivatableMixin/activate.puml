@@ -1,0 +1,25 @@
+@startuml
+
+participant Component as a
+participant Other as b
+
+[-> a : activate(ct)
+activate a
+<-- a : promise
+a -> a : onActivating(ct)
+activate a
+a -> b : doAsyncWork(ct)
+deactivate a
+deactivate a
+activate b
+
+[-> b : ct.cancel
+b --> a : reject(Cancelled)
+deactivate b
+activate a
+
+a -> a : setFailState()
+
+[<-- a : reject(Cancelled)
+
+@enduml

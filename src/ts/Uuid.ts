@@ -6,6 +6,8 @@
 //     Copyright (c) 2010-2012 Robert Kieffer
 //     MIT License - http://opensource.org/licenses/mit-license.php
 
+declare var window: any;
+
 let _window : any = 'undefined' !== typeof window ? window : null;
 
 // Unique ID creation requires a high quality random # generator. We

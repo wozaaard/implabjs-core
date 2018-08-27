@@ -7,6 +7,7 @@ def testDir = "$buildDir/test"
 task clean {
     doLast {
         delete buildDir
+        delete 'node_modules/@implab'
     }
 }
 
