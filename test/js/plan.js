@@ -1,1 +1,1 @@
-define(["./dummy", "./example"]);
+define(["./dummy", "./example", "./ActivatableTests"]);

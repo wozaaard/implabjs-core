@@ -175,11 +175,13 @@ define([],
                     }
                 }
 
-                try {
-                    return wrapresult(fn.apply(thisArg, arguments));
-                } catch (e) {
-                    return wrapresult(null, e);
-                }
+                return function() {
+                    try {
+                        return wrapresult(fn.apply(thisArg, arguments));
+                    } catch (e) {
+                        return wrapresult(null, e);
+                    }
+                };
             },
 
             create: function () {

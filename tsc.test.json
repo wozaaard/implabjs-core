@@ -4,7 +4,10 @@
         "module": "amd",
         "sourceMap": true,
         "outDir" : "build/test",
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "lib": [
+            "ES2015"
+        ]
     },
     "include" : [
         "test/ts/**/*.ts"
