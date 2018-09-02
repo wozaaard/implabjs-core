@@ -1,0 +1,1 @@
+export declare function argumentNotNull(v: any, paramName: string);

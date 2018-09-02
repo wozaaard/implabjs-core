@@ -14,6 +14,10 @@ requirejs.config({
         {
             name: "test",
             location: "build/test"
+        },
+        {
+            name: "dojo",
+            location: "node_modules/dojo"
         }
     ],
     nodeRequire: require
