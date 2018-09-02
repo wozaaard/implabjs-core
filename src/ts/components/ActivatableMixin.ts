@@ -3,6 +3,7 @@ import { IActivatable } from './IActivatable';
 import { AsyncComponent } from './AsyncComponent';
 import { ICancellation } from '../ICancellation';
 import { EmptyCancellation } from '../EmptyCancellation';
+import * as log from '@implab/core/log/trace!';
 
 type Constructor<T = {}> = new (...args: any[]) => T;
 
@@ -43,7 +44,8 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
                 this._active = true;
                 try {
                     await this.onActivated(ct);
-                } catch {
+                } catch(e) {
+                    log.error(e);
                     // TODO log error
                 }
                 this.completeSuccess();
