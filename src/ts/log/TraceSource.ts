@@ -133,28 +133,60 @@ class TraceSource {
             this.emit(TraceSource.WarnLevel, format(msg, args));
     }
 
+    /**
+     * returns true if errors will be recorded.
+     */
     isErrorEnabled() {
         return this.level >= TraceSource.ErrorLevel;
     }
 
+    /**
+     * Traces a error.
+     * 
+     * @param msg the message.
+     * @param args parameters which will be substituted in the message.
+     */
     error(msg: string, ...args: any[]) {
         if (this.isEnabled(TraceSource.ErrorLevel))
             this.emit(TraceSource.ErrorLevel, format(msg, args));
     }
 
+    /**
+     * Checks whether the specified level is enabled for this
+     * trace source.
+     * 
+     * @param level the trace level which should be checked.
+     */
     isEnabled(level: number) {
         return (this.level >= level);
     }
 
+    /**
+     * Traces a raw event, passing data as it is to the underlying listeners
+     * 
+     * @param level the level of the event
+     * @param arg the data of the event, can be a simple string or any object.
+     */
     traceEvent(level: number, arg: any) {
         if (this.isEnabled(level))
             this.emit(level, arg);
     }
 
+    /**
+     * Register the specified handler to be called for every new and already
+     * created trace source.
+     * 
+     * @param handler the handler which will be called for each trace source
+     */
     static on(handler: TraceSourceHandler) {
         return Registry.instance.on(handler);
     }
 
+    /**
+     * Creates or returns already created trace source for the specified id.
+     * 
+     * @param id the id for the trace source
+     */
     static get(id: any) {
         return Registry.instance.get(id);
     }
