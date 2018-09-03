@@ -47,8 +47,7 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
                 try {
                     await this.onActivated(ct);
                 } catch(e) {
-                    log.error(e);
-                    // TODO log error
+                    log.error("Suppressed onActivated error: {0}", e);
                 }
                 this.completeSuccess();
             } catch (e) {
@@ -76,8 +75,8 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
                 this._active = false;
                 try {
                     await this.onDeactivated(ct);
-                } catch {
-                    // TODO log error
+                } catch(e) {
+                    log.error("Suppressed onDeactivated error: {0}", e);
                 }
                 this.completeSuccess();
             } catch (e) {
@@ -90,7 +89,7 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
 }
 
 namespace ActivatableMixin {
-
+    export const traceSource = log;
 }
 
 export = ActivatableMixin;
