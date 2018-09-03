@@ -152,7 +152,7 @@ class TraceSource {
     }
 
     static on(handler: TraceSourceHandler) {
-        Registry.instance.on(handler);
+        return Registry.instance.on(handler);
     }
 
     static get(id: any) {
