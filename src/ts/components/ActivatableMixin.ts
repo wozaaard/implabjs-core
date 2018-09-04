@@ -1,8 +1,6 @@
-import { IActivationController } from './IActivationController';
-import { IActivatable } from './IActivatable';
+import { IActivationController, IActivatable, ICancellation } from '../interfaces';
 import { AsyncComponent } from './AsyncComponent';
-import { ICancellation } from '../ICancellation';
-import { EmptyCancellation } from '../EmptyCancellation';
+import { Cancellation } from '../Cancellation';
 import * as TraceSource from '../log/TraceSource';
 
 type Constructor<T = {}> = new (...args: any[]) => T;
@@ -37,23 +35,21 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
                 await this._controller.activated(this, ct);
         }
 
-        async activate(ct: ICancellation = EmptyCancellation.default) {
+        activate(ct: ICancellation = Cancellation.none) {
+            return this.runOperation(this._activateAsync.bind(this), ct);
+        }
+
+        async _activateAsync(ct: ICancellation) {
             if (this.isActive())
                 return;
-            ct = this.startOperation(ct);
+
+            await this.onActivating(ct);
+            this._active = true;
             try {
-                await this.onActivating(ct);
-                this._active = true;
-                try {
-                    await this.onActivated(ct);
-                } catch(e) {
-                    log.error("Suppressed onActivated error: {0}", e);
-                }
-                this.completeSuccess();
+                await this.onActivated(ct);
             } catch (e) {
-                this.completeFail(e);
+                log.error("Suppressed onActivated error: {0}", e);
             }
-            return this.getCompletion();
         }
 
         async onDeactivating(ct: ICancellation) {
@@ -66,25 +62,21 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
                 await this._controller.deactivated(this, ct);
         }
 
-        async deactivate(ct: ICancellation = EmptyCancellation.default) {
-            if (!this.isActive())
-                return;
-            ct = this.startOperation(ct);
-            try {
-                await this.onDeactivating(ct);
-                this._active = false;
-                try {
-                    await this.onDeactivated(ct);
-                } catch(e) {
-                    log.error("Suppressed onDeactivated error: {0}", e);
-                }
-                this.completeSuccess();
-            } catch (e) {
-                this.completeFail(e);
-            }
-            return this.getCompletion();
+        deactivate(ct: ICancellation = Cancellation.none) {
+            return this.runOperation(this._deactivateAsync.bind(this), ct);
         }
 
+        async _deactivateAsync(ct: ICancellation) {
+            if (!this.isActive())
+                return;
+            await this.onDeactivating(ct);
+            this._active = false;
+            try {
+                await this.onDeactivated(ct);
+            } catch (e) {
+                log.error("Suppressed onDeactivated error: {0}", e);
+            }
+        }
     }
 }
 
