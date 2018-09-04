@@ -78,15 +78,15 @@ tape('controller activation', async function(t) {
     t.comment("Active the component through the controller");
     await c.activate(a);
     t.true(a.isActive(), "The component should successfully activate");
-    t.assert(c.getActive() == a, "The controller should point to the activated component");
-    t.assert(a.getActivationController() == c, "The component should point to the controller");
+    t.equal(c.getActive(), a, "The controller should point to the activated component");
+    t.equal(a.getActivationController(), c, "The component should point to the controller");
 
     t.comment("Deactive the component throug the controller");
     await c.deactivate();
 
     t.false(a.isActive(), "The component should successfully deactivate");
-    t.assert(c.getActive() == null, "The controller shouldn't point to any component");
-    t.assert(a.getActivationController() == c, "The componet should point to it's controller");
+    t.equal(c.getActive(), null, "The controller shouldn't point to any component");
+    t.equal(a.getActivationController(), c, "The componet should point to it's controller");
 
     t.end();
 });
