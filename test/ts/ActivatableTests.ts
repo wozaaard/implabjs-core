@@ -1,10 +1,8 @@
 import * as tape from 'tape';
 import * as ActivatableMixin from '@implab/core/components/ActivatableMixin';
 import { AsyncComponent } from '@implab/core/components/AsyncComponent';
-import { IActivationController } from '@implab/core/components/IActivationController';
-import { IActivatable } from '@implab/core/components/IActivatable';
-import { ICancellation } from '@implab/core/ICancellation';
-import { EmptyCancellation } from '@implab/core/EmptyCancellation';
+import { IActivationController, IActivatable, ICancellation } from '@implab/core/interfaces';
+import { Cancellation } from '@implab/core/Cancellation';
 
 class SimpleActivatable extends ActivatableMixin(AsyncComponent) {
 
@@ -33,20 +31,20 @@ class MockActivationController implements IActivationController {
         await component.activate();
     }
 
-    async activating(component: IActivatable, ct: ICancellation = EmptyCancellation.default) {
+    async activating(component: IActivatable, ct: ICancellation = Cancellation.none) {
         if (component != this._active)
             await this.deactivate();
     }
 
-    async activated(component: IActivatable, ct: ICancellation = EmptyCancellation.default) {
+    async activated(component: IActivatable, ct: ICancellation = Cancellation.none) {
         this._active = component;
     }
 
-    async deactivating(component: IActivatable, ct: ICancellation = EmptyCancellation.default) {
+    async deactivating(component: IActivatable, ct: ICancellation = Cancellation.none) {
 
     }
 
-    async deactivated(component: IActivatable, ct: ICancellation = EmptyCancellation.default) {
+    async deactivated(component: IActivatable, ct: ICancellation = Cancellation.none) {
         if (this._active == component)
             this._active = null;
     }

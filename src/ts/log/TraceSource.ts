@@ -1,17 +1,8 @@
 import * as format from '../text/format'
 import { argumentNotNull } from '../safe';
-
-interface TraceEventHandler {
-    (sender: TraceSource, level: number, arg: any): void;
-}
-
-interface TraceSourceHandler {
-    (source: TraceSource): void;
-}
-
-interface Destroyable {
-    destroy();
-}
+import * as Observable from '../components/Observable'
+import { IDestroyable } from '../interfaces';
+import * as TraceEvent from './TraceEvent'
 
 class Registry {
     static readonly instance = new Registry();
@@ -46,7 +37,7 @@ class Registry {
             this._listeners[i].call(null, source);
     }
 
-    on(handler: TraceSourceHandler): Destroyable {
+    on(handler: (source: TraceSource) => void): IDestroyable {
         argumentNotNull(handler, "handler");
         var me = this;
 
@@ -65,45 +56,18 @@ class Registry {
     }
 }
 
-class TraceSource {
-
+class TraceSource extends Observable<TraceEvent> {
     readonly id: any
-
-    // using array will provide faster iteration the with object
-    private _handlers: Array<TraceEventHandler> = new Array<TraceEventHandler>();
 
     level: number
 
     constructor(id: any) {
+        super();
         this.id = id || new Object();
     }
 
-    on(handler: TraceEventHandler): Destroyable {
-        argumentNotNull(handler, "handler");
-        var me = this;
-        me._handlers.push(handler);
-
-        return {
-            destroy() {
-                me.remove(handler);
-            }
-        }
-    }
-
-    remove(handler: TraceEventHandler): void {
-        let i = this._handlers.indexOf(handler);
-        if (i >= 0)
-            this._handlers.splice(i, 1);
-    }
-
     protected emit(level: number, arg: any) {
-        this._handlers.forEach(h => {
-            try {
-                h(this, level, arg);
-            } catch (e) {
-                // suppress error in log handlers
-            }
-        });
+        this._notify(new TraceEvent(this, level, arg));
     }
 
     isDebugEnabled() {
@@ -178,7 +142,7 @@ class TraceSource {
      * 
      * @param handler the handler which will be called for each trace source
      */
-    static on(handler: TraceSourceHandler) {
+    static on(handler: (source: TraceSource) => void) {
         return Registry.instance.on(handler);
     }
 
