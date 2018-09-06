@@ -1,5 +1,3 @@
-import { watchFile } from "fs";
-
 export interface IDestroyable {
     destroy();
 }
@@ -72,12 +70,7 @@ export interface ICancellable {
     cancel(reason?: any): void;
 }
 
-export interface IObserver<T> {
-    (x:T): void;
-}
-
 export interface IObservable<T> {
-    on(observer: IObserver<T>): IDestroyable;
-
-    wait(ct?: ICancellation) : Promise<T>;
+    on(next: (x:T) => void, error?: (e:any) => void, complete?:() => void): IDestroyable;
+    next(ct?: ICancellation) : Promise<T>;
 }
