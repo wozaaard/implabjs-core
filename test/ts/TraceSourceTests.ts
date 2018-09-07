@@ -1,6 +1,7 @@
 import * as TraceSource from '@implab/core/log/TraceSource'
 import * as tape from 'tape';
 import * as ConsoleWriter from '@implab/core/log/writers/ConsoleWriter';
+import { TapeWriter } from './TestTraits';
 
 const sourceId = 'test/TraceSourceTests';
 
@@ -44,19 +45,26 @@ tape('trace event', t => {
     h.destroy();
 });
 
-tape('console writer', async t => {
-    let writer = new ConsoleWriter();
+tape('tape comment writer', async t => {
+    let writer = new TapeWriter(t);
+
+    TraceSource.on(ts => {
+        writer.writeEvents(ts);
+    });
 
     let trace = TraceSource.get(sourceId);
     trace.level = TraceSource.DebugLevel;
 
-    let p = writer.write(trace);
-
     trace.log("Hello, {0}!", 'World');
+    trace.log("Multi\n  line");
     trace.warn("Look at me!");
     trace.error("DIE!");
 
-    console.log("DONE");
+    writer.destroy();
+    
+    trace.log("You shouldn't see it!");
+
+    t.comment("DONE");
 
     t.end();
 });

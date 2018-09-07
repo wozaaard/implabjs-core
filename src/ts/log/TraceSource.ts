@@ -67,7 +67,7 @@ class TraceSource extends Observable<TraceEvent> {
     }
 
     protected emit(level: number, arg: any) {
-        this._notify(new TraceEvent(this, level, arg));
+        this._notifyNext(new TraceEvent(this, level, arg));
     }
 
     isDebugEnabled() {
