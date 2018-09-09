@@ -1,9 +1,9 @@
-import { IObservable, ICancellation, IDestroyable } from "@implab/core/interfaces";
-import * as TraceEvent from '@implab/core/log/TraceEvent';
-import { Cancellation } from "@implab/core/Cancellation";
-import * as TraceSource from "@implab/core/log/TraceSource";
+import { IObservable, ICancellation, IDestroyable } from "../../build/dist/interfaces";
+import * as TraceEvent from '../../build/dist/log/TraceEvent';
+import { Cancellation } from "../../build/dist/Cancellation";
+import * as TraceSource from "../../build/dist/log/TraceSource";
 import * as tape from 'tape';
-import { argumentNotNull } from "@implab/core/safe";
+import { argumentNotNull } from "../../build/dist/safe";
 
 export class TapeWriter implements IDestroyable {
     readonly _tape: tape.Test

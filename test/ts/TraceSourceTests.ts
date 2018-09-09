@@ -1,6 +1,6 @@
-import * as TraceSource from '@implab/core/log/TraceSource'
+import * as TraceSource from '../../build/dist/log/TraceSource'
 import * as tape from 'tape';
-import * as ConsoleWriter from '@implab/core/log/writers/ConsoleWriter';
+import * as ConsoleWriter from '../../build/dist/log/writers/ConsoleWriter';
 import { TapeWriter } from './TestTraits';
 
 const sourceId = 'test/TraceSourceTests';
@@ -61,7 +61,7 @@ tape('tape comment writer', async t => {
     trace.error("DIE!");
 
     writer.destroy();
-    
+
     trace.log("You shouldn't see it!");
 
     t.comment("DONE");
