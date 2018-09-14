@@ -1,5 +1,10 @@
-import { ICancellation } from "./interfaces";
+import { ICancellation, IDestroyable } from "./interfaces";
 import { argumentNotNull } from "./safe";
+
+const destroyed = {
+    destroy() {
+    }
+};
 
 export class Cancellation implements ICancellation {
     private _reason: any;
@@ -23,17 +28,33 @@ export class Cancellation implements ICancellation {
         return !!this._reason;
     }
 
-    register(cb: (e: any) => void): void {
+    register(cb: (e: any) => void): IDestroyable {
         argumentNotNull(cb, "cb");
 
         if (this._reason) {
             cb(this._reason);
+            return destroyed;
         } else {
             if (!this._cbs)
                 this._cbs = [cb];
             else
                 this._cbs.push(cb);
+
+            let me = this;
+            return {
+        	destroy() {
+        	    me._unregister(cb);
+        	}
+            };
         }
+    }
+    
+    private _unregister(cb) {
+	if(this._cbs) {
+	    let i = this._cbs.indexOf(cb);
+	    if ( i>=0 )
+		this._cbs.splice(i,1);
+	}
     }
 
     private _cancel(reason) {
@@ -61,7 +82,8 @@ export class Cancellation implements ICancellation {
             return false;
         },
 
-        register(_cb: (e: any) => void): void {
+        register(_cb: (e: any) => void): IDestroyable {
+    	    return destroyed;
         }
     };
 }

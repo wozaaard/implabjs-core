@@ -1,1 +1,2 @@
-define(["./ActivatableTests", "./trace-test", "./TraceSourceTests"]);
+define(["./ActivatableTests", "./trace-test", "./TraceSourceTests", "./CancellationTests"]);
+//define(["./CancellationTests"]);

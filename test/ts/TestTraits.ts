@@ -26,7 +26,7 @@ export class TapeWriter implements IDestroyable {
     writeEvent(next: TraceEvent) {
         if (next.level >= TraceSource.LogLevel) {
             this._tape.comment("LOG " + next.arg);
-        } else if(next.level >= TraceSource.WarnLevel) {
+        } else if (next.level >= TraceSource.WarnLevel) {
             this._tape.comment("WARN " + next.arg);
         } else {
             this._tape.comment("ERROR " + next.arg);
@@ -36,4 +36,28 @@ export class TapeWriter implements IDestroyable {
     destroy() {
         this._subscriptions.forEach(x => x.destroy());
     }
+}
+
+export async function delay(timeout: number, ct: ICancellation = Cancellation.none) {
+    let un: IDestroyable;
+    
+    try {
+	await new Promise((resolve, reject) => {
+            if (ct.isRequested()) {
+	        un = ct.register(reject);
+    	    } else {
+    		let ht = setTimeout(() => {
+    		    resolve();
+        	    }, timeout);
+	    	
+	    	un = ct.register(e => {
+    	    	    clearTimeout(ht);
+    		    reject(e);
+    	        });
+    	    }
+	});
+    } finally {
+	if(un)
+	    un.destroy();
+    };
 }

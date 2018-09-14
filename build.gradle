@@ -43,7 +43,7 @@ task _buildTs(dependsOn: _npmInstall, type:Exec) {
 task _packageMeta(type: Copy) {
     inputs.property("version", version)
     from('.') {
-        include 'package.json', 'readme.md', 'license', 'history.md'
+        include 'package.json', '.npmignore', 'readme.md', 'license', 'history.md'
     }
     into distDir
     doLast {

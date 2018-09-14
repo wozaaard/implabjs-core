@@ -6,7 +6,7 @@ export interface ICancellation {
     throwIfRequested(): void;
     isRequested(): boolean;
     isSupported(): boolean;
-    register(cb: (e: any) => void): void;
+    register(cb: (e: any) => void): IDestroyable;
 }
 
 /**
