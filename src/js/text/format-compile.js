@@ -18,13 +18,13 @@ define(
         var espaceString = function(s) {
             if (!s)
                 return s;
-            return "'" + s.replace(/('|\\)/g, "\\$1") + "'";
+            return "'" + s.replace(/('|\\)/g, "\\$1").replace("\n","\\n") + "'";
         };
 
         var encode = function(s) {
             if (!s)
                 return s;
-            return s.replace(/\\{|\\}|&|\\:/g, function(m) {
+            return s.replace(/\\{|\\}|&|\\:|\n/g, function(m) {
                 return map[m] || m;
             });
         };
