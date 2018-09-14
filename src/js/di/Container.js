@@ -110,7 +110,7 @@ define([
             if (typeof (config) === "string") {
                 p = new Deferred();
                 if (!contextRequire) {
-                    var shim = [config, new Uuid()].join(config.indexOf("/") != -1 ? "-" : "/");
+                    var shim = [config, Uuid()].join(config.indexOf("/") != -1 ? "-" : "/");
                     define(shim, ["require", config], function (ctx, data) {
                         p.resolve([data, {
                             contextRequire: ctx
