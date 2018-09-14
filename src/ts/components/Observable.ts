@@ -8,7 +8,7 @@ interface Handler<T> {
 }
 
 interface Initializer<T> {
-    (notify: Handler<T>, error?: (e: any) => void, complete?: () => void): (() => void) | void;
+    (notify: Handler<T>, error?: (e: any) => void, complete?: () => void): void;
 }
 
 // TODO: think about to move this interfaces.ts and make it public
@@ -20,23 +20,25 @@ interface IObserver<T> {
     complete(): void
 }
 
-class Observable<T> implements IObservable<T>, IDestroyable {
+const noop = () => {};
+
+class Observable<T> implements IObservable<T> {
     private _once = new Array<IObserver<T>>();
 
     private _observers = new Array<IObserver<T>>();
 
-    private _cleanup: (() => void) | void;
 
     private _complete: boolean
 
     private _error: any
 
     constructor(func?: Initializer<T>) {
-        this._cleanup = func && func(
-            this._notifyNext.bind(this),
-            this._notifyError.bind(this),
-            this._notifyCompleted.bind(this)
-        );
+        if (func)
+            func(
+                this._notifyNext.bind(this),
+                this._notifyError.bind(this),
+                this._notifyCompleted.bind(this)
+            );
     }
 
     /**
@@ -56,16 +58,8 @@ class Observable<T> implements IObservable<T>, IDestroyable {
 
         let observer: IObserver<T> & IDestroyable = {
             next: next,
-
-            error(e: any) {
-                if (error)
-                    error(e);
-            },
-
-            complete() {
-                if (complete)
-                    complete();
-            },
+            error: error ? error.bind(null) : noop,
+            complete: complete ? complete.bind(null) : noop,
 
             destroy() {
                 me._removeObserver(this);
@@ -133,30 +127,19 @@ class Observable<T> implements IObservable<T>, IDestroyable {
         return true;
     }
 
-    destroy() {
-        if (this._complete)
-            this._notifyCompleted();
-
-        let cleanup = this._cleanup;
-        if (cleanup) {
-            this._cleanup = null;
-            cleanup();
-        }
-    }
-
     protected onObserverException(e: any) {
     }
 
     private _removeOnce(d: IObserver<T>) {
         let i = this._once.indexOf(d);
         if (i >= 0)
-            this._once.splice(i);
+            this._once.splice(i, 1);
     }
 
     private _removeObserver(d: IObserver<T>) {
         let i = this._observers.indexOf(d);
         if (i >= 0)
-            this._observers.splice(i);
+            this._observers.splice(i, 1);
     }
 
     private _notify(guard: (observer: IObserver<T>) => void) {

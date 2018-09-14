@@ -1,6 +1,5 @@
-import * as TraceSource from '../../build/dist/log/TraceSource'
+import * as TraceSource from '@implab/core/log/TraceSource'
 import * as tape from 'tape';
-import * as ConsoleWriter from '../../build/dist/log/writers/ConsoleWriter';
 import { TapeWriter } from './TestTraits';
 
 const sourceId = 'test/TraceSourceTests';
