@@ -1,9 +1,8 @@
-import { IObservable, ICancellation, IDestroyable } from "../../build/dist/interfaces";
-import * as TraceEvent from '../../build/dist/log/TraceEvent';
-import { Cancellation } from "../../build/dist/Cancellation";
-import * as TraceSource from "../../build/dist/log/TraceSource";
+import { IObservable, ICancellation, IDestroyable } from "@implab/core/interfaces";
+import { Cancellation } from "@implab/core/Cancellation";
+import { TraceEvent, LogLevel, WarnLevel } from "@implab/core/log/TraceSource";
 import * as tape from 'tape';
-import { argumentNotNull } from "../../build/dist/safe";
+import { argumentNotNull } from "@implab/core/safe";
 
 export class TapeWriter implements IDestroyable {
     readonly _tape: tape.Test
@@ -24,9 +23,9 @@ export class TapeWriter implements IDestroyable {
     }
 
     writeEvent(next: TraceEvent) {
-        if (next.level >= TraceSource.LogLevel) {
+        if (next.level >= LogLevel) {
             this._tape.comment("LOG " + next.arg);
-        } else if (next.level >= TraceSource.WarnLevel) {
+        } else if (next.level >= WarnLevel) {
             this._tape.comment("WARN " + next.arg);
         } else {
             this._tape.comment("ERROR " + next.arg);

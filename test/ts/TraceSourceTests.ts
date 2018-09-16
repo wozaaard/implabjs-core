@@ -1,4 +1,4 @@
-import * as TraceSource from '@implab/core/log/TraceSource'
+import { TraceSource, DebugLevel } from '@implab/core/log/TraceSource'
 import * as tape from 'tape';
 import { TapeWriter } from './TestTraits';
 
@@ -7,11 +7,11 @@ const sourceId = 'test/TraceSourceTests';
 tape('trace message', t => {
     let trace = TraceSource.get(sourceId);
 
-    trace.level = TraceSource.DebugLevel;
+    trace.level = DebugLevel;
 
-    let h = trace.on((ev) => {
+    let h = trace.events.on((ev) => {
         t.equal(ev.source, trace, "sender should be the current trace source");
-        t.equal(ev.level, TraceSource.DebugLevel, "level should be debug level");
+        t.equal(ev.level, DebugLevel, "level should be debug level");
         t.equal(ev.arg, "Hello, World!", "The message should be a formatted message");
 
         t.end();
@@ -25,21 +25,21 @@ tape('trace message', t => {
 tape('trace event', t => {
     let trace = TraceSource.get(sourceId);
 
-    trace.level = TraceSource.DebugLevel;
+    trace.level = DebugLevel;
 
     let event = {
         name: "custom event"
     };
 
-    let h = trace.on((ev) => {
+    let h = trace.events.on((ev) => {
         t.equal(ev.source, trace, "sender should be the current trace source");
-        t.equal(ev.level, TraceSource.DebugLevel, "level should be debug level");
+        t.equal(ev.level, DebugLevel, "level should be debug level");
         t.equal(ev.arg, event, "The message should be the specified object");
 
         t.end();
     });
 
-    trace.traceEvent(TraceSource.DebugLevel, event);
+    trace.traceEvent(DebugLevel, event);
 
     h.destroy();
 });
@@ -48,11 +48,11 @@ tape('tape comment writer', async t => {
     let writer = new TapeWriter(t);
 
     TraceSource.on(ts => {
-        writer.writeEvents(ts);
+        writer.writeEvents(ts.events);
     });
 
     let trace = TraceSource.get(sourceId);
-    trace.level = TraceSource.DebugLevel;
+    trace.level = DebugLevel;
 
     trace.log("Hello, {0}!", 'World');
     trace.log("Multi\n  line");

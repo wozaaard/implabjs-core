@@ -1,5 +1,5 @@
 import * as tape from 'tape';
-import * as ActivatableMixin from '@implab/core/components/ActivatableMixin';
+import { ActivatableMixin} from '@implab/core/components/ActivatableMixin';
 import { AsyncComponent } from '@implab/core/components/AsyncComponent';
 import { IActivationController, IActivatable, ICancellation } from '@implab/core/interfaces';
 import { Cancellation } from '@implab/core/Cancellation';
