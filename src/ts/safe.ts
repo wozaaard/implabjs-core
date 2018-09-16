@@ -229,3 +229,8 @@ export function first(sequence: any, cb: Function, err: Function) {
     else
         throw new Error("The sequence is required");
 }
+
+export function destroy(d: any) {
+    if (d && 'destroy' in d)
+        d.destroy();
+}

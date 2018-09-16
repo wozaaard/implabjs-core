@@ -1,8 +1,31 @@
 import * as format from '../text/format'
 import { argumentNotNull } from '../safe';
-import * as Observable from '../components/Observable'
+import { Observable } from '../components/Observable'
 import { IDestroyable } from '../interfaces';
-import * as TraceEvent from './TraceEvent'
+
+export const DebugLevel = 400;
+
+export const LogLevel = 300;
+
+export const WarnLevel = 200;
+
+export const ErrorLevel = 100;
+
+export const SilentLevel = 0;
+
+export class TraceEvent {
+    readonly source: TraceSource;
+
+    readonly level: Number;
+
+    readonly arg: any;
+
+    constructor(source: TraceSource, level: Number, arg: any) {
+        this.source = source;
+        this.level = level;
+        this.arg = arg;
+    }
+}
 
 class Registry {
     static readonly instance = new Registry();
@@ -56,14 +79,21 @@ class Registry {
     }
 }
 
-class TraceSource extends Observable<TraceEvent> {
+export class TraceSource {
     readonly id: any
 
     level: number
 
+    readonly events: Observable<TraceEvent>
+
+    _notifyNext: (arg: TraceEvent) => void
+
     constructor(id: any) {
-        super();
+
         this.id = id || new Object();
+        this.events = new Observable((next) => {
+            this._notifyNext = next;
+        })
     }
 
     protected emit(level: number, arg: any) {
@@ -71,37 +101,37 @@ class TraceSource extends Observable<TraceEvent> {
     }
 
     isDebugEnabled() {
-        return this.level >= TraceSource.DebugLevel;
+        return this.level >= DebugLevel;
     }
 
     debug(msg: string, ...args: any[]) {
-        if (this.isEnabled(TraceSource.DebugLevel))
-            this.emit(TraceSource.DebugLevel, format(msg, args));
+        if (this.isEnabled(DebugLevel))
+            this.emit(DebugLevel, format(msg, args));
     }
 
     isLogEnabled() {
-        return this.level >= TraceSource.LogLevel;
+        return this.level >= LogLevel;
     }
 
     log(msg: string, ...args: any[]) {
-        if (this.isEnabled(TraceSource.LogLevel))
-            this.emit(TraceSource.LogLevel, format(msg, args));
+        if (this.isEnabled(LogLevel))
+            this.emit(LogLevel, format(msg, args));
     }
 
     isWarnEnabled() {
-        return this.level >= TraceSource.WarnLevel;
+        return this.level >= WarnLevel;
     }
 
     warn(msg: string, ...args: any[]) {
-        if (this.isEnabled(TraceSource.WarnLevel))
-            this.emit(TraceSource.WarnLevel, format(msg, args));
+        if (this.isEnabled(WarnLevel))
+            this.emit(WarnLevel, format(msg, args));
     }
 
     /**
      * returns true if errors will be recorded.
      */
     isErrorEnabled() {
-        return this.level >= TraceSource.ErrorLevel;
+        return this.level >= ErrorLevel;
     }
 
     /**
@@ -111,8 +141,8 @@ class TraceSource extends Observable<TraceEvent> {
      * @param args parameters which will be substituted in the message.
      */
     error(msg: string, ...args: any[]) {
-        if (this.isEnabled(TraceSource.ErrorLevel))
-            this.emit(TraceSource.ErrorLevel, format(msg, args));
+        if (this.isEnabled(ErrorLevel))
+            this.emit(ErrorLevel, format(msg, args));
     }
 
     /**
@@ -156,16 +186,3 @@ class TraceSource extends Observable<TraceEvent> {
     }
 }
 
-namespace TraceSource {
-    export const DebugLevel = 400;
-
-    export const LogLevel = 300;
-
-    export const WarnLevel = 200;
-
-    export const ErrorLevel = 100;
-
-    export const SilentLevel = 0;
-}
-
-export = TraceSource;

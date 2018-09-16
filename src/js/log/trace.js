@@ -1,5 +1,7 @@
-define(["./TraceSource"], function (TraceSource) {
+define(["./TraceSource"], function (TraceSource_1) {
     'use strict';
+
+    var TraceSource = TraceSource_1.TraceSource;
 
     return {
 

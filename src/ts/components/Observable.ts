@@ -22,7 +22,7 @@ interface IObserver<T> {
 
 const noop = () => {};
 
-class Observable<T> implements IObservable<T> {
+export class Observable<T> implements IObservable<T> {
     private _once = new Array<IObserver<T>>();
 
     private _observers = new Array<IObserver<T>>();
@@ -191,8 +191,3 @@ class Observable<T> implements IObservable<T> {
         this._observers = [];
     }
 }
-
-namespace Observable {
-}
-
-export = Observable;
