@@ -1,6 +1,6 @@
-import { IObservable, IDestroyable, ICancellation } from '../interfaces';
-import { Cancellation } from '../Cancellation'
-import { argumentNotNull } from '../safe';
+import { IObservable, IDestroyable, ICancellation } from './interfaces';
+import { Cancellation } from './Cancellation'
+import { argumentNotNull } from './safe';
 
 
 interface Handler<T> {

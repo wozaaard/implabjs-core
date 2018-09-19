@@ -1,6 +1,6 @@
 import * as format from '../text/format'
 import { argumentNotNull } from '../safe';
-import { Observable } from '../components/Observable'
+import { Observable } from '../Observable'
 import { IDestroyable } from '../interfaces';
 
 export const DebugLevel = 400;
