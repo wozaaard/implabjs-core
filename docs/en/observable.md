@@ -31,7 +31,7 @@ events.on(
     // обработчик очередного события
     msg => {
         progress.setValue(msg);
-    }.
+    },
     // обработчик ошибки
     e => {
         progress.showError(e);

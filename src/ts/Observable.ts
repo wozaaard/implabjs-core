@@ -64,7 +64,7 @@ export class Observable<T> implements IObservable<T> {
             destroy() {
                 me._removeObserver(this);
             }
-        }
+        };
 
         this._addObserver(observer);
 
