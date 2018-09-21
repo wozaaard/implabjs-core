@@ -31,7 +31,7 @@ events.on(
     // обработчик очередного события
     msg => {
         progress.setValue(msg);
-    },
+    }.
     // обработчик ошибки
     e => {
         progress.showError(e);
@@ -41,45 +41,146 @@ events.on(
         progress.close();
     }
 );
+
+// ожидание следующего события
+let firstEvent = await events.next();
 ```
 
-Пример создания `Observable` из событий другого объекта, например, виджета:
+`Observable` можно создавать из событий другого объекта, например, виджета:
 
 ```ts
-postCreate() {
-    // превращаем события виджета в Observable
-    this.mouseMove = new Observable((notify) => {
-        this.moveArea.on('mousemove',(x) => notify(x.) );
-    });
+// клсс
+class Canvas {
+    readonly mouseMove: IObservable<[number,number]>
+
+    postCreate() {
+        // превращаем события виджета в Observable
+        this.mouseMove = new Observable<[number,number]>((notify) => {
+            this.mousePad.on('mousemove',(e) => notify([e.clientX, e.clientY]) );
+        });
+    }
 }
 
 ```
 
-Пример инициализации `Observable` внутри класса и генерация событий:
+Если объект инкапсулирует в себе `Observable`, он также может сохранить методы
+для оповещения подписчиков для дальнейшего их использования внутри класса.
 
 ```ts
-
-class PositionWidget extends Widget {
+// класс, который будет генерировать события местоположения
+class PositionTracker implements IDestroyable {
+    // _nextPosition и _complete будут связаны с position при создании
+    // экземпляра PositionTracker.
     _nextPosition: (pos: Position) => void
-
     _complete: () => void
 
-    readonly position: Observable<Position>;
+    readonly position: IObservable<Position>
 
-    constructor(...args[]) {
+    // конструктор
+    constructor(...args: any[]) {
         super(args);
 
+        // создаем Observable
         this.position = new Observable<Position>((notify, error, complete) => {
+            // сохраняем методы для оповещения о новом местоположении
             this._nextPosition = notify;
+            // метод об оповещении конца потока событий
             this._complete = complete
         });
     }
 
+    // метод для очистки ресурсов
     destroy() {
         this._complete();
 
         super();
     }
 }
+```
 
+Существует также несколько варинатов получения сообщений
+
+```ts
+// регистрация метода для получений событий
+let subscription = pushEvents.on((msg) => {
+    displayPopup(msg);
+});
+
+// подписку можно отменить, после чего обработчики больше не будут вызываться
+subcription.destroy();
+
+// если требуется получить только одно сообщение можно использовать
+// асинхронный метод next(ct?: ICancellation)
+
+let msg = await pushEvents.next();
+
+// пример метода для получения координат с карты, который использует
+// событие нажатия мышью для определения координат.
+
+class Map {
+    /**
+    
+    Получает координаты по щелчку мыши.
+    
+    @async
+    
+    @returns [lon,lat]
+    
+    */
+    async peekCoordinates(ct: ICancellation = Cancellation.none) {
+        // получаем событие клика
+        let evt = this.viewport.click.next(ct);
+    
+        // преобразуем позицию на экране в координаты карты
+        return this.clientToCoodinates([evt.clientx,evt.clientY]);
+    }
+}
+
+
+let map : Map; // где-то объявлено
+
+// пример получения координат с карты
+let coords = await map.peekCoordinates();
+
+```
+
+## Observable и последовательности
+
+Можно сичтать, что `Observable` это некоторая аналогия итератора только в
+парадигме событийного (или реактивного) программировния. Следует также понимать,
+что при переходе от синхронного процедурного программирования к событийному так
+же меняется и направление управления (Inverse Of Control), что означает
+следующее:
+
+* при работе с итераторами клиенты сами определяют момент чтения следующего
+  элемента последовательности.
+* при работе с `Observable` клиенты вынуждены обрабатывать эти события по мере
+  их поступления и не могут на это повлиять.
+
+Последний пункт можно изменить применив, например, буффер или канал с
+состоянием, т.е. очередь, но данные механизмы выходят за рамки простого шаблона
+наблюдателя.
+
+```ts
+// обработка в цикле не гарантирует получения всех сообщений
+while(1) {
+    // ожидаем следующее событие, по сути это подписка только на одно событие
+    let next = await events.next();
+
+    // такой цикл может пропускать сообщения, поскольку асинхронная операция
+    // позволит возобновить создание новых событий, на которые мы не подписаны
+    await processEvent(next);
+
+    // не только асинхронные операции могут привести к пропуску события
+    // например вызов метода, который приводит к созданию события так же
+    // приведет к тому, что созданное событие не будет обработано в текущем
+    // цикле
+    doSmthAndRiseEvent();
+}
+
+// для получения всех сообщений нужно регистрировать подписчика
+events.on((data) => {
+    // будет вызван для всех сообщений
+    processEvent(data);
+});
 ```

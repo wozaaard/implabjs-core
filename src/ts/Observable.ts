@@ -176,6 +176,7 @@ export class Observable<T> implements IObservable<T> {
 
         this._notify(guard);
         this._observers = [];
+        this._complete = true;
     }
 
     protected _notifyCompleted() {
@@ -189,5 +190,6 @@ export class Observable<T> implements IObservable<T> {
 
         this._notify(guard);
         this._observers = [];
+        this._complete = true;
     }
 }
