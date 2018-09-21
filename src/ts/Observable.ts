@@ -1,6 +1,6 @@
-import { IObservable, IDestroyable, ICancellation } from '../interfaces';
-import { Cancellation } from '../Cancellation'
-import { argumentNotNull } from '../safe';
+import { IObservable, IDestroyable, ICancellation } from './interfaces';
+import { Cancellation } from './Cancellation'
+import { argumentNotNull } from './safe';
 
 
 interface Handler<T> {
@@ -22,7 +22,7 @@ interface IObserver<T> {
 
 const noop = () => {};
 
-class Observable<T> implements IObservable<T> {
+export class Observable<T> implements IObservable<T> {
     private _once = new Array<IObserver<T>>();
 
     private _observers = new Array<IObserver<T>>();
@@ -64,7 +64,7 @@ class Observable<T> implements IObservable<T> {
             destroy() {
                 me._removeObserver(this);
             }
-        }
+        };
 
         this._addObserver(observer);
 
@@ -176,6 +176,7 @@ class Observable<T> implements IObservable<T> {
 
         this._notify(guard);
         this._observers = [];
+        this._complete = true;
     }
 
     protected _notifyCompleted() {
@@ -189,10 +190,6 @@ class Observable<T> implements IObservable<T> {
 
         this._notify(guard);
         this._observers = [];
+        this._complete = true;
     }
 }
-
-namespace Observable {
-}
-
-export = Observable;
