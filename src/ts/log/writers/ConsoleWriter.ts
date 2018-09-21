@@ -1,9 +1,8 @@
 import { IObservable, IDestroyable, ICancellation } from "../../interfaces";
-import * as TraceEvent from '../TraceEvent';
 import { Cancellation } from "../../Cancellation";
-import * as TraceSource from "../TraceSource";
+import { TraceEvent, LogLevel, WarnLevel } from "../TraceSource";
 
-class ConsoleWriter implements IDestroyable {
+export class ConsoleWriter implements IDestroyable {
     readonly _subscriptions = new Array<IDestroyable>();
 
     writeEvents(source: IObservable<TraceEvent>, ct: ICancellation = Cancellation.none) {
@@ -15,9 +14,9 @@ class ConsoleWriter implements IDestroyable {
     }
 
     writeEvent(next: TraceEvent) {
-        if (next.level >= TraceSource.LogLevel) {
+        if (next.level >= LogLevel) {
             console.log(next.source.id.toString(), next.arg);
-        } else if(next.level >= TraceSource.WarnLevel) {
+        } else if(next.level >= WarnLevel) {
             console.warn(next.source.id.toString(), next.arg);
         } else {
             console.error(next.source.id.toString(), next.arg);
@@ -28,8 +27,3 @@ class ConsoleWriter implements IDestroyable {
         this._subscriptions.forEach(x => x.destroy());
     }
 }
-
-namespace ConsoleWriter {
-}
-
-export = ConsoleWriter;

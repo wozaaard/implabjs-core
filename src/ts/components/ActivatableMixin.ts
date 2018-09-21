@@ -1,13 +1,13 @@
 import { IActivationController, IActivatable, ICancellation } from '../interfaces';
 import { AsyncComponent } from './AsyncComponent';
 import { Cancellation } from '../Cancellation';
-import * as TraceSource from '../log/TraceSource';
+import { TraceSource } from '../log/TraceSource';
 
 type Constructor<T = {}> = new (...args: any[]) => T;
 
 const log = TraceSource.get('@implab/core/components/ActivatableMixin');
 
-function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase) {
+export function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase) {
     return class extends Base implements IActivatable {
         _controller: IActivationController;
 
@@ -80,8 +80,4 @@ function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase
     }
 }
 
-namespace ActivatableMixin {
-    export const traceSource = log;
-}
-
-export = ActivatableMixin;
+export const traceSource = log;
