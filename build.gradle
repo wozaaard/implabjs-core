@@ -1,3 +1,6 @@
+if (release != 'rtm') {
+    version += "-$release"
+}
 
 println "version: $version"
 
