@@ -45,7 +45,7 @@ export function isNullOrEmptyString(str) {
         return true;
 }
 
-export function isNotEmptyArray(arg) {
+export function isNotEmptyArray(arg): arg is Array<any> {
     return (arg instanceof Array && arg.length > 0);
 }
 
@@ -61,7 +61,7 @@ export function isNotEmptyArray(arg) {
  * @returns Результат вызова функции <c>cb</c>, либо <c>undefined</c>
  *          если достигнут конец массива.
  */
-export function each(obj, cb, thisArg) {
+export function each(obj, cb, thisArg?) {
     argumentNotNull(cb, "cb");
     var i, x;
     if (obj instanceof Array) {
@@ -81,11 +81,55 @@ export function each(obj, cb, thisArg) {
     }
 }
 
+/** Copies property values from a source object to the destination and returns
+ * the destination onject.
+ * 
+ * @param dest The destination object into which properties from the source
+ *  object will be copied.
+ * @param source The source of values which will be copied to the destination
+ *  object.
+ * @param template An optional parameter specifies which properties should be
+ *  copied from the source and how to map them to the destination. If the
+ *  template is an array it contains the list of property names to copy from the
+ *  source to the destination. In case of object the templates contains the map
+ *  where keys are property names in the source and the values are property
+ *  names in the destination object. If the template isn't specified then the
+ *  own properties of the source are entirely copied to the destination.
+ * 
+ */
+export function mixin<T,S>(dest: T, source: S, template?: string[] | object) : T & S {
+    argumentNotNull(dest, "to");
+    let _res = <T & S>dest;
+
+    if (template instanceof Array) {
+        for(let i = 0; i < template.length; i++) {
+            let p = template[i];
+            if (p in source)
+                _res[p] = source[p];
+        }
+    } else if (template) {
+        let keys = Object.keys(source);
+        for(let i = 0; i < keys.length; i++) {
+            let p = keys[i];
+            if (p in template)
+                _res[template[p]] = source[p];
+        }
+    } else {
+        let keys = Object.keys(source);
+        for(let i = 0; i < keys.length; i++) {
+            let p = keys[i];
+            _res[p] = source[p];
+        }
+    }
+
+    return _res;
+}
+
 /** Wraps the specified function to emulate an asynchronous execution.
  * @param{Object} thisArg [Optional] Object which will be passed as 'this' to the function.
  * @param{Function|String} fn [Required] Function wich will be wrapped.
  */
-export function async(_fn: (...args: any[]) => any, thisArg) : (...args: any[]) => PromiseLike<any> {
+export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) => PromiseLike<any> {
     let fn = _fn;
 
     if (arguments.length == 2 && !(fn instanceof Function))
@@ -94,7 +138,7 @@ export function async(_fn: (...args: any[]) => any, thisArg) : (...args: any[]) 
     if (fn == null)
         throw new Error("The function must be specified");
 
-    function wrapresult(x, e?) : PromiseLike<any> {
+    function wrapresult(x, e?): PromiseLike<any> {
         if (e) {
             return {
                 then: function (cb, eb) {
@@ -129,18 +173,17 @@ export function async(_fn: (...args: any[]) => any, thisArg) : (...args: any[]) 
     };
 }
 
-export function delegate(target, _method: (string | Function)) {
-    let method : Function;
+export function delegate<T, K extends keyof T>(target: T, _method: (K | Function)) {
+    let method;
 
     if (!(_method instanceof Function)) {
         argumentNotNull(target, "target");
         method = target[_method];
+        if (!(method instanceof Function))
+            throw new Error("'method' argument must be a Function or a method name");
     } else {
         method = _method;
     }
-
-    if (!(method instanceof Function))
-        throw new Error("'method' argument must be a Function or a method name");
 
     return function () {
         return method.apply(target, arguments);
