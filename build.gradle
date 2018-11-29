@@ -40,7 +40,7 @@ task _buildTs(dependsOn: _npmInstall, type:Exec) {
     inputs.file('tsc.json')
     outputs.dir(distDir)
 
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.json'
+    commandLine 'node_modules/.bin/tsc', '-p', 'tsconfig.json'
 }
 
 task _packageMeta(type: Copy) {
@@ -80,7 +80,7 @@ task buildTests(dependsOn: _localInstall, type: Exec) {
     inputs.file('tsc.test.json')
     outputs.dir(testDir)
 
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.test.json'
+    commandLine 'node_modules/.bin/tsc', '-p', 'tsconfig.test.json'
 }
 
 task test(dependsOn: [copyJsTests, buildTests], type: Exec) {

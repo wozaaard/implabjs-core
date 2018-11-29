@@ -8,7 +8,7 @@
 
 declare var window: any;
 
-let _window : any = 'undefined' !== typeof window ? window : null;
+let _window: any = 'undefined' !== typeof window ? window : null;
 
 // Unique ID creation requires a high quality random # generator. We
 // feature
@@ -41,7 +41,7 @@ function setupBrowser() {
         // If all else fails, use Math.random(). It's fast, but is of
         // unspecified
         // quality.
-        let  _rnds = new Array(16);
+        let _rnds = new Array(16);
         _rng = function () {
             for (var i = 0, r; i < 16; i++) {
                 if ((i & 0x03) === 0) {
@@ -92,8 +92,8 @@ for (let i = 0; i < 256; i++) {
 }
 
 // **`parse()` - Parse a UUID into it's component bytes**
-function parse(s, buf?, offset?) : Array<string> {
-    let i = (buf && offset) || 0,        ii = 0;
+function _parse(s, buf?, offset?): Array<string> {
+    let i = (buf && offset) || 0, ii = 0;
 
     buf = buf || [];
     s.toLowerCase().replace(/[0-9a-f]{2}/g, function (oct) {
@@ -111,8 +111,8 @@ function parse(s, buf?, offset?) : Array<string> {
 }
 
 // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
-function unparse(buf, offset?) : string {
-    let i = offset || 0,        bth = _byteToHex;
+function _unparse(buf, offset?): string {
+    let i = offset || 0, bth = _byteToHex;
     return bth[buf[i++]] + bth[buf[i++]] + bth[buf[i++]] +
         bth[buf[i++]] + '-' + bth[buf[i++]] + bth[buf[i++]] + '-' +
         bth[buf[i++]] + bth[buf[i++]] + '-' + bth[buf[i++]] +
@@ -143,10 +143,10 @@ let _nodeId = [
 let _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
 
 // Previous uuid creation time
-let _lastMSecs = 0,    _lastNSecs = 0;
+let _lastMSecs = 0, _lastNSecs = 0;
 
 // See https://github.com/broofa/node-uuid for API details
-function v1(options?, buf?, offset?) : string {
+function _v1(options?, buf?, offset?): string {
     let i = buf && offset || 0;
     let b = buf || [];
 
@@ -225,13 +225,13 @@ function v1(options?, buf?, offset?) : string {
         b[i + n] = node[n];
     }
 
-    return buf ? buf : unparse(b);
+    return buf ? buf : _unparse(b);
 }
 
 // **`v4()` - Generate random UUID**
 
 // See https://github.com/broofa/node-uuid for API details
-function v4(options?, buf?, offset?) : string {
+function _v4(options?, buf?, offset?): string {
     // Deprecated - 'format' argument, as supported in v1.2
     let i = buf && offset || 0;
 
@@ -254,29 +254,17 @@ function v4(options?, buf?, offset?) : string {
         }
     }
 
-    return buf || unparse(rnds);
+    return buf || _unparse(rnds);
 }
 
-// Export public API
-const empty = "00000000-0000-0000-0000-000000000000";
+export function Uuid() {
 
-interface uuid {
-    (options?, buf?, offset?) : string;
-    v1(options?, buf?, offset?) : string;
-    v4(options?, buf?, offset?) : string;
-    readonly empty: string;
-    parse(s, buf?, offset?) : Array<string>;
-    unparse(buf, offset?) : string;
 }
 
-export = <uuid>(() =>{
-    var f : any = function(options?, buf?, offset?) : string {
-        return v4(options, buf, offset);
-    };
-    f.v1 = v1;
-    f.v4 = v4;
-    f.empty = empty;
-    f.parse = parse;
-    f.unparse = unparse;
-    return f;
-})();
+export namespace Uuid {
+    export const v4 = _v4;
+    export const v1 = _v1;
+    export const empty = "00000000-0000-0000-0000-000000000000";
+    export const parse = _parse;
+    export const unparse = _unparse;
+}
