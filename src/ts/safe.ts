@@ -1,3 +1,16 @@
+let _nextOid = 0;
+const _oid = Symbol("__oid");
+
+export function oid(instance: object) {
+    if (isNull(instance))
+        return null;
+
+    if (_oid in instance)
+        return instance[_oid];
+    else
+        return (instance[_oid] = "oid_" + (++_nextOid));
+}
+
 export function argumentNotNull(arg, name) {
     if (arg === null || arg === undefined)
         throw new Error("The argument " + name + " can't be null or undefined");
@@ -28,20 +41,20 @@ export function isPrimitive(arg) {
 }
 
 export function isInteger(arg) {
-    return parseInt(arg) == arg;
+    return parseInt(arg, 10) === arg;
 }
 
 export function isNumber(arg) {
-    return parseFloat(arg) == arg;
+    return parseFloat(arg) === arg;
 }
 
 export function isString(val) {
-    return typeof (val) == "string" || val instanceof String;
+    return typeof (val) === "string" || val instanceof String;
 }
 
 export function isNullOrEmptyString(str) {
     if (str === null || str === undefined ||
-        ((typeof (str) == "string" || str instanceof String) && str.length === 0))
+        ((typeof (str) === "string" || str instanceof String) && str.length === 0))
         return true;
 }
 
@@ -49,11 +62,28 @@ export function isNotEmptyArray(arg): arg is Array<any> {
     return (arg instanceof Array && arg.length > 0);
 }
 
+export function getGlobal() {
+    return this;
+}
+
+export function get(member: string, context?: object) {
+    argumentNotEmptyString(member, "member");
+    let that = context || getGlobal();
+    const parts = member.split(".");
+    for (const m of parts) {
+        if (!m)
+            continue;
+        if (isNull(that = that[m]))
+            break;
+    }
+    return that;
+}
+
 /**
  * Выполняет метод для каждого элемента массива, останавливается, когда
  * либо достигнут конец массива, либо функция <c>cb</c> вернула
  * значение.
- * 
+ *
  * @param {Array | Object} obj массив элементов для просмотра
  * @param {Function} cb функция, вызываемая для каждого элемента
  * @param {Object} thisArg значение, которое будет передано в качестве
@@ -63,18 +93,16 @@ export function isNotEmptyArray(arg): arg is Array<any> {
  */
 export function each(obj, cb, thisArg?) {
     argumentNotNull(cb, "cb");
-    var i, x;
     if (obj instanceof Array) {
-        for (i = 0; i < obj.length; i++) {
-            x = cb.call(thisArg, obj[i], i);
+        for (let i = 0; i < obj.length; i++) {
+            const x = cb.call(thisArg, obj[i], i);
             if (x !== undefined)
                 return x;
         }
     } else {
-        var keys = Object.keys(obj);
-        for (i = 0; i < keys.length; i++) {
-            var k = keys[i];
-            x = cb.call(thisArg, obj[k], k);
+        const keys = Object.keys(obj);
+        for (const k of keys) {
+            const x = cb.call(thisArg, obj[k], k);
             if (x !== undefined)
                 return x;
         }
@@ -83,7 +111,7 @@ export function each(obj, cb, thisArg?) {
 
 /** Copies property values from a source object to the destination and returns
  * the destination onject.
- * 
+ *
  * @param dest The destination object into which properties from the source
  *  object will be copied.
  * @param source The source of values which will be copied to the destination
@@ -95,31 +123,27 @@ export function each(obj, cb, thisArg?) {
  *  where keys are property names in the source and the values are property
  *  names in the destination object. If the template isn't specified then the
  *  own properties of the source are entirely copied to the destination.
- * 
+ *
  */
-export function mixin<T,S>(dest: T, source: S, template?: string[] | object) : T & S {
+export function mixin<T, S>(dest: T, source: S, template?: string[] | object): T & S {
     argumentNotNull(dest, "to");
-    let _res = <T & S>dest;
+    const _res = dest as T & S;
 
     if (template instanceof Array) {
-        for(let i = 0; i < template.length; i++) {
-            let p = template[i];
+        for (const p  of template) {
             if (p in source)
                 _res[p] = source[p];
         }
     } else if (template) {
-        let keys = Object.keys(source);
-        for(let i = 0; i < keys.length; i++) {
-            let p = keys[i];
+        const keys = Object.keys(source);
+        for (const p of keys) {
             if (p in template)
                 _res[template[p]] = source[p];
         }
     } else {
-        let keys = Object.keys(source);
-        for(let i = 0; i < keys.length; i++) {
-            let p = keys[i];
+        const keys = Object.keys(source);
+        for (const p of keys)
             _res[p] = source[p];
-        }
     }
 
     return _res;
@@ -132,7 +156,7 @@ export function mixin<T,S>(dest: T, source: S, template?: string[] | object) : T
 export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) => PromiseLike<any> {
     let fn = _fn;
 
-    if (arguments.length == 2 && !(fn instanceof Function))
+    if (arguments.length === 2 && !(fn instanceof Function))
         fn = thisArg[fn];
 
     if (fn == null)
@@ -141,7 +165,7 @@ export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) =
     function wrapresult(x, e?): PromiseLike<any> {
         if (e) {
             return {
-                then: function (cb, eb) {
+                then(cb, eb) {
                     try {
                         return eb ? wrapresult(eb(e)) : this;
                     } catch (e2) {
@@ -153,7 +177,7 @@ export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) =
             if (x && x.then)
                 return x;
             return {
-                then: function (cb) {
+                then(cb) {
                     try {
                         return cb ? wrapresult(cb(x)) : this;
                     } catch (e2) {
@@ -164,16 +188,18 @@ export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) =
         }
     }
 
-    return function () {
+    return (...args) => {
         try {
-            return wrapresult(fn.apply(thisArg, arguments));
+            return wrapresult(fn.apply(thisArg, args));
         } catch (e) {
             return wrapresult(null, e);
         }
     };
 }
 
-export function delegate<T, K extends keyof T>(target: T, _method: (K | Function)) {
+type _AnyFn = (...args) => any;
+
+export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn)) {
     let method;
 
     if (!(_method instanceof Function)) {
@@ -185,18 +211,18 @@ export function delegate<T, K extends keyof T>(target: T, _method: (K | Function
         method = _method;
     }
 
-    return function () {
-        return method.apply(target, arguments);
+    return (...args) => {
+        return method.apply(target, args);
     };
 }
 
 /**
  * Для каждого элемента массива вызывает указанную функцию и сохраняет
  * возвращенное значение в массиве результатов.
- * 
+ *
  * @remarks cb может выполняться асинхронно, при этом одновременно будет
  *          только одна операция.
- * 
+ *
  * @async
  */
 export function pmap(items, cb) {

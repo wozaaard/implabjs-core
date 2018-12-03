@@ -1,9 +1,17 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
-import { Uuid } from '../Uuid';
-import { Container, ActivationContextInfo, ServiceMap, Descriptor, isDescriptor } from "../di";
+import { Descriptor, ServiceMap, isDescriptor } from "./interfaces";
+import { Container } from "./Container";
 
 let trace = TraceSource.get("di");
+
+export class ActivationContextInfo {
+    name: string
+
+    service: string
+
+    scope: ServiceMap
+}
 
 
 export class ActivationContext {
