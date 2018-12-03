@@ -106,7 +106,7 @@ export class TraceSource {
 
     debug(msg: string, ...args: any[]) {
         if (this.isEnabled(DebugLevel))
-            this.emit(DebugLevel, format(msg, args));
+            this.emit(DebugLevel, format.apply(null, arguments));
     }
 
     isLogEnabled() {
@@ -115,7 +115,7 @@ export class TraceSource {
 
     log(msg: string, ...args: any[]) {
         if (this.isEnabled(LogLevel))
-            this.emit(LogLevel, format(msg, args));
+            this.emit(LogLevel, format.apply(null, arguments));
     }
 
     isWarnEnabled() {
@@ -124,7 +124,7 @@ export class TraceSource {
 
     warn(msg: string, ...args: any[]) {
         if (this.isEnabled(WarnLevel))
-            this.emit(WarnLevel, format(msg, args));
+            this.emit(WarnLevel, format.apply(null, arguments));
     }
 
     /**
@@ -142,7 +142,7 @@ export class TraceSource {
      */
     error(msg: string, ...args: any[]) {
         if (this.isEnabled(ErrorLevel))
-            this.emit(ErrorLevel, format(msg, args));
+            this.emit(ErrorLevel, format.apply(null, arguments));
     }
 
     /**
