@@ -2,7 +2,7 @@ import { Descriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 
 export class AggregateDescriptor<T> implements Descriptor {
-    _value: T
+    _value: T;
 
     constructor(value: T) {
 
@@ -10,7 +10,7 @@ export class AggregateDescriptor<T> implements Descriptor {
 
     activate(context: ActivationContext, name: string) {
         context.enter(name);
-        let v = context.parse(this._value, ".params");
+        const v = context.parse(this._value, ".params");
         context.leave();
         return v;
     }

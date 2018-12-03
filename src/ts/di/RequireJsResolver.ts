@@ -7,18 +7,18 @@ declare function require(modules: string[], cb?: (...args: any[]) => any): void;
 
 declare function define(name: string, modules: string[], cb?: (...args: any[]) => any): void;
 
-class RequireJsResolverParams {
-    contextRequire: (modules: string[], cb?: (...args: any[]) => any) => void
+interface RequireJsResolverParams {
+    contextRequire: (modules: string[], cb?: (...args: any[]) => any) => void;
 
-    base: string
+    base: string;
 }
 
 TraceSource.get("RequireJsResolver");
 
 export class RequireJsResolver extends ModuleResolverBase {
-    _contextRequire = require
+    _contextRequire = require;
 
-    _base: string
+    _base: string;
 
     constructor(opts) {
         super();
@@ -29,7 +29,7 @@ export class RequireJsResolver extends ModuleResolverBase {
                 this._contextRequire = opts.contextRequire;
 
             if (opts.base) {
-                if (opts.base.indexOf("./") == 0)
+                if (opts.base.indexOf("./") === 0)
                     throw new Error(`A module id should be an absolute: '${opts.base}'`);
                 this._base = opts.base;
             }
@@ -40,35 +40,34 @@ export class RequireJsResolver extends ModuleResolverBase {
     async createResolver(moduleName: string): Promise<ModuleResolverBase> {
         argumentNotEmptyString(moduleName, "moduleName");
 
-        let parts = moduleName.split("/");
-        if (parts[0] == ".") {
+        const parts = moduleName.split("/");
+        if (parts[0] === ".") {
             if (this._base)
                 parts[0] = this._base;
             else
                 throw new Error(`Can't resolve a relative module '${moduleName}'`);
         }
 
-        if(parts.length > 1)
-            parts.splice(-1,1,Uuid());
+        if (parts.length > 1)
+            parts.splice(-1, 1, Uuid());
         else
             parts.push(Uuid());
 
-        var shim = parts.join('/');
+        const shim = parts.join("/");
 
-        let contextRequire = await new Promise((resolve, reject) => {
-            define(shim, ["require"], function (ctx) {
-                resolve(ctx);
-            })
-        });
+        const contextRequire = await new Promise(
+            resolve => define(shim, ["require"], resolve)
+        );
 
         return new RequireJsResolver({
-            base: parts.slice(0,-1).join('/'),
-            contextRequire: contextRequire
+            base: parts.slice(0, -1).join("/"),
+            contextRequire
         });
     }
 
-    async loadModule(moduleName: string): Promise<Object> {
-        return new Promise<Object>((resolve) => this._contextRequire.call(null, [moduleName], resolve)
+    async loadModule(moduleName: string): Promise<object> {
+        return new Promise<object>(
+            resolve => this._contextRequire.call(null, [moduleName], resolve)
         );
     }
 
