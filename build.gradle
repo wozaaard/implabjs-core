@@ -57,7 +57,7 @@ task _packageMeta(type: Copy) {
     }
 }
 
-task build(dependsOn: [_npmInstall, _buildTs, _legacyJs, _packageMeta]) {
+task build(dependsOn: [_legacyJs, _npmInstall, _buildTs, _packageMeta]) {
 
 }
 

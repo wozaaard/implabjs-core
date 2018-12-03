@@ -258,7 +258,7 @@ function _v4(options?, buf?, offset?): string {
 }
 
 export function Uuid() {
-
+    return _v4();
 }
 
 export namespace Uuid {

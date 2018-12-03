@@ -1,6 +1,16 @@
+declare function require(modules: string[], cb?: (...args: any[]) => any) : void;
+
+declare function define(name:string, modules: string[], cb?: (...args: any[]) => any) : void;
+
 import { Uuid } from "../Uuid";
 import { ActivationContext } from "./ActivationContext";
-import { ActivationError } from "../di";
+import { ValueDescriptor } from "./ValueDescriptor";
+import { ActivationError } from "./ActivationError";
+import { isDescriptor, ActivationType } from "./interfaces";
+import { AggregateDescriptor } from "./AggregateDescriptor";
+import { isPrimitive } from "../safe";
+import { ReferenceDescriptor } from "./ReferenceDescriptor";
+import { ServiceDescriptor } from "./ServiceDescriptor";
 
 
 export class Container {
@@ -57,7 +67,7 @@ export class Container {
             for (let name in data)
                 this.register(name, data[name]);
         } else {
-            if (!(service instanceof Descriptor))
+            if (!(isDescriptor(service)))
                 service = new ValueDescriptor(service);
             this._services[nameOrCollection] = service;
         }
@@ -147,7 +157,7 @@ export class Container {
 
         for (p in data) {
             var service = me._parse(data[p], typemap);
-            if (!(service instanceof Descriptor))
+            if (!(isDescriptor(service)))
                 service = new AggregateDescriptor(service);
             services[p] = service;
         }
@@ -174,7 +184,7 @@ export class Container {
     }
 
     _parse(data, typemap) {
-        if (isPrimitive(data) || data instanceof Descriptor)
+        if (isPrimitive(data) || isDescriptor(data))
             return data;
         if (data.$dependency) {
             return new ReferenceDescriptor(

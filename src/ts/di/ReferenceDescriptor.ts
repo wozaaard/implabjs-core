@@ -1,6 +1,9 @@
 import { isNull, argumentNotEmptyString, each } from "../safe";
+import { ActivationContext } from "./ActivationContext";
+import { ServiceMap, Descriptor } from "./interfaces";
+import { ActivationError } from "./ActivationError";
 
-class ReferenceDescriptor extends Descriptor {
+export class ReferenceDescriptor implements Descriptor {
     _name: string
 
     _lazy = false
@@ -9,10 +12,9 @@ class ReferenceDescriptor extends Descriptor {
 
     _default: any
 
-    _services: object
+    _services: ServiceMap
 
-    constructor(name: string, lazy: boolean, optional: boolean, def, services: object) {
-        super();
+    constructor(name: string, lazy: boolean, optional: boolean, def, services: ServiceMap) {
         argumentNotEmptyString(name, "name");
         this._name = name;
         this._lazy = Boolean(lazy);
@@ -30,22 +32,22 @@ class ReferenceDescriptor extends Descriptor {
         if (me._services) {
             for (var p in me._services) {
                 var sv = me._services[p];
-                context.register(p, sv instanceof Descriptor ? sv : new AggregateDescriptor(sv));
+                context.register(p, sv);
             }
         }
 
         if (me._lazy) {
             // сохраняем контекст активации
             context = context.clone();
-            return function (cfg) {
+            return function (cfg: ServiceMap) {
                 // защищаем контекст на случай исключения в процессе
                 // активации
                 var ct = context.clone();
                 try {
                     if (cfg)
-                        each(cfg, function (v, k) {
-                            ct.register(k, v instanceof Descriptor ? v : new AggregateDescriptor(v));
-                        });
+                        for(let k in cfg)
+                            ct.register(k, cfg[v]);
+
                     return me._optional ? ct.getService(me._name, me._default) : ct
                         .getService(me._name);
                 } catch (error) {
