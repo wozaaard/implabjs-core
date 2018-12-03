@@ -1,11 +1,11 @@
-import { IActivationController, IActivatable, ICancellation } from '../interfaces';
-import { AsyncComponent } from './AsyncComponent';
-import { Cancellation } from '../Cancellation';
-import { TraceSource } from '../log/TraceSource';
+import { IActivationController, IActivatable, ICancellation } from "../interfaces";
+import { AsyncComponent } from "./AsyncComponent";
+import { Cancellation } from "../Cancellation";
+import { TraceSource } from "../log/TraceSource";
 
 type Constructor<T = {}> = new (...args: any[]) => T;
 
-const log = TraceSource.get('@implab/core/components/ActivatableMixin');
+const log = TraceSource.get("@implab/core/components/ActivatableMixin");
 
 export function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase) {
     return class extends Base implements IActivatable {
@@ -77,7 +77,7 @@ export function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base
                 log.error("Suppressed onDeactivated error: {0}", e);
             }
         }
-    }
+    };
 }
 
 export const traceSource = log;

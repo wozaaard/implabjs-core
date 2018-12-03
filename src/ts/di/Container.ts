@@ -1,28 +1,26 @@
-declare function require(modules: string[], cb?: (...args: any[]) => any) : void;
-
-declare function define(name:string, modules: string[], cb?: (...args: any[]) => any) : void;
-
-import { Uuid } from "../Uuid";
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ActivationType } from "./interfaces";
+import { isDescriptor, ActivationType, ServiceMap, isDependencyRegistration, isValueRegistration, ServiceRegistration } from "./interfaces";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { isPrimitive } from "../safe";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
-import { ServiceDescriptor } from "./ServiceDescriptor";
-
+import { ServiceDescriptor, ServiceDescriptorParams } from "./ServiceDescriptor";
+import { ModuleResolverBase } from "./ModuleResolverBase";
+import format = require("../text/format");
 
 export class Container {
-    _services
+    _services: ServiceMap;
 
-    _cache
+    _cache: object;
 
-    _cleanup: any[]
+    _cleanup: (() => void)[];
 
-    _root: Container
+    _root: Container;
 
-    _parent: Container
+    _parent: Container;
+
+    _resolver: ModuleResolverBase;
 
     constructor(parent?: Container) {
         this._parent = parent;
@@ -42,7 +40,7 @@ export class Container {
     }
 
     getService<T = any>(name: string, def?: T) {
-        let d = this._services[name];
+        const d = this._services[name];
         if (!d)
             if (arguments.length > 1)
                 return def;
@@ -50,21 +48,21 @@ export class Container {
                 throw new Error("Service '" + name + "' isn't found");
 
         if (d.isInstanceCreated())
-            return d.getInstance();
+            return d.getInstance() as T;
 
-        var context = new ActivationContext(this, this._services);
+        const context = new ActivationContext(this, this._services);
 
         try {
-            return d.activate(context, name);
+            return d.activate(context, name) as T;
         } catch (error) {
             throw new ActivationError(name, context.getStack(), error);
         }
     }
 
     register(nameOrCollection, service?) {
-        if (arguments.length == 1) {
-            var data = nameOrCollection;
-            for (let name in data)
+        if (arguments.length === 1) {
+            const data = nameOrCollection;
+            for (const name in data)
                 this.register(name, data[name]);
         } else {
             if (!(isDescriptor(service)))
@@ -82,8 +80,8 @@ export class Container {
 
     dispose() {
         if (this._cleanup) {
-            for (var i = 0; i < this._cleanup.length; i++)
-                this._cleanup[i].call(null);
+            for (const f of this._cleanup)
+                f();
             this._cleanup = null;
         }
     }
@@ -93,41 +91,18 @@ export class Container {
      *  The configuration of the contaier. Can be either a string or an object,
      *  if the configuration is an object it's treated as a collection of
      *  services which will be registed in the contaier.
-     * 
+     *
      * @param{Function} opts.contextRequire
      *  The function which will be used to load a configuration or types for services.
-     *  
+     *
      */
-    async configure(config, opts) {
-        var me = this,
-            contextRequire = (opts && opts.contextRequire);
-
+    async configure(config: string | object, opts?: object) {
         if (typeof (config) === "string") {
-            let args;
-            if (!contextRequire) {
-                var shim = [config, Uuid()].join(config.indexOf("/") != -1 ? "-" : "/");
-                args = await new Promise((resolve, reject) => {
-                    define(shim, ["require", config], function (ctx, data) {
-                        resolve([data, {
-                            contextRequire: ctx
-                        }]);
-                    })
-                });
-                require([shim]);
-            } else {
-                // TODO how to get correct contextRequire for the relative config module?
-                args = await new Promise((resolve, reject) => {
-                    contextRequire([config], function (data) {
-                        resolve([data, {
-                            contextRequire: contextRequire
-                        }]);
-                    });
-                });
-            }
-
-            return me._configure.apply(me, args);
+            const resolver = await this._resolver.createResolver(config, opts);
+            const data = await this._resolver.loadModule(config);
+            return this._configure(data, { resolver });
         } else {
-            return me._configure(config, opts);
+            return this._configure(config);
         }
     }
 
@@ -147,109 +122,108 @@ export class Container {
         return (this._cache[id] = value);
     }
 
-    async _configure(data, opts) {
-        var typemap = {},
-            me = this,
-            p,
-            contextRequire = (opts && opts.contextRequire) || require;
+    async _configure(data: object, opts?: { resolver: ModuleResolverBase }) {
+        const resolver = (opts && opts.resolver) || this._resolver;
 
-        var services = {};
+        const services: ServiceMap = {};
 
-        for (p in data) {
-            var service = me._parse(data[p], typemap);
-            if (!(isDescriptor(service)))
-                service = new AggregateDescriptor(service);
-            services[p] = service;
+        resolver.beginBatch();
+
+        async function parse(k) {
+            services[k] = await this._parse(data[k], resolver);
         }
 
-        me.register(services);
+        const batch = Object.keys(data).map(parse);
 
-        var names = [];
+        resolver.completeBatch();
 
-        for (p in typemap)
-            names.push(p);
+        await Promise.all(batch);
 
-        return new Promise((resolve, reject) => {
-            if (names.length) {
-                contextRequire(names, function () {
-                    for (var i = 0; i < names.length; i++)
-                        typemap[names[i]] = arguments[i];
-                    resolve(me);
-                });
-            } else {
-                resolve(me);
-            }
-        });
-
+        this.register(services);
     }
 
-    _parse(data, typemap) {
-        if (isPrimitive(data) || isDescriptor(data))
-            return data;
-        if (data.$dependency) {
+    async _parse(registration: any, resolver: ModuleResolverBase) {
+        if (isPrimitive(registration) || isDescriptor(registration))
+            return registration;
+
+        if (isDependencyRegistration(registration)) {
+
             return new ReferenceDescriptor(
-                data.$dependency,
-                data.lazy,
-                data.optional,
-                data["default"],
-                data.services && this._parseObject(data.services, typemap));
-        } else if (data.$value) {
-            return !data.parse ?
-                new ValueDescriptor(data.$value) :
-                new AggregateDescriptor(this._parse(data.$value, typemap));
-        } else if (data.$type || data.$factory) {
-            return this._parseService(data, typemap);
-        } else if (data instanceof Array) {
-            return this._parseArray(data, typemap);
+                registration.$dependency,
+                registration.lazy,
+                registration.optional,
+                registration["default"],
+                registration.services && this._parseObject(registration.services, resolver)
+            );
+
+        } else if (isValueRegistration(registration)) {
+
+            return !registration.parse ?
+                new ValueDescriptor(registration.$value) :
+                new AggregateDescriptor(this._parse(registration.$value, resolver));
+
+        } else if (registration.$type || registration.$factory) {
+            return this._parseService(registration, resolver);
+        } else if (registration instanceof Array) {
+            return this._parseArray(registration, resolver);
         }
 
-        return this._parseObject(data, typemap);
+        return this._parseObject(registration, resolver);
     }
 
-    _parseService(data, typemap) {
-        var me = this,
-            opts: any = {
-                owner: this
-            };
-        if (data.$type) {
+    async _parseService(data: ServiceRegistration, resolver: ModuleResolverBase) {
+        const opts: ServiceDescriptorParams = {
+            owner: this
+        };
 
-            opts.type = data.$type;
-
-            if (typeof (data.$type) === "string") {
-                typemap[data.$type] = null;
-                opts.typeMap = typemap;
-            }
+        function guard<T>(fn: () => PromiseLike<T>) {
+            return fn();
         }
 
-        if (data.$factory)
-            opts.factory = data.$factory;
+        if (data.$type) {
+            if (data.$type instanceof Function)
+                opts.type = data.$type;
+            else if (typeof data.$type === "string")
+                opts.type = await resolver.resolve(data.$type);
+            else
+                throw new Error(format("Unsupported type specification: {0:json}", data.$type));
+        } else {
+            if (data.$factory instanceof Function)
+                opts.factory = data.$factory;
+            else if (typeof data.$factory === "string")
+                opts.factory = await resolver.resolve(data.$factory);
+            else
+                throw new Error(format("Unsupported factory specification: {0:json}", data.$factory));
+        }
 
         if (data.services)
-            opts.services = me._parseObject(data.services, typemap);
-        if (data.inject)
-            opts.inject = data.inject instanceof Array ? data.inject.map(function (x) {
-                return me._parseObject(x, typemap);
-            }) : me._parseObject(data.inject, typemap);
+            opts.services = await this._parseObject(data.services, resolver);
+
+        if (data.inject instanceof Array)
+            opts.inject = await Promise.all(data.inject.map(x => this._parseObject(x, resolver)));
+        else
+            opts.inject = this._parseObject(data.inject, resolver);
+
         if (data.params)
-            opts.params = me._parse(data.params, typemap);
+            opts.params = this._parse(data.params, resolver);
 
         if (data.activation) {
             if (typeof (data.activation) === "string") {
                 switch (data.activation.toLowerCase()) {
                     case "singleton":
-                        opts.activation = ActivationType.SINGLETON;
+                        opts.activation = ActivationType.Singleton;
                         break;
                     case "container":
-                        opts.activation = ActivationType.CONTAINER;
+                        opts.activation = ActivationType.Container;
                         break;
                     case "hierarchy":
-                        opts.activation = ActivationType.HIERARCHY;
+                        opts.activation = ActivationType.Hierarchy;
                         break;
                     case "context":
-                        opts.activation = ActivationType.CONTEXT;
+                        opts.activation = ActivationType.Context;
                         break;
                     case "call":
-                        opts.activation = ActivationType.CALL;
+                        opts.activation = ActivationType.Call;
                         break;
                     default:
                         throw new Error("Unknown activation type: " +
@@ -266,14 +240,14 @@ export class Container {
         return new ServiceDescriptor(opts);
     }
 
-    _parseObject(data, typemap) {
+    _parseObject(data: any, typemap) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
 
-        var o = {};
+        const o = {};
 
-        for (var p in data)
+        for (const p in data)
             o[p] = this._parse(data[p], typemap);
 
         return o;
@@ -284,9 +258,6 @@ export class Container {
             data.constructor.prototype !== Array.prototype)
             return new ValueDescriptor(data);
 
-        var me = this;
-        return data.map(function (x) {
-            return me._parse(x, typemap);
-        });
+        return data.map(x => this._parse(x, typemap));
     }
 }

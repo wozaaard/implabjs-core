@@ -2,11 +2,12 @@ import { ActivationContext } from "./ActivationContext";
 import { Descriptor, ActivationType, ServiceMap, Constructor, Factory } from "./interfaces";
 import { Container } from "./Container";
 import { argumentNotNull, isPrimitive, oid } from "../safe";
+import { ClientResponse } from "http";
 
 let cacheId = 0;
 
 function injectMethod(target, method, context, args) {
-    var m = target[method];
+    const m = target[method];
     if (!m)
         throw new Error("Method '" + method + "' not found");
 
@@ -14,60 +15,60 @@ function injectMethod(target, method, context, args) {
         m.apply(target, context.parse(args, "." + method));
     else
         m.call(target, context.parse(args, "." + method));
-};
+}
 
-function makeClenupCallback(target, method) {
+function makeClenupCallback(target, method: (instance) => void | string) {
     if (typeof (method) === "string") {
-        return function () {
+        return () => {
             target[method]();
         };
     } else {
-        return function () {
+        return () => {
             method(target);
         };
     }
-};
-
-export interface ServiceDescriptorParams<T> {
-    activation: ActivationType
-
-    owner: Container
-
-    type: Constructor<T>
-
-    factory: Factory<T>
-
-    params
-
-    inject
-
-    services: ServiceMap
-
-    cleanup: (instance: T) => void
 }
 
-export class ServiceDescriptor<T> implements Descriptor {
-    _instance: T = null
+export interface ServiceDescriptorParams<T = {}> {
+    activation?: ActivationType;
 
-    _hasInstance = false
+    owner: Container;
 
-    _activationType = ActivationType.CALL
+    type?: Constructor<T>;
 
-    _services: ServiceMap
+    factory?: Factory<T>;
 
-    _type: Constructor<T> = null
+    params?;
 
-    _factory: Factory<T> = null
+    inject?;
 
-    _params
+    services?: ServiceMap;
 
-    _inject: Array<Object>
+    cleanup?: (instance: T) => void | string;
+}
 
-    _cleanup: (instance: T) => void
+export class ServiceDescriptor<T = {}> implements Descriptor {
+    _instance: T = null;
 
-    _cacheId: any
+    _hasInstance = false;
 
-    _owner: Container
+    _activationType = ActivationType.Call;
+
+    _services: ServiceMap;
+
+    _type: Constructor<T> = null;
+
+    _factory: Factory<T> = null;
+
+    _params;
+
+    _inject: Array<object>;
+
+    _cleanup: (instance: T) => void;
+
+    _cacheId: any;
+
+    _owner: Container;
 
     constructor(opts: ServiceDescriptorParams<T>) {
         argumentNotNull(opts, "opts");
@@ -105,8 +106,8 @@ export class ServiceDescriptor<T> implements Descriptor {
             this._cleanup = opts.cleanup;
         }
 
-        if (this._activationType == ActivationType.SINGLETON) {
-            let tof = this._type || this._factory;
+        if (this._activationType === ActivationType.Singleton) {
+            const tof = this._type || this._factory;
 
             // create the persistent cache identifier for the type
             if (isPrimitive(tof))
@@ -123,13 +124,13 @@ export class ServiceDescriptor<T> implements Descriptor {
         let instance;
 
         switch (this._activationType) {
-            case ActivationType.SINGLETON: // SINGLETON
+            case ActivationType.Singleton: // SINGLETON
                 // if the value is cached return it
                 if (this._hasInstance)
                     return this._instance;
 
                 // singletons are bound to the root container
-                let container = context.container.getRootContainer();
+                const container = context.container.getRootContainer();
 
                 if (container.has(this._cacheId)) {
                     instance = container.get(this._cacheId);
@@ -144,8 +145,9 @@ export class ServiceDescriptor<T> implements Descriptor {
                 this._hasInstance = true;
                 return (this._instance = instance);
 
-            case ActivationType.CONTAINER: // CONTAINER
-                //return a cached value
+            case ActivationType.Container: // CONTAINER
+                // return a cached value
+
                 if (this._hasInstance)
                     return this._instance;
 
@@ -160,18 +162,19 @@ export class ServiceDescriptor<T> implements Descriptor {
                 // cache and return the instance
                 this._hasInstance = true;
                 return (this._instance = instance);
-            case ActivationType.CONTEXT: // CONTEXT
-                //return a cached value if one exists
+            case ActivationType.Context: // CONTEXT
+                // return a cached value if one exists
+
                 if (context.has(this._cacheId))
                     return context.get(this._cacheId);
-                // context context activated instances are controlled by callers  
+                // context context activated instances are controlled by callers
                 return context.store(this._cacheId, this._create(
                     context,
                     name));
-            case ActivationType.CALL: // CALL
+            case ActivationType.Call: // CALL
                 // per-call created instances are controlled by callers
                 return this._create(context, name);
-            case ActivationType.HIERARCHY: // HIERARCHY
+            case ActivationType.Hierarchy: // HIERARCHY
                 // hierarchy activated instances are behave much like container activated
                 // except they are created and bound to the child container
 
@@ -188,7 +191,7 @@ export class ServiceDescriptor<T> implements Descriptor {
 
                 return context.container.store(this._cacheId, instance);
             default:
-                throw "Invalid activation type: " + this._activationType;
+                throw new Error("Invalid activation type: " + this._activationType);
         }
     }
 
@@ -203,35 +206,22 @@ export class ServiceDescriptor<T> implements Descriptor {
     _create(context, name) {
         context.enter(name, this, Boolean(this._services));
 
-        if (this._activationType != ActivationType.CALL &&
+        if (this._activationType !== ActivationType.Call &&
             context.visit(this._cacheId) > 0)
             throw new Error("Recursion detected");
 
         if (this._services) {
-            for (var p in this._services)
+            for (const p in this._services)
                 context.register(p, this._services[p]);
         }
 
-        var instance;
+        let instance;
 
         if (!this._factory) {
-            var ctor = this._type;
-
-            if (this._params === undefined) {
-                this._factory = function () {
-                    return new ctor();
-                };
-            } else if (this._params instanceof Array) {
-                this._factory = function () {
-                    var inst = Object.create(ctor.prototype);
-                    var ret = ctor.apply(inst, arguments);
-                    return typeof (ret) === "object" ? ret : inst;
-                };
-            } else {
-                this._factory = function (param) {
-                    return new ctor(param);
-                };
-            }
+            const ctor = this._type;
+            this._factory = (...args)  => {
+                return new ctor(...args);
+            };
         }
 
         if (this._params === undefined) {
@@ -247,8 +237,8 @@ export class ServiceDescriptor<T> implements Descriptor {
         }
 
         if (this._inject) {
-            this._inject.forEach(function (spec) {
-                for (var m in spec)
+            this._inject.forEach(spec => {
+                for (const m in spec)
                     injectMethod(instance, m, context, spec[m]);
             });
         }
@@ -261,7 +251,7 @@ export class ServiceDescriptor<T> implements Descriptor {
     // @constructor {singleton} foo/bar/Baz
     // @factory {singleton}
     toString() {
-        var parts = [];
+        const parts = [];
 
         parts.push(this._type ? "@constructor" : "@factory");
 

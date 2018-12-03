@@ -1,4 +1,15 @@
 {
     "java.configuration.updateBuildConfiguration": "disabled",
-    "tslint.enable": true
+    "tslint.enable": true,
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "/build": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "/build": true
+    }
 }
