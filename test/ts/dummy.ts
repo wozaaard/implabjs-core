@@ -1,12 +1,12 @@
-import * as tape from 'tape';
-import * as uuid from '@implab/core/Uuid';
+import * as tape from "tape";
+import { Uuid } from "@implab/core/Uuid";
 
-tape('simple', function(t){
+tape("simple", t => {
     t.pass("sync assert");
     setTimeout(() => {
         t.pass("async assert");
-        t.comment(uuid());
-        t.ok(uuid() != uuid());
+        t.comment(Uuid());
+        t.ok(Uuid() !== Uuid());
         // end should be called after the last assertion
         t.end();
     }, 100);

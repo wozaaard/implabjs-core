@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
-        "target": "es5",
+        "target": "es3",
         "module": "amd",
         "sourceMap": true,
         "outDir" : "build/test",
         "moduleResolution": "node",
         "lib": [
-            "ES2015"
+            "es2015"
         ]
     },
     "include" : [

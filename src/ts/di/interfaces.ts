@@ -1,15 +1,12 @@
 import { isNull } from "../safe";
 import { ActivationContext } from "./ActivationContext";
+import { Constructor, Factory } from "../interfaces";
 
 export interface Descriptor {
     activate(context: ActivationContext, name?: string);
     isInstanceCreated(): boolean;
     getInstance();
 }
-
-export type Constructor<T = {}> = new (...args: any[]) => T;
-
-export type Factory<T = {}> = (...args: any[]) => T;
 
 export function isDescriptor(instance): instance is Descriptor {
     return (!isNull(instance)) &&

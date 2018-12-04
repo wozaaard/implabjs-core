@@ -1,11 +1,11 @@
 import { Descriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 
-export class AggregateDescriptor<T> implements Descriptor {
-    _value: T;
+export class AggregateDescriptor implements Descriptor {
+    _value: object;
 
-    constructor(value: T) {
-
+    constructor(value: object) {
+        this._value = value;
     }
 
     activate(context: ActivationContext, name: string) {
@@ -18,7 +18,7 @@ export class AggregateDescriptor<T> implements Descriptor {
     isInstanceCreated(): boolean {
         return false;
     }
-    getInstance(): T {
-        throw new Error("Not supported exception");
+    getInstance(): any {
+        throw new Error("Not supported");
     }
 }

@@ -1,36 +1,30 @@
-import { IObservable, IDestroyable, ICancellation } from './interfaces';
-import { Cancellation } from './Cancellation'
-import { argumentNotNull } from './safe';
+import { IObservable, IDestroyable, ICancellation } from "./interfaces";
+import { Cancellation } from "./Cancellation";
+import { argumentNotNull } from "./safe";
 
+type Handler<T> = (x: T) => void;
 
-interface Handler<T> {
-    (x: T): void
-}
-
-interface Initializer<T> {
-    (notify: Handler<T>, error?: (e: any) => void, complete?: () => void): void;
-}
+type Initializer<T> = (notify: Handler<T>, error?: (e: any) => void, complete?: () => void) => void;
 
 // TODO: think about to move this interfaces.ts and make it public
 interface IObserver<T> {
-    next(event: T): void
+    next(event: T): void;
 
-    error(e: any): void
+    error(e: any): void;
 
-    complete(): void
+    complete(): void;
 }
 
-const noop = () => {};
+const noop = () => { };
 
 export class Observable<T> implements IObservable<T> {
     private _once = new Array<IObserver<T>>();
 
     private _observers = new Array<IObserver<T>>();
 
+    private _complete: boolean;
 
-    private _complete: boolean
-
-    private _error: any
+    private _error: any;
 
     constructor(func?: Initializer<T>) {
         if (func)
@@ -43,21 +37,21 @@ export class Observable<T> implements IObservable<T> {
 
     /**
      * Registers handlers for the current observable object.
-     * 
+     *
      * @param next the handler for events
      * @param error the handler for a error
      * @param complete the handler for a completion
      * @returns {IDestroyable} the handler for the current subscription, this
      *  handler can be used to unsubscribe from events.
-     * 
+     *
      */
     on(next: Handler<T>, error?: Handler<any>, complete?: () => void): IDestroyable {
         argumentNotNull(next, "next");
 
-        let me = this;
+        const me = this;
 
-        let observer: IObserver<T> & IDestroyable = {
-            next: next,
+        const observer: IObserver<T> & IDestroyable = {
+            next,
             error: error ? error.bind(null) : noop,
             complete: complete ? complete.bind(null) : noop,
 
@@ -67,7 +61,6 @@ export class Observable<T> implements IObservable<T> {
         };
 
         this._addObserver(observer);
-
 
         return observer;
     }
@@ -90,19 +83,19 @@ export class Observable<T> implements IObservable<T> {
     /**
      * Waits for the next event. This method can't be used to read messages
      * as a sequence since it can skip some messages between calls.
-     * 
+     *
      * @param ct a cancellation token
      */
     next(ct: ICancellation = Cancellation.none): Promise<T> {
         return new Promise<T>((resolve, reject) => {
-            let observer: IObserver<T> = {
+            const observer: IObserver<T> = {
                 next: resolve,
                 error: reject,
                 complete: () => reject("No more events are available")
             };
 
             if (this._addOnce(observer) && ct.isSupported()) {
-                ct.register((e) => {
+                ct.register(e => {
                     this._removeOnce(observer);
                     reject(e);
                 });
@@ -131,48 +124,44 @@ export class Observable<T> implements IObservable<T> {
     }
 
     private _removeOnce(d: IObserver<T>) {
-        let i = this._once.indexOf(d);
+        const i = this._once.indexOf(d);
         if (i >= 0)
             this._once.splice(i, 1);
     }
 
     private _removeObserver(d: IObserver<T>) {
-        let i = this._observers.indexOf(d);
+        const i = this._observers.indexOf(d);
         if (i >= 0)
             this._observers.splice(i, 1);
     }
 
     private _notify(guard: (observer: IObserver<T>) => void) {
-        if (this._once.length) {
-            for (let i = 0; i < this._once.length; i++)
-                guard(this._once[i]);
-            this._once = [];
-        }
+        this._once.forEach(guard);
+        this._once = [];
 
-        for (let i = 0; i < this._observers.length; i++)
-            guard(this._observers[i]);
+        this._observers.forEach(guard);
     }
 
     protected _notifyNext(evt: T) {
-        let guard = (observer: IObserver<T>) => {
+        const guard = (observer: IObserver<T>) => {
             try {
                 observer.next(evt);
             } catch (e) {
                 this.onObserverException(e);
             }
-        }
+        };
 
         this._notify(guard);
     }
 
     protected _notifyError(e: any) {
-        let guard = (observer: IObserver<T>) => {
+        const guard = (observer: IObserver<T>) => {
             try {
                 observer.error(e);
             } catch (e) {
                 this.onObserverException(e);
             }
-        }
+        };
 
         this._notify(guard);
         this._observers = [];
@@ -180,13 +169,13 @@ export class Observable<T> implements IObservable<T> {
     }
 
     protected _notifyCompleted() {
-        let guard = (observer: IObserver<T>) => {
+        const guard = (observer: IObserver<T>) => {
             try {
                 observer.complete();
             } catch (e) {
                 this.onObserverException(e);
             }
-        }
+        };
 
         this._notify(guard);
         this._observers = [];

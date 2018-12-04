@@ -1,8 +1,8 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ActivationType, ServiceMap, Constructor, Factory } from "./interfaces";
+import { Descriptor, ActivationType, ServiceMap } from "./interfaces";
 import { Container } from "./Container";
-import { argumentNotNull, isPrimitive, oid } from "../safe";
-import { ClientResponse } from "http";
+import { argumentNotNull, isPrimitive, oid, isPromise } from "../safe";
+import { Constructor, Factory } from "../interfaces";
 
 let cacheId = 0;
 
@@ -12,12 +12,12 @@ function injectMethod(target, method, context, args) {
         throw new Error("Method '" + method + "' not found");
 
     if (args instanceof Array)
-        m.apply(target, context.parse(args, "." + method));
+        return m.apply(target, context.parse(args, "." + method));
     else
-        m.call(target, context.parse(args, "." + method));
+        return m.call(target, context.parse(args, "." + method));
 }
 
-function makeClenupCallback(target, method: (instance) => void | string) {
+function makeClenupCallback(target, method: ((instance) => void) | string) {
     if (typeof (method) === "string") {
         return () => {
             target[method]();
@@ -29,26 +29,26 @@ function makeClenupCallback(target, method: (instance) => void | string) {
     }
 }
 
-export interface ServiceDescriptorParams<T = {}> {
+export interface ServiceDescriptorParams {
     activation?: ActivationType;
 
     owner: Container;
 
-    type?: Constructor<T>;
+    type?: Constructor;
 
-    factory?: Factory<T>;
+    factory?: Factory;
 
     params?;
 
-    inject?;
+    inject?: object[];
 
     services?: ServiceMap;
 
-    cleanup?: (instance: T) => void | string;
+    cleanup?: ((x) => void) | string;
 }
 
-export class ServiceDescriptor<T = {}> implements Descriptor {
-    _instance: T = null;
+export class ServiceDescriptor implements Descriptor {
+    _instance;
 
     _hasInstance = false;
 
@@ -56,21 +56,21 @@ export class ServiceDescriptor<T = {}> implements Descriptor {
 
     _services: ServiceMap;
 
-    _type: Constructor<T> = null;
+    _type: Constructor = null;
 
-    _factory: Factory<T> = null;
+    _factory: Factory = null;
 
     _params;
 
-    _inject: Array<object>;
+    _inject: object[];
 
-    _cleanup: (instance: T) => void;
+    _cleanup: ((x) => void) | string;
 
     _cacheId: any;
 
     _owner: Container;
 
-    constructor(opts: ServiceDescriptorParams<T>) {
+    constructor(opts: ServiceDescriptorParams) {
         argumentNotNull(opts, "opts");
         argumentNotNull(opts.owner, "owner");
 
@@ -90,7 +90,7 @@ export class ServiceDescriptor<T = {}> implements Descriptor {
             this._params = opts.params;
 
         if (opts.inject)
-            this._inject = opts.inject instanceof Array ? opts.inject : [opts.inject];
+            this._inject = opts.inject;
 
         if (opts.services)
             this._services = opts.services;
@@ -219,9 +219,17 @@ export class ServiceDescriptor<T = {}> implements Descriptor {
 
         if (!this._factory) {
             const ctor = this._type;
-            this._factory = (...args)  => {
-                return new ctor(...args);
-            };
+            if (this._params && this._params.length) {
+                this._factory = (...args) => {
+                    const t = Object.create(ctor.prototype);
+                    const inst = ctor.apply(t, args);
+                    return isPrimitive(inst) ? t : inst;
+                };
+            } else {
+                this._factory = () => {
+                    return new ctor();
+                };
+            }
         }
 
         if (this._params === undefined) {
