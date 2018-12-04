@@ -8,7 +8,7 @@
 
 declare var window: any;
 
-let _window: any = 'undefined' !== typeof window ? window : null;
+const _window: any = "undefined" !== typeof window ? window : null;
 
 // Unique ID creation requires a high quality random # generator. We
 // feature
@@ -19,14 +19,14 @@ let _rng;
 
 function setupBrowser() {
     // Allow for MSIE11 msCrypto
-    let _crypto = _window.crypto || _window.msCrypto;
+    const _crypto = _window.crypto || _window.msCrypto;
 
     if (!_rng && _crypto && _crypto.getRandomValues) {
         // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
         //
         // Moderately fast, high quality
         try {
-            let _rnds8 = new Uint8Array(16);
+            const _rnds8 = new Uint8Array(16);
             _rng = function whatwgRNG() {
                 _crypto.getRandomValues(_rnds8);
                 return _rnds8;
@@ -41,9 +41,9 @@ function setupBrowser() {
         // If all else fails, use Math.random(). It's fast, but is of
         // unspecified
         // quality.
-        let _rnds = new Array(16);
-        _rng = function () {
-            for (var i = 0, r; i < 16; i++) {
+        const _rnds = new Array(16);
+        _rng = () => {
+            for (let i = 0, r; i < 16; i++) {
                 if ((i & 0x03) === 0) {
                     r = Math.random() * 0x100000000;
                 }
@@ -52,7 +52,7 @@ function setupBrowser() {
 
             return _rnds;
         };
-        if ('undefined' !== typeof console && console.warn) {
+        if ("undefined" !== typeof console && console.warn) {
             console.warn("[SECURITY] node-uuid: crypto not usable, falling back to insecure Math.random()");
         }
     }
@@ -63,12 +63,10 @@ function setupNode() {
     // http://nodejs.org/docs/v0.6.2/api/crypto.html
     //
     // Moderately fast, high quality
-    if ('function' === typeof require) {
+    if ("function" === typeof require) {
         try {
-            let _rb = require('crypto').randomBytes;
-            _rng = _rb && function () {
-                return _rb(16);
-            };
+            const _rb = require("crypto").randomBytes;
+            _rng = _rb && (() => _rb(16));
             _rng();
         } catch (e) { /**/ }
     }
@@ -81,22 +79,22 @@ if (_window) {
 }
 
 // Buffer class to use
-let BufferClass = ('function' === typeof Buffer) ? Buffer : Array;
+const BufferClass = ("function" === typeof Buffer) ? Buffer : Array;
 
 // Maps for number <-> hex string conversion
-let _byteToHex = [];
-let _hexToByte = {};
+const _byteToHex = [];
+const _hexToByte = {};
 for (let i = 0; i < 256; i++) {
     _byteToHex[i] = (i + 0x100).toString(16).substr(1);
     _hexToByte[_byteToHex[i]] = i;
 }
 
 // **`parse()` - Parse a UUID into it's component bytes**
-function _parse(s, buf?, offset?): Array<string> {
-    let i = (buf && offset) || 0, ii = 0;
+export function _parse(s, buf?, offset?): Array<string> {
+    const i = (buf && offset) || 0; let ii = 0;
 
     buf = buf || [];
-    s.toLowerCase().replace(/[0-9a-f]{2}/g, function (oct) {
+    s.toLowerCase().replace(/[0-9a-f]{2}/g, oct => {
         if (ii < 16) { // Don't overflow!
             buf[i + ii++] = _hexToByte[oct];
         }
@@ -112,11 +110,11 @@ function _parse(s, buf?, offset?): Array<string> {
 
 // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
 function _unparse(buf, offset?): string {
-    let i = offset || 0, bth = _byteToHex;
+    let i = offset || 0; const bth = _byteToHex;
     return bth[buf[i++]] + bth[buf[i++]] + bth[buf[i++]] +
-        bth[buf[i++]] + '-' + bth[buf[i++]] + bth[buf[i++]] + '-' +
-        bth[buf[i++]] + bth[buf[i++]] + '-' + bth[buf[i++]] +
-        bth[buf[i++]] + '-' + bth[buf[i++]] + bth[buf[i++]] +
+        bth[buf[i++]] + "-" + bth[buf[i++]] + bth[buf[i++]] + "-" +
+        bth[buf[i++]] + bth[buf[i++]] + "-" + bth[buf[i++]] +
+        bth[buf[i++]] + "-" + bth[buf[i++]] + bth[buf[i++]] +
         bth[buf[i++]] + bth[buf[i++]] + bth[buf[i++]] + bth[buf[i++]];
 }
 
@@ -126,11 +124,11 @@ function _unparse(buf, offset?): string {
 // and http://docs.python.org/library/uuid.html
 
 // random #'s we need to init node and clockseq
-let _seedBytes = _rng();
+const _seedBytes = _rng();
 
 // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit =
 // 1)
-let _nodeId = [
+const _nodeId = [
     _seedBytes[0] | 0x01,
     _seedBytes[1],
     _seedBytes[2],
@@ -143,12 +141,12 @@ let _nodeId = [
 let _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
 
 // Previous uuid creation time
-let _lastMSecs = 0, _lastNSecs = 0;
+let _lastMSecs = 0; let _lastNSecs = 0;
 
 // See https://github.com/broofa/node-uuid for API details
-function _v1(options?, buf?, offset?): string {
+export function _v1(options?, buf?, offset?): string {
     let i = buf && offset || 0;
-    let b = buf || [];
+    const b = buf || [];
 
     options = options || {};
 
@@ -170,7 +168,7 @@ function _v1(options?, buf?, offset?): string {
     let nsecs = (options.nsecs != null) ? options.nsecs : _lastNSecs + 1;
 
     // Time since last uuid creation (in msecs)
-    let dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs) / 10000;
+    const dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs) / 10000;
 
     // Per 4.2.1.2, Bump clockseq on clock regression
     if (dt < 0 && options.clockseq == null) {
@@ -187,7 +185,7 @@ function _v1(options?, buf?, offset?): string {
     // Per 4.2.1.2 Throw error if too many uuids are requested
     if (nsecs >= 10000) {
         throw new Error(
-            'uuid.v1(): Can\'t create more than 10M uuids/sec');
+            "uuid.v1(): Can't create more than 10M uuids/sec");
     }
 
     _lastMSecs = msecs;
@@ -198,14 +196,14 @@ function _v1(options?, buf?, offset?): string {
     msecs += 12219292800000;
 
     // `time_low`
-    let tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+    const tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
     b[i++] = tl >>> 24 & 0xff;
     b[i++] = tl >>> 16 & 0xff;
     b[i++] = tl >>> 8 & 0xff;
     b[i++] = tl & 0xff;
 
     // `time_mid`
-    let tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+    const tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
     b[i++] = tmh >>> 8 & 0xff;
     b[i++] = tmh & 0xff;
 
@@ -220,7 +218,7 @@ function _v1(options?, buf?, offset?): string {
     b[i++] = clockseq & 0xff;
 
     // `node`
-    let node = options.node || _nodeId;
+    const node = options.node || _nodeId;
     for (let n = 0; n < 6; n++) {
         b[i + n] = node[n];
     }
@@ -231,17 +229,17 @@ function _v1(options?, buf?, offset?): string {
 // **`v4()` - Generate random UUID**
 
 // See https://github.com/broofa/node-uuid for API details
-function _v4(options?, buf?, offset?): string {
+export function _v4(options?, buf?, offset?): string {
     // Deprecated - 'format' argument, as supported in v1.2
-    let i = buf && offset || 0;
+    const i = buf && offset || 0;
 
-    if (typeof (options) === 'string') {
-        buf = (options === 'binary') ? new BufferClass(16) : null;
+    if (typeof (options) === "string") {
+        buf = (options === "binary") ? new BufferClass(16) : null;
         options = null;
     }
     options = options || {};
 
-    let rnds = options.random || (options.rng || _rng)();
+    const rnds = options.random || (options.rng || _rng)();
 
     // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
     rnds[6] = (rnds[6] & 0x0f) | 0x40;
@@ -266,5 +264,4 @@ export namespace Uuid {
     export const v1 = _v1;
     export const empty = "00000000-0000-0000-0000-000000000000";
     export const parse = _parse;
-    export const unparse = _unparse;
 }

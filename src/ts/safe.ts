@@ -1,7 +1,7 @@
 let _nextOid = 0;
 const _oid = Symbol("__oid");
 
-export function oid(instance: object) {
+export function oid(instance: object): string {
     if (isNull(instance))
         return null;
 
@@ -50,6 +50,10 @@ export function isNumber(arg) {
 
 export function isString(val) {
     return typeof (val) === "string" || val instanceof String;
+}
+
+export function isPromise(val): val is PromiseLike<any> {
+    return "then" in val && val.then instanceof Function;
 }
 
 export function isNullOrEmptyString(str) {
@@ -130,7 +134,7 @@ export function mixin<T, S>(dest: T, source: S, template?: string[] | object): T
     const _res = dest as T & S;
 
     if (template instanceof Array) {
-        for (const p  of template) {
+        for (const p of template) {
             if (p in source)
                 _res[p] = source[p];
         }
@@ -229,18 +233,17 @@ export function pmap(items, cb) {
     argumentNotNull(cb, "cb");
 
     if (items && items.then instanceof Function)
-        return items.then(function (data) {
-            return pmap(data, cb);
-        });
+        return items.then(data => pmap(data, cb));
 
     if (isNull(items) || !items.length)
         return items;
 
-    var i = 0,
-        result = [];
+    let i = 0;
+    const result = [];
 
     function next() {
-        var r, ri;
+        let r;
+        let ri;
 
         function chain(x) {
             result[ri] = x;
@@ -251,7 +254,7 @@ export function pmap(items, cb) {
             r = cb(items[i], i);
             ri = i;
             i++;
-            if (r && r.then) {
+            if (isPromise(r)) {
                 return r.then(chain);
             } else {
                 result[ri] = r;
@@ -266,22 +269,20 @@ export function pmap(items, cb) {
 /**
  * Выбирает первый элемент из последовательности, или обещания, если в
  * качестве параметра используется обещание, оно должно вернуть массив.
- * 
+ *
  * @param {Function} cb обработчик результата, ему будет передан первый
  *                  элемент последовательности в случае успеха
  * @param {Function} err обработчик исключения, если массив пустой, либо
  *                  не массив
- * 
+ *
  * @remarks Если не указаны ни cb ни err, тогда функция вернет либо
  *          обещание, либо первый элемент.
  * @async
  */
-export function first(sequence: any, cb: Function, err: Function) {
+export function first(sequence, cb: (x) => any, err: (x) => any) {
     if (sequence) {
-        if (sequence.then instanceof Function) {
-            return sequence.then(function (res) {
-                return first(res, cb, err);
-            }, err);
+        if (isPromise(sequence)) {
+            return sequence.then(res => first(res, cb, err));
         } else if (sequence && "length" in sequence) {
             if (sequence.length === 0) {
                 if (err)
@@ -299,7 +300,7 @@ export function first(sequence: any, cb: Function, err: Function) {
         throw new Error("The sequence is required");
 }
 
-export function destroy(d: any) {
-    if (d && 'destroy' in d)
+export function destroy(d) {
+    if (d && "destroy" in d)
         d.destroy();
 }

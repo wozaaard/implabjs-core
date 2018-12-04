@@ -40,21 +40,21 @@ export class Cancellation implements ICancellation {
             else
                 this._cbs.push(cb);
 
-            let me = this;
+            const me = this;
             return {
-        	destroy() {
-        	    me._unregister(cb);
-        	}
+                destroy() {
+                    me._unregister(cb);
+                }
             };
         }
     }
-    
+
     private _unregister(cb) {
-	if(this._cbs) {
-	    let i = this._cbs.indexOf(cb);
-	    if ( i>=0 )
-		this._cbs.splice(i,1);
-	}
+        if (this._cbs) {
+            const i = this._cbs.indexOf(cb);
+            if (i >= 0)
+                this._cbs.splice(i, 1);
+        }
     }
 
     private _cancel(reason) {
@@ -62,7 +62,6 @@ export class Cancellation implements ICancellation {
             return;
 
         this._reason = (reason = reason || new Error("Operation cancelled"));
-
 
         if (this._cbs) {
             this._cbs.forEach(cb => cb(reason));
@@ -83,7 +82,7 @@ export class Cancellation implements ICancellation {
         },
 
         register(_cb: (e: any) => void): IDestroyable {
-    	    return destroyed;
+            return destroyed;
         }
     };
 }

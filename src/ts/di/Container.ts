@@ -176,10 +176,6 @@ export class Container {
             owner: this
         };
 
-        function guard<T>(fn: () => PromiseLike<T>) {
-            return fn();
-        }
-
         if (data.$type) {
             if (data.$type instanceof Function)
                 opts.type = data.$type;
@@ -202,7 +198,7 @@ export class Container {
         if (data.inject instanceof Array)
             opts.inject = await Promise.all(data.inject.map(x => this._parseObject(x, resolver)));
         else
-            opts.inject = this._parseObject(data.inject, resolver);
+            opts.inject = [await this._parseObject(data.inject, resolver)];
 
         if (data.params)
             opts.params = this._parse(data.params, resolver);
@@ -240,7 +236,7 @@ export class Container {
         return new ServiceDescriptor(opts);
     }
 
-    _parseObject(data: any, typemap) {
+    _parseObject(data: object, resolver: ModuleResolverBase) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
@@ -248,16 +244,16 @@ export class Container {
         const o = {};
 
         for (const p in data)
-            o[p] = this._parse(data[p], typemap);
+            o[p] = this._parse(data[p], resolver);
 
         return o;
     }
 
-    _parseArray(data, typemap) {
+    _parseArray(data: Array<any>, resolver: ModuleResolverBase) {
         if (data.constructor &&
             data.constructor.prototype !== Array.prototype)
             return new ValueDescriptor(data);
 
-        return data.map(x => this._parse(x, typemap));
+        return data.map(x => this._parse(x, resolver));
     }
 }

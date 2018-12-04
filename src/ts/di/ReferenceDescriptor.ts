@@ -4,15 +4,15 @@ import { ServiceMap, Descriptor } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
 export class ReferenceDescriptor implements Descriptor {
-    _name: string
+    _name: string;
 
-    _lazy = false
+    _lazy = false;
 
-    _optional = false
+    _optional = false;
 
-    _default: any
+    _default: any;
 
-    _services: ServiceMap
+    _services: ServiceMap;
 
     constructor(name: string, lazy: boolean, optional: boolean, def, services: ServiceMap) {
         argumentNotEmptyString(name, "name");
@@ -24,44 +24,50 @@ export class ReferenceDescriptor implements Descriptor {
     }
 
     activate(context: ActivationContext, name: string) {
-        var me = this;
 
-        context.enter(name, this, true);
-
-        // добавляем сервисы
-        if (me._services) {
-            for (var p in me._services) {
-                var sv = me._services[p];
-                context.register(p, sv);
-            }
-        }
-
-        if (me._lazy) {
+        if (this._lazy) {
             // сохраняем контекст активации
             context = context.clone();
-            return function (cfg: ServiceMap) {
+
+            // добавляем сервисы
+            if (this._services) {
+                for (const p of Object.keys(this._services))
+                    context.register(p, this._services[p]);
+            }
+
+            return (cfg: ServiceMap) => {
                 // защищаем контекст на случай исключения в процессе
                 // активации
-                var ct = context.clone();
+                const ct = context.clone();
                 try {
-                    if (cfg)
-                        for(let k in cfg)
-                            ct.register(k, cfg[v]);
+                    if (cfg) {
+                        for (const k in cfg)
+                            ct.register(k, cfg[k]);
+                    }
 
-                    return me._optional ? ct.getService(me._name, me._default) : ct
-                        .getService(me._name);
+                    return this._optional ? ct.getService(this._name, this._default) : ct
+                        .getService(this._name);
                 } catch (error) {
-                    throw new ActivationError(me._name, ct.getStack(), error);
+                    throw new ActivationError(this._name, ct.getStack(), error);
                 }
             };
+        } else {
+            context.enter(name, this, !!this._services);
+
+            // добавляем сервисы
+            if (this._services) {
+                for (const p of Object.keys(this._services))
+                    context.register(p, this._services[p]);
+            }
+
+            const v = this._optional ?
+            context.getService(this._name, this._default) :
+            context.getService(this._name);
+
+            context.leave();
+
+            return v;
         }
-
-        var v = me._optional ?
-            context.getService(me._name, me._default) :
-            context.getService(me._name);
-
-        context.leave();
-        return v;
     }
 
     isInstanceCreated() {
@@ -73,13 +79,13 @@ export class ReferenceDescriptor implements Descriptor {
     }
 
     toString() {
-        var opts = [];
+        const opts = [];
         if (this._optional)
             opts.push("optional");
         if (this._lazy)
             opts.push("lazy");
 
-        var parts = [
+        const parts = [
             "@ref "
         ];
         if (opts.length) {

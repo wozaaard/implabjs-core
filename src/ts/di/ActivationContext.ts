@@ -3,28 +3,26 @@ import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } fr
 import { Descriptor, ServiceMap, isDescriptor } from "./interfaces";
 import { Container } from "./Container";
 
-let trace = TraceSource.get("di");
+const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class ActivationContextInfo {
-    name: string
+export interface ActivationContextInfo {
+    name: string;
 
-    service: string
+    service: Descriptor;
 
-    scope: ServiceMap
+    scope: ServiceMap;
 }
 
-
 export class ActivationContext {
-    _cache: object
+    _cache: object;
 
-    _services: ServiceMap
+    _services: ServiceMap;
 
-    _stack: ActivationContextInfo[]
+    _stack: ActivationContextInfo[];
 
-    _visited: any
+    _visited: object;
 
-    container: any
-
+    container: Container;
 
     constructor(container: Container, services: ServiceMap, cache?: object, visited?) {
         argumentNotNull(container, "container");
@@ -38,20 +36,20 @@ export class ActivationContext {
     }
 
     getService(name, def?): any {
-        let d = this._services[name];
+        const d = this._services[name];
 
         if (!d)
             if (arguments.length > 1)
                 return def;
             else
-                throw new Error("Service '" + name + "' not found");
+                throw new Error(`Service ${name} not found`);
 
         return d.activate(this, name);
     }
 
     /**
      * registers services local to the the activation context
-     * 
+     *
      * @name{string} the name of the service
      * @service{string} the service descriptor to register
      */
@@ -68,47 +66,43 @@ export class ActivationContext {
             this._cache,
             this._visited
         );
-
     }
 
-    has(id) {
+    has(id: string) {
         return id in this._cache;
     }
 
-    get(id) {
+    get(id: string) {
         return this._cache[id];
     }
 
-    store(id, value) {
+    store(id: string, value) {
         return (this._cache[id] = value);
     }
 
-    parse(data: any, name) {
-        var me = this;
+    parse(data: object, name: string) {
         if (isPrimitive(data))
             return data;
 
         if (isDescriptor(data)) {
             return data.activate(this, name);
         } else if (data instanceof Array) {
-            me.enter(name);
-            var v = data.map(function (x, i) {
-                return me.parse(x, "." + i);
-            });
-            me.leave();
+            this.enter(name);
+            const v = data.map( (x, i) => this.parse(x, `[${i}]`));
+            this.leave();
             return v;
         } else {
-            me.enter(name);
-            var result = {};
-            for (var p in data)
-                result[p] = me.parse(data[p], "." + p);
-            me.leave();
+            this.enter(name);
+            const result = {};
+            for (const p in data)
+                result[p] = this.parse(data[p], "." + p);
+            this.leave();
             return result;
         }
     }
 
-    visit(id) {
-        var count = this._visited[id] || 0;
+    visit(id: string) {
+        const count = this._visited[id] || 0;
         this._visited[id] = count + 1;
         return count;
     }
@@ -117,12 +111,12 @@ export class ActivationContext {
         return this._stack.slice().reverse();
     }
 
-    enter(name, d?, localize?) {
+    enter(name: string, d?: Descriptor, localize?: boolean) {
         if (trace.isLogEnabled())
             trace.log("enter " + name + " " + (d || "") +
                 (localize ? " localize" : ""));
         this._stack.push({
-            name: name,
+            name,
             service: d,
             scope: this._services
         });
@@ -131,7 +125,7 @@ export class ActivationContext {
     }
 
     leave() {
-        var ctx = this._stack.pop();
+        const ctx = this._stack.pop();
         this._services = ctx.scope;
 
         if (trace.isLogEnabled())

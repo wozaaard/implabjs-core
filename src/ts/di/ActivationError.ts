@@ -1,13 +1,13 @@
 import { ActivationContextInfo } from "./ActivationContext";
 
 export class ActivationError {
-    activationStack: ActivationContextInfo[]
+    activationStack: ActivationContextInfo[];
 
-    service: string
+    service: string;
 
-    innerException: any
+    innerException: any;
 
-    message: string
+    message: string;
 
     constructor(service: string, activationStack: ActivationContextInfo[], innerException) {
         this.message = "Failed to activate the service";
@@ -17,7 +17,7 @@ export class ActivationError {
     }
 
     toString() {
-        var parts = [this.message];
+        const parts = [this.message];
         if (this.service)
             parts.push("when activating: " + this.service.toString());
 
@@ -26,10 +26,9 @@ export class ActivationError {
 
         if (this.activationStack) {
             parts.push("at");
-            this.activationStack.forEach(function (x) {
-                parts.push("    " + x.name + " " +
-                    (x.service ? x.service.toString() : ""));
-            });
+            this.activationStack
+                .forEach(x => parts.push(`    ${x.name} ${x.service ? x.service.toString() : ""}`));
+
         }
 
         return parts.join("\n");
