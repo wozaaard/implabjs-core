@@ -1,73 +1,25 @@
-import * as tape from 'tape';
-import { ActivatableMixin} from '@implab/core/components/ActivatableMixin';
-import { AsyncComponent } from '@implab/core/components/AsyncComponent';
-import { IActivationController, IActivatable, ICancellation } from '@implab/core/interfaces';
-import { Cancellation } from '@implab/core/Cancellation';
+import * as tape from "tape";
+import { MockActivationController } from "./mock/MockActivationController";
+import { SimpleActivatable } from "./mock/SimpleActivatable";
 
-class SimpleActivatable extends ActivatableMixin(AsyncComponent) {
+tape("simple activation", async t => {
 
-}
-
-class MockActivationController implements IActivationController {
-
-    _active: IActivatable = null;
-
-    
-    getActive() : IActivatable {
-        return this._active;
-    }
-
-    async deactivate() {
-        if (this._active)
-            await this._active.deactivate();
-        this._active = null;
-    }
-    
-    async activate(component: IActivatable) {
-        if (!component || component.isActive())
-            return;
-        component.setActivationController(this);
-
-        await component.activate();
-    }
-
-    async activating(component: IActivatable, ct: ICancellation = Cancellation.none) {
-        if (component != this._active)
-            await this.deactivate();
-    }
-
-    async activated(component: IActivatable, ct: ICancellation = Cancellation.none) {
-        this._active = component;
-    }
-
-    async deactivating(component: IActivatable, ct: ICancellation = Cancellation.none) {
-
-    }
-
-    async deactivated(component: IActivatable, ct: ICancellation = Cancellation.none) {
-        if (this._active == component)
-            this._active = null;
-    }
-}
-
-tape('simple activation',async function(t){
-  
-    let a = new SimpleActivatable();
+    const a = new SimpleActivatable();
     t.false(a.isActive());
-    
+
     await a.activate();
     t.true(a.isActive());
-    
+
     await a.deactivate();
     t.false(a.isActive());
 
     t.end();
 });
 
-tape('controller activation', async function(t) {
+tape("controller activation", async t => {
 
-    let a = new SimpleActivatable();
-    let c = new MockActivationController();
+    const a = new SimpleActivatable();
+    const c = new MockActivationController();
 
     t.false(a.isActive(), "the component is not active by default");
     t.assert(c.getActive() == null, "the activation controller doesn't have an active component by default");
@@ -89,11 +41,11 @@ tape('controller activation', async function(t) {
     t.end();
 });
 
-tape('handle error in onActivating', async function(t) {
-    let a = new SimpleActivatable();
+tape("handle error in onActivating", async t => {
+    const a = new SimpleActivatable();
 
-    a.onActivating = async function() {
-        throw "Should fail";
+    a.onActivating = async () => {
+        throw new Error("Should fail");
     };
 
     try {

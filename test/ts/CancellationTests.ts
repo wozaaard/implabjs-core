@@ -1,18 +1,18 @@
-import * as tape from 'tape';
-import { Cancellation } from '@implab/core/Cancellation';
-import { ICancellation } from '@implab/core/interfaces';
-import { delay } from './TestTraits';
+import * as tape from "tape";
+import { Cancellation } from "@implab/core/Cancellation";
+import { ICancellation } from "@implab/core/interfaces";
+import { delay } from "./TestTraits";
 
-tape('standalone cancellation', async t => {
+tape("standalone cancellation", async t => {
 
     let doCancel: (e) => void;
 
-    let ct = new Cancellation(cancel => {
+    const ct = new Cancellation(cancel => {
         doCancel = cancel;
     });
 
     let counter = 0;
-    let reason = "BILL";
+    const reason = "BILL";
 
     t.true(ct.isSupported(), "Cancellation must be supported");
     t.false(ct.isRequested(), "Cancellation shouldn't be requested");
@@ -33,7 +33,7 @@ tape('standalone cancellation', async t => {
     t.equals(counter, 2, "The callback should be triggered immediately");
 
     let msg;
-    ct.register((e) => msg = e);
+    ct.register(e => msg = e);
     t.equals(msg, reason, "The cancellation reason should be passed to callback");
 
     try {
@@ -48,9 +48,9 @@ tape('standalone cancellation', async t => {
     t.end();
 });
 
-tape('async cancellation', async t => {
+tape("async cancellation", async t => {
 
-    let ct = new Cancellation(cancel => {
+    const ct = new Cancellation(cancel => {
         cancel("STOP!");
     });
 
@@ -64,10 +64,10 @@ tape('async cancellation', async t => {
     t.end();
 });
 
-tape('cancel with external event', async t => {
-    let ct = new Cancellation((cancel) => {
-        setTimeout(x => cancel('STOP!'), 0);
-    })
+tape("cancel with external event", async t => {
+    const ct = new Cancellation(cancel => {
+        setTimeout(x => cancel("STOP!"), 0);
+    });
 
     try {
         await delay(10000, ct);
@@ -79,10 +79,10 @@ tape('cancel with external event', async t => {
     t.end();
 });
 
-tape('operation normal flow', async t => {
+tape("operation normal flow", async t => {
 
     let htimeout;
-    let ct = new Cancellation((cancel) => {
+    const ct = new Cancellation(cancel => {
         htimeout = setTimeout(() => cancel("STOP!"), 1000);
     });
 

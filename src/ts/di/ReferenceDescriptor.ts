@@ -3,6 +3,14 @@ import { ActivationContext } from "./ActivationContext";
 import { ServiceMap, Descriptor } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
+export interface ReferenceDescriptorParams {
+    name: string;
+    lazy?: boolean;
+    optional?: boolean;
+    default?;
+    services?: ServiceMap;
+}
+
 export class ReferenceDescriptor implements Descriptor {
     _name: string;
 
@@ -14,13 +22,13 @@ export class ReferenceDescriptor implements Descriptor {
 
     _services: ServiceMap;
 
-    constructor(name: string, lazy: boolean, optional: boolean, def, services: ServiceMap) {
-        argumentNotEmptyString(name, "name");
-        this._name = name;
-        this._lazy = Boolean(lazy);
-        this._optional = Boolean(optional);
-        this._default = def;
-        this._services = services;
+    constructor(opts: ReferenceDescriptorParams) {
+        argumentNotEmptyString(opts && opts.name, "opts.name");
+        this._name = opts.name;
+        this._lazy = !!opts.lazy;
+        this._optional = !!opts.optional;
+        this._default = !!opts.default;
+        this._services = opts.services;
     }
 
     activate(context: ActivationContext, name: string) {

@@ -1,23 +1,22 @@
-import { TraceSource, DebugLevel } from '@implab/core/log/TraceSource'
-import * as tape from 'tape';
-import { TapeWriter, delay } from './TestTraits';
-import { Observable } from '@implab/core/Observable';
-import { IObservable } from '@implab/core/interfaces';
+import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
+import * as tape from "tape";
+import { TapeWriter, delay } from "./TestTraits";
+import { Observable } from "@implab/core/Observable";
+import { IObservable } from "@implab/core/interfaces";
 
-let trace = TraceSource.get("ObservableTests");
+const trace = TraceSource.get("ObservableTests");
 
-tape('events sequence example', async t => {
+tape("events sequence example", async t => {
 
+    let events: IObservable<number>;
 
-    let events: IObservable<number>
-
-    let done = new Promise<void>((resolve) => {
-        events = new Observable<number>(async (notify, fail, complete) => {
+    const done = new Promise<void>(resolve => {
+        events = new Observable<number>(async (notify, fail, finish) => {
             for (let i = 0; i < 10; i++) {
                 await delay(0);
                 notify(i);
             }
-            complete();
+            finish();
             resolve();
         });
     });
@@ -26,7 +25,7 @@ tape('events sequence example', async t => {
     let complete = false;
     events.on(x => count = count + x, null, () => complete = true);
 
-    let first = await events.next();
+    const first = await events.next();
 
     t.equals(first, 0, "the first event");
     t.false(complete, "the sequence is not complete");
@@ -39,10 +38,10 @@ tape('events sequence example', async t => {
     t.end();
 });
 
-tape('event sequence termination', async t => {
-    let events: IObservable<number>
+tape("event sequence termination", async t => {
+    let events: IObservable<number>;
 
-    let done = new Promise<void>((resolve) => {
+    const done = new Promise<void>(resolve => {
         events = new Observable<number>(async (notify, fail, complete) => {
             await delay(0);
             notify(1);
@@ -55,14 +54,14 @@ tape('event sequence termination', async t => {
     });
 
     let count = 0;
-    events.on(() => {}, (e) => count++, () => count++);
+    events.on(() => {}, e => count++, () => count++);
 
-    let first = await events.next();
+    const first = await events.next();
     t.equals(first, 1, "the first message");
     try {
         await events.next();
         t.fail("shoud throw an exception");
-    } catch(e) {
+    } catch (e) {
         t.pass("the sequence is terminated");
     }
 

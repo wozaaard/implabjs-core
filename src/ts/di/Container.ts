@@ -39,7 +39,7 @@ export class Container {
         return this._parent;
     }
 
-    getService<T = any>(name: string, def?: T) {
+    getService(name: string, def?) {
         const d = this._services[name];
         if (!d)
             if (arguments.length > 1)
@@ -47,13 +47,16 @@ export class Container {
             else
                 throw new Error("Service '" + name + "' isn't found");
 
+        if (!isDescriptor(d))
+            return d;
+
         if (d.isInstanceCreated())
-            return d.getInstance() as T;
+            return d.getInstance();
 
         const context = new ActivationContext(this, this._services);
 
         try {
-            return d.activate(context, name) as T;
+            return d.activate(context, name);
         } catch (error) {
             throw new ActivationError(name, context.getStack(), error);
         }
@@ -65,8 +68,6 @@ export class Container {
             for (const name in data)
                 this.register(name, data[name]);
         } else {
-            if (!(isDescriptor(service)))
-                service = new ValueDescriptor(service);
             this._services[nameOrCollection] = service;
         }
         return this;
@@ -148,13 +149,13 @@ export class Container {
 
         if (isDependencyRegistration(registration)) {
 
-            return new ReferenceDescriptor(
-                registration.$dependency,
-                registration.lazy,
-                registration.optional,
-                registration["default"],
-                registration.services && this._parseObject(registration.services, resolver)
-            );
+            return new ReferenceDescriptor({
+                name: registration.$dependency,
+                lazy: registration.lazy,
+                optional: registration.optional,
+                default: registration.default,
+                services: registration.services && this._parseObject(registration.services, resolver)
+            });
 
         } else if (isValueRegistration(registration)) {
 
