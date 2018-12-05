@@ -1,13 +1,14 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ActivationType, ServiceMap, isDependencyRegistration, isValueRegistration, ServiceRegistration } from "./interfaces";
+import { isDescriptor, ActivationType, ServiceMap, isDependencyRegistration, isValueRegistration, ServiceRegistration, DependencyRegistration } from "./interfaces";
 import { AggregateDescriptor } from "./AggregateDescriptor";
-import { isPrimitive } from "../safe";
+import { isPrimitive, pmap } from "../safe";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
 import { ServiceDescriptor, ServiceDescriptorParams } from "./ServiceDescriptor";
 import { ModuleResolverBase } from "./ModuleResolverBase";
 import format = require("../text/format");
+import { throws } from "assert";
 
 export class Container {
     _services: ServiceMap;
@@ -39,27 +40,25 @@ export class Container {
         return this._parent;
     }
 
-    getService(name: string, def?) {
+    resolve(name: string, def?) {
         const d = this._services[name];
-        if (!d)
+        if (d === undefined) {
             if (arguments.length > 1)
                 return def;
             else
                 throw new Error("Service '" + name + "' isn't found");
-
-        if (!isDescriptor(d))
-            return d;
-
-        if (d.isInstanceCreated())
-            return d.getInstance();
+        }
 
         const context = new ActivationContext(this, this._services);
-
         try {
-            return d.activate(context, name);
+            return context.activate(d, name);
         } catch (error) {
             throw new ActivationError(name, context.getStack(), error);
         }
+    }
+
+    getService(name: string, def?) {
+        return this.resolve.apply(this, arguments);
     }
 
     register(nameOrCollection, service?) {
@@ -68,6 +67,9 @@ export class Container {
             for (const name in data)
                 this.register(name, data[name]);
         } else {
+            if (!isDescriptor(service))
+                throw new Error("The service parameter must be a descriptor");
+
             this._services[nameOrCollection] = service;
         }
         return this;
@@ -126,19 +128,7 @@ export class Container {
     async _configure(data: object, opts?: { resolver: ModuleResolverBase }) {
         const resolver = (opts && opts.resolver) || this._resolver;
 
-        const services: ServiceMap = {};
-
-        resolver.beginBatch();
-
-        async function parse(k) {
-            services[k] = await this._parse(data[k], resolver);
-        }
-
-        const batch = Object.keys(data).map(parse);
-
-        resolver.completeBatch();
-
-        await Promise.all(batch);
+        const services = await this._parseRegistrations(data, resolver);
 
         this.register(services);
     }
@@ -148,17 +138,8 @@ export class Container {
             return registration;
 
         if (isDependencyRegistration(registration)) {
-
-            return new ReferenceDescriptor({
-                name: registration.$dependency,
-                lazy: registration.lazy,
-                optional: registration.optional,
-                default: registration.default,
-                services: registration.services && this._parseObject(registration.services, resolver)
-            });
-
+            return this._paseReference(registration, resolver);
         } else if (isValueRegistration(registration)) {
-
             return !registration.parse ?
                 new ValueDescriptor(registration.$value) :
                 new AggregateDescriptor(this._parse(registration.$value, resolver));
@@ -170,6 +151,16 @@ export class Container {
         }
 
         return this._parseObject(registration, resolver);
+    }
+
+    async _paseReference(registration: DependencyRegistration, resolver: ModuleResolverBase) {
+        return new ReferenceDescriptor({
+            name: registration.$dependency,
+            lazy: registration.lazy,
+            optional: registration.optional,
+            default: registration.default,
+            services: registration.services && await this._parseRegistrations(registration.services, resolver)
+        });
     }
 
     async _parseService(data: ServiceRegistration, resolver: ModuleResolverBase) {
@@ -194,12 +185,14 @@ export class Container {
         }
 
         if (data.services)
-            opts.services = await this._parseObject(data.services, resolver);
+            opts.services = await this._parseRegistrations(data.services, resolver);
 
-        if (data.inject instanceof Array)
-            opts.inject = await Promise.all(data.inject.map(x => this._parseObject(x, resolver)));
-        else
-            opts.inject = [await this._parseObject(data.inject, resolver)];
+        if (data.inject) {
+            if (data.inject instanceof Array)
+                opts.inject = await Promise.all(data.inject.map(x => this._parseObject(x, resolver)));
+            else
+                opts.inject = [await this._parseObject(data.inject, resolver)];
+        }
 
         if (data.params)
             opts.params = this._parse(data.params, resolver);
@@ -237,7 +230,7 @@ export class Container {
         return new ServiceDescriptor(opts);
     }
 
-    _parseObject(data: object, resolver: ModuleResolverBase) {
+    async _parseObject(data: object, resolver: ModuleResolverBase) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
@@ -245,16 +238,42 @@ export class Container {
         const o = {};
 
         for (const p in data)
-            o[p] = this._parse(data[p], resolver);
+            o[p] = await this._parse(data[p], resolver);
+
+        // TODO: handle inline descriptors properly
+        // const ex = {
+        //     activate(ctx) {
+        //         const value = ctx.activate(this.prop, "prop");
+        //         // some code
+        //     },
+
+        //     // will be turned to ReferenceDescriptor
+        //     prop: { $dependency: "depName" }
+        // };
 
         return o;
     }
 
-    _parseArray(data: Array<any>, resolver: ModuleResolverBase) {
+    async _parseArray(data: Array<any>, resolver: ModuleResolverBase) {
         if (data.constructor &&
             data.constructor.prototype !== Array.prototype)
             return new ValueDescriptor(data);
 
-        return data.map(x => this._parse(x, resolver));
+        return pmap(data, x => this._parse(x, resolver));
+    }
+
+    async _parseRegistrations(data: object, resolver: ModuleResolverBase) {
+        if (data.constructor &&
+            data.constructor.prototype !== Object.prototype)
+            throw new Error("Registrations must be a simple object");
+
+        const o: ServiceMap = {};
+
+        for (const p of Object.keys(data)) {
+            const v = await this._parse(data[p], resolver);
+            o[p] = isDescriptor(v) ? v : new AggregateDescriptor(v);
+        }
+
+        return o;
     }
 }

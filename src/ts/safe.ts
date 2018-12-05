@@ -1,5 +1,5 @@
 let _nextOid = 0;
-const _oid = Symbol("__oid");
+const _oid = typeof Symbol === "function" ? Symbol("__oid") : "__oid";
 
 export function oid(instance: object): string {
     if (isNull(instance))
@@ -232,7 +232,7 @@ export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn))
 export function pmap(items, cb) {
     argumentNotNull(cb, "cb");
 
-    if (items && items.then instanceof Function)
+    if (isPromise(items))
         return items.then(data => pmap(data, cb));
 
     if (isNull(items) || !items.length)

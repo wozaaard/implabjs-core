@@ -1,5 +1,4 @@
 import { Descriptor } from "./interfaces";
-import { ActivationContext } from "./ActivationContext";
 
 export class ValueDescriptor implements Descriptor {
     _value;
@@ -8,16 +7,11 @@ export class ValueDescriptor implements Descriptor {
         this._value = value;
     }
 
-    activate(context: ActivationContext, name: string) {
-        context.enter(name);
-        const v = this._value;
-        context.leave();
-        return v;
-    }
-    isInstanceCreated(): boolean {
-        return true;
-    }
-    getInstance() {
+    activate() {
         return this._value;
+    }
+
+    toString() {
+        return `@type=${typeof this._value}`;
     }
 }

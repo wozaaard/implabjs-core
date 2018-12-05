@@ -66,8 +66,12 @@ export function test(name: string, cb: (t: tape.Test) => any) {
         try {
             await cb(t);
         } catch (e) {
+
+            // verbose error information
+            // tslint:disable-next-line
             console.error(e);
             t.fail(e);
+
         } finally {
             t.end();
         }

@@ -27,41 +27,37 @@ export class ReferenceDescriptor implements Descriptor {
         this._name = opts.name;
         this._lazy = !!opts.lazy;
         this._optional = !!opts.optional;
-        this._default = !!opts.default;
+        this._default = opts.default;
         this._services = opts.services;
     }
 
     activate(context: ActivationContext, name: string) {
+        // добавляем сервисы
+        if (this._services) {
+            for (const p of Object.keys(this._services))
+                context.register(p, this._services[p]);
+        }
 
         if (this._lazy) {
-            // сохраняем контекст активации
-            context = context.clone();
-
-            // добавляем сервисы
-            if (this._services) {
-                for (const p of Object.keys(this._services))
-                    context.register(p, this._services[p]);
-            }
+            const saved = context.clone();
 
             return (cfg: ServiceMap) => {
                 // защищаем контекст на случай исключения в процессе
                 // активации
-                const ct = context.clone();
+                const ct = saved.clone();
                 try {
                     if (cfg) {
                         for (const k in cfg)
                             ct.register(k, cfg[k]);
                     }
 
-                    return this._optional ? ct.getService(this._name, this._default) : ct
-                        .getService(this._name);
+                    return this._optional ? ct.resolve(this._name, this._default) : ct
+                        .resolve(this._name);
                 } catch (error) {
                     throw new ActivationError(this._name, ct.getStack(), error);
                 }
             };
         } else {
-            context.enter(name, this, !!this._services);
-
             // добавляем сервисы
             if (this._services) {
                 for (const p of Object.keys(this._services))
@@ -69,21 +65,11 @@ export class ReferenceDescriptor implements Descriptor {
             }
 
             const v = this._optional ?
-            context.getService(this._name, this._default) :
-            context.getService(this._name);
-
-            context.leave();
+                context.resolve(this._name, this._default) :
+                context.resolve(this._name);
 
             return v;
         }
-    }
-
-    isInstanceCreated() {
-        return false;
-    }
-
-    getInstance() {
-        throw new Error("The reference descriptor doesn't allowed to hold an instance");
     }
 
     toString() {
