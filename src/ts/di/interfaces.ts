@@ -1,4 +1,4 @@
-import { isNull } from "../safe";
+import { isNull, isPrimitive } from "../safe";
 import { ActivationContext } from "./ActivationContext";
 import { Constructor, Factory } from "../interfaces";
 
@@ -8,13 +8,13 @@ export interface Descriptor {
     getInstance();
 }
 
-export function isDescriptor(instance): instance is Descriptor {
-    return (!isNull(instance)) &&
-        ("activate" in instance);
+export function isDescriptor(x): x is Descriptor {
+    return (!isPrimitive(x)) &&
+        (x.activate instanceof Function);
 }
 
 export interface ServiceMap {
-    [s: string]: Descriptor;
+    [s: string]: any;
 }
 
 export enum ActivationType {
@@ -56,13 +56,13 @@ export interface DependencyRegistration extends RegistrationWithServices {
 }
 
 export function isServiceRegistration(x): x is ServiceRegistration {
-    return x && ("$type" in x || "$factory" in x);
+    return (!isPrimitive(x)) && ("$type" in x || "$factory" in x);
 }
 
 export function isValueRegistration(x): x is ValueRegistration {
-    return x && "$value" in x;
+    return (!isPrimitive(x)) && ("$value" in x);
 }
 
 export function isDependencyRegistration(x): x is DependencyRegistration {
-    return x && "$depdendency" in x;
+    return (!isPrimitive(x)) && ("$depdendency" in x);
 }

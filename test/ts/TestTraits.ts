@@ -1,21 +1,21 @@
 import { IObservable, ICancellation, IDestroyable } from "@implab/core/interfaces";
 import { Cancellation } from "@implab/core/Cancellation";
 import { TraceEvent, LogLevel, WarnLevel } from "@implab/core/log/TraceSource";
-import * as tape from 'tape';
+import * as tape from "tape";
 import { argumentNotNull } from "@implab/core/safe";
 
 export class TapeWriter implements IDestroyable {
-    readonly _tape: tape.Test
+    readonly _tape: tape.Test;
 
     _subscriptions = new Array<IDestroyable>();
 
-    constructor(tape: tape.Test) {
-        argumentNotNull(tape, "tape");
-        this._tape = tape;
+    constructor(t: tape.Test) {
+        argumentNotNull(t, "tape");
+        this._tape = t;
     }
 
     writeEvents(source: IObservable<TraceEvent>, ct: ICancellation = Cancellation.none) {
-        let subscription = source.on(this.writeEvent.bind(this));
+        const subscription = source.on(this.writeEvent.bind(this));
         if (ct.isSupported()) {
             ct.register(subscription.destroy.bind(subscription));
         }
@@ -39,24 +39,37 @@ export class TapeWriter implements IDestroyable {
 
 export async function delay(timeout: number, ct: ICancellation = Cancellation.none) {
     let un: IDestroyable;
-    
+
     try {
-	await new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
             if (ct.isRequested()) {
-	        un = ct.register(reject);
-    	    } else {
-    		let ht = setTimeout(() => {
-    		    resolve();
-        	    }, timeout);
-	    	
-	    	un = ct.register(e => {
-    	    	    clearTimeout(ht);
-    		    reject(e);
-    	        });
-    	    }
-	});
+                un = ct.register(reject);
+            } else {
+                const ht = setTimeout(() => {
+                    resolve();
+                }, timeout);
+
+                un = ct.register(e => {
+                    clearTimeout(ht);
+                    reject(e);
+                });
+            }
+        });
     } finally {
-	if(un)
-	    un.destroy();
-    };
+        if (un)
+            un.destroy();
+    }
+}
+
+export function test(name: string, cb: (t: tape.Test) => any) {
+    tape(name, async t => {
+        try {
+            await cb(t);
+        } catch (e) {
+            console.error(e);
+            t.fail(e);
+        } finally {
+            t.end();
+        }
+    });
 }

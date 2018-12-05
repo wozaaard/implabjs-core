@@ -44,7 +44,7 @@ export class ActivationContext {
             else
                 throw new Error(`Service ${name} not found`);
 
-        return d.activate(this, name);
+        return isDescriptor(d) ? d.activate(this, name) : d;
     }
 
     /**
@@ -80,7 +80,7 @@ export class ActivationContext {
         return (this._cache[id] = value);
     }
 
-    parse(data: object, name: string) {
+    parse(data, name: string) {
         if (isPrimitive(data))
             return data;
 
