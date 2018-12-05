@@ -1,10 +1,13 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ActivationType, ServiceMap } from "./interfaces";
+import { Descriptor, ActivationType, ServiceMap, isDescriptor } from "./interfaces";
 import { Container } from "./Container";
 import { argumentNotNull, isPrimitive, oid, isPromise } from "../safe";
 import { Constructor, Factory } from "../interfaces";
+import { TraceSource } from "../log/TraceSource";
 
 let cacheId = 0;
+
+const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
 function injectMethod(target, method, context, args) {
     const m = target[method];
@@ -27,6 +30,24 @@ function makeClenupCallback(target, method: ((instance) => void) | string) {
             method(target);
         };
     }
+}
+
+// TODO: make async
+function _parse(value, context: ActivationContext, path: string) {
+    if (isPrimitive(value))
+        return value;
+
+    if (isDescriptor(value))
+        return context.activate(value, path);
+
+    if (value instanceof Array)
+        return value.map((x, i) => this._parse(x, context, `${path}[${i}]`));
+
+    const t = {};
+    for (const p of Object.keys(value))
+        t[p] = this._parse(value[p], context, `${path}.${p}`);
+    return t;
+
 }
 
 export interface ServiceDescriptorParams {
@@ -119,7 +140,7 @@ export class ServiceDescriptor implements Descriptor {
         }
     }
 
-    activate(context: ActivationContext, name: string) {
+    activate(context: ActivationContext) {
         // if we have a local service records, register them first
         let instance;
 
@@ -135,7 +156,7 @@ export class ServiceDescriptor implements Descriptor {
                 if (container.has(this._cacheId)) {
                     instance = container.get(this._cacheId);
                 } else {
-                    instance = this._create(context, name);
+                    instance = this._create(context);
                     container.store(this._cacheId, instance);
                     if (this._cleanup)
                         container.onDispose(
@@ -152,7 +173,7 @@ export class ServiceDescriptor implements Descriptor {
                     return this._instance;
 
                 // create an instance
-                instance = this._create(context, name);
+                instance = this._create(context);
 
                 // the instance is bound to the container
                 if (this._cleanup)
@@ -168,12 +189,10 @@ export class ServiceDescriptor implements Descriptor {
                 if (context.has(this._cacheId))
                     return context.get(this._cacheId);
                 // context context activated instances are controlled by callers
-                return context.store(this._cacheId, this._create(
-                    context,
-                    name));
+                return context.store(this._cacheId, this._create(context));
             case ActivationType.Call: // CALL
                 // per-call created instances are controlled by callers
-                return this._create(context, name);
+                return this._create(context);
             case ActivationType.Hierarchy: // HIERARCHY
                 // hierarchy activated instances are behave much like container activated
                 // except they are created and bound to the child container
@@ -182,7 +201,7 @@ export class ServiceDescriptor implements Descriptor {
                 if (context.container.has(this._cacheId))
                     return context.container.get(this._cacheId);
 
-                instance = this._create(context, name);
+                instance = this._create(context);
 
                 if (this._cleanup)
                     context.container.onDispose(makeClenupCallback(
@@ -203,8 +222,8 @@ export class ServiceDescriptor implements Descriptor {
         return this._instance;
     }
 
-    _create(context, name) {
-        context.enter(name, this, Boolean(this._services));
+    _create(context: ActivationContext) {
+        trace.debug(`constructing ${context._name}`);
 
         if (this._activationType !== ActivationType.Call &&
             context.visit(this._cacheId) > 0)
@@ -235,13 +254,9 @@ export class ServiceDescriptor implements Descriptor {
         if (this._params === undefined) {
             instance = this._factory();
         } else if (this._params instanceof Array) {
-            instance = this._factory.apply(this, context.parse(
-                this._params,
-                ".params"));
+            instance = this._factory.apply(this, _parse(this._params, context, "args"));
         } else {
-            instance = this._factory(context.parse(
-                this._params,
-                ".params"));
+            instance = this._factory(_parse(this._params, context, "args"));
         }
 
         if (this._inject) {
@@ -250,8 +265,6 @@ export class ServiceDescriptor implements Descriptor {
                     injectMethod(instance, m, context, spec[m]);
             });
         }
-
-        context.leave();
 
         return instance;
     }

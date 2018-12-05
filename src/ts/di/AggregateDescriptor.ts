@@ -1,5 +1,6 @@
-import { Descriptor } from "./interfaces";
+import { Descriptor, isDescriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
+import { isPrimitive } from "util";
 
 export class AggregateDescriptor implements Descriptor {
     _value: object;
@@ -8,17 +9,29 @@ export class AggregateDescriptor implements Descriptor {
         this._value = value;
     }
 
-    activate(context: ActivationContext, name: string) {
-        context.enter(name);
-        const v = context.parse(this._value, ".params");
-        context.leave();
-        return v;
+    activate(context: ActivationContext) {
+        return this._parse(this._value, context, "$value");
     }
 
-    isInstanceCreated(): boolean {
-        return false;
+    // TODO: make async
+    _parse(value, context: ActivationContext, path: string) {
+        if (isPrimitive(value))
+            return value;
+
+        if (isDescriptor(value))
+            return context.activate(value, path);
+
+        if (value instanceof Array)
+            return value.map((x, i) => this._parse(x, context, `${path}[${i}]`));
+
+        const t = {};
+        for (const p of Object.keys(value))
+            t[p] = this._parse(value[p], context, `${path}.${p}`);
+        return t;
+
     }
-    getInstance(): any {
-        throw new Error("Not supported");
+
+    toString() {
+        return "@walk";
     }
 }

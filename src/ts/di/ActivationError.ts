@@ -27,7 +27,7 @@ export class ActivationError {
         if (this.activationStack) {
             parts.push("at");
             this.activationStack
-                .forEach(x => parts.push(`    ${x.name} ${x.service ? x.service.toString() : ""}`));
+                .forEach(x => parts.push(`    ${x.name} ${x.service}`));
 
         }
 

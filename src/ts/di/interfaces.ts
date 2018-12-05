@@ -4,8 +4,6 @@ import { Constructor, Factory } from "../interfaces";
 
 export interface Descriptor {
     activate(context: ActivationContext, name?: string);
-    isInstanceCreated(): boolean;
-    getInstance();
 }
 
 export function isDescriptor(x): x is Descriptor {
@@ -14,7 +12,7 @@ export function isDescriptor(x): x is Descriptor {
 }
 
 export interface ServiceMap {
-    [s: string]: any;
+    [s: string]: Descriptor;
 }
 
 export enum ActivationType {
