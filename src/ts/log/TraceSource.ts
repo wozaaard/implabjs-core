@@ -1,7 +1,7 @@
-import * as format from '../text/format'
-import { argumentNotNull } from '../safe';
-import { Observable } from '../Observable'
-import { IDestroyable } from '../interfaces';
+import * as format from "../text/format";
+import { argumentNotNull } from "../safe";
+import { Observable } from "../Observable";
+import { IDestroyable } from "../interfaces";
 
 export const DebugLevel = 400;
 
@@ -16,11 +16,11 @@ export const SilentLevel = 0;
 export class TraceEvent {
     readonly source: TraceSource;
 
-    readonly level: Number;
+    readonly level: number;
 
     readonly arg: any;
 
-    constructor(source: TraceSource, level: Number, arg: any) {
+    constructor(source: TraceSource, level: number, arg: any) {
         this.source = source;
         this.level = level;
         this.arg = arg;
@@ -185,4 +185,3 @@ export class TraceSource {
         return Registry.instance.get(id);
     }
 }
-

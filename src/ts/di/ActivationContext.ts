@@ -1,6 +1,6 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
-import { Descriptor, ServiceMap, isDescriptor } from "./interfaces";
+import { Descriptor, ServiceMap } from "./interfaces";
 import { Container } from "./Container";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");

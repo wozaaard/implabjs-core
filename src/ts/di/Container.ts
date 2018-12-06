@@ -1,14 +1,17 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ActivationType, ServiceMap, isDependencyRegistration, isValueRegistration, ServiceRegistration, DependencyRegistration } from "./interfaces";
+import { isDescriptor, ActivationType, ServiceMap, isDependencyRegistration, isValueRegistration, ServiceRegistration, DependencyRegistration, ValueRegistration } from "./interfaces";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { isPrimitive, pmap } from "../safe";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
 import { ServiceDescriptor, ServiceDescriptorParams } from "./ServiceDescriptor";
 import { ModuleResolverBase } from "./ModuleResolverBase";
 import format = require("../text/format");
-import { throws } from "assert";
+import { TraceSource } from "../log/TraceSource";
+import { RequireJsResolver } from "./RequireJsResolver";
+
+const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
 export class Container {
     _services: ServiceMap;
@@ -30,6 +33,7 @@ export class Container {
         this._cleanup = [];
         this._root = parent ? parent.getRootContainer() : this;
         this._services.container = new ValueDescriptor(this);
+        this._resolver = new RequireJsResolver();
     }
 
     getRootContainer() {
@@ -57,6 +61,9 @@ export class Container {
         }
     }
 
+    /**
+     * @deprecated use resolve() method
+     */
     getService(name: string, def?) {
         return this.resolve.apply(this, arguments);
     }
@@ -101,10 +108,12 @@ export class Container {
      */
     async configure(config: string | object, opts?: object) {
         if (typeof (config) === "string") {
+            trace.log(`load configuration '${config}'`);
             const resolver = await this._resolver.createResolver(config, opts);
             const data = await this._resolver.loadModule(config);
             return this._configure(data, { resolver });
         } else {
+            trace.log(`json configuration`);
             return this._configure(config);
         }
     }
@@ -133,27 +142,30 @@ export class Container {
         this.register(services);
     }
 
-    async _parse(registration: any, resolver: ModuleResolverBase) {
-        if (isPrimitive(registration) || isDescriptor(registration))
-            return registration;
+    async _parse(data: any, resolver: ModuleResolverBase) {
+        if (isPrimitive(data) || isDescriptor(data))
+            return data;
 
-        if (isDependencyRegistration(registration)) {
-            return this._paseReference(registration, resolver);
-        } else if (isValueRegistration(registration)) {
-            return !registration.parse ?
-                new ValueDescriptor(registration.$value) :
-                new AggregateDescriptor(this._parse(registration.$value, resolver));
-
-        } else if (registration.$type || registration.$factory) {
-            return this._parseService(registration, resolver);
-        } else if (registration instanceof Array) {
-            return this._parseArray(registration, resolver);
+        if (isDependencyRegistration(data)) {
+            return this._makeReferenceDescriptor(data, resolver);
+        } else if (isValueRegistration(data)) {
+            return this._makeValueDescriptor(data, resolver);
+        } else if (data.$type || data.$factory) {
+            return this._makeServiceDescriptor(data, resolver);
+        } else if (data instanceof Array) {
+            return this._parseArray(data, resolver);
         }
 
-        return this._parseObject(registration, resolver);
+        return this._parseObject(data, resolver);
     }
 
-    async _paseReference(registration: DependencyRegistration, resolver: ModuleResolverBase) {
+    async _makeValueDescriptor(data: ValueRegistration, resolver: ModuleResolverBase) {
+        return !data.parse ?
+            new ValueDescriptor(data.$value) :
+            new AggregateDescriptor(this._parse(data.$value, resolver));
+    }
+
+    async _makeReferenceDescriptor(registration: DependencyRegistration, resolver: ModuleResolverBase) {
         return new ReferenceDescriptor({
             name: registration.$dependency,
             lazy: registration.lazy,
@@ -163,7 +175,7 @@ export class Container {
         });
     }
 
-    async _parseService(data: ServiceRegistration, resolver: ModuleResolverBase) {
+    async _makeServiceDescriptor(data: ServiceRegistration, resolver: ModuleResolverBase) {
         const opts: ServiceDescriptorParams = {
             owner: this
         };
@@ -195,7 +207,7 @@ export class Container {
         }
 
         if (data.params)
-            opts.params = this._parse(data.params, resolver);
+            opts.params = await this._parse(data.params, resolver);
 
         if (data.activation) {
             if (typeof (data.activation) === "string") {
