@@ -62,5 +62,5 @@ export function isValueRegistration(x): x is ValueRegistration {
 }
 
 export function isDependencyRegistration(x): x is DependencyRegistration {
-    return (!isPrimitive(x)) && ("$depdendency" in x);
+    return (!isPrimitive(x)) && ("$dependency" in x);
 }

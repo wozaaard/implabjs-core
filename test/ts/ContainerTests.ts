@@ -20,20 +20,31 @@ test("Container register/resolve tests", async t => {
 
     const connection1 = "db://localhost";
 
-    container.register("connection", new ValueDescriptor(connection1));
+    t.throws(
+        () => container.register("bla-bla", "bla-bla"),
+        "Do not allow to register anything other than descriptors"
+    );
 
-    t.equals(container.getService("connection"), connection1);
+    t.doesNotThrow(
+        () => container.register("connection", new ValueDescriptor(connection1)),
+        "register ValueDescriptor"
+    );
 
-    container.register(
-        "dbParams",
-        new AggregateDescriptor({
-            timeout: 10,
-            connection: new ReferenceDescriptor({ name: "connection" })
-        })
+    t.equals(container.getService("connection"), connection1, "resolve string value");
+
+    t.doesNotThrow(
+        () => container.register(
+            "dbParams",
+            new AggregateDescriptor({
+                timeout: 10,
+                connection: new ReferenceDescriptor({ name: "connection" })
+            })
+        ),
+        "register AggregateDescriptor"
     );
 
     const dbParams = container.getService("dbParams");
-    t.equals(dbParams.connection, connection1, "should get connection");
+    t.equals(dbParams.connection, connection1, "should get string value 'dbParams.connection'");
 
     writer.destroy();
 });
@@ -53,6 +64,13 @@ test("Container configure/resolve tests", async t => {
             $type: Foo
         },
 
+        box: {
+            $type: Bar,
+            params: {
+                $dependency: "foo"
+            }
+        },
+
         bar: {
             $type: Bar,
             params: {
@@ -64,11 +82,37 @@ test("Container configure/resolve tests", async t => {
             }
         }
     });
+    t.pass("should configure from js object");
 
     const f1 = container.resolve("foo");
+
+    t.assert(!isNull(f1), "foo should be not null");
+
+    t.throws(() => container.resolve("bar"), "should not resolve dependency 'db'");
+
+    writer.destroy();
+});
+
+test("Load configuration from module", async t => {
+    const writer = new TapeWriter(t);
+
+    TraceSource.on(ts => {
+        ts.level = DebugLevel;
+        writer.writeEvents(ts.events);
+    });
+
+    const container = new Container();
+
+    await container.configure("test/mock/config1");
+    t.pass("The configuration should load");
+
+    const f1 = container.resolve("foo");
+
     t.assert(!isNull(f1), "foo should be not null");
 
     const b1 = container.resolve("bar");
+
+    t.assert(!isNull(b1), "foo should be not null");
 
     writer.destroy();
 });

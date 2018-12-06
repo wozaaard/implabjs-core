@@ -37,17 +37,19 @@ function _parse(value, context: ActivationContext, path: string) {
     if (isPrimitive(value))
         return value;
 
+    trace.debug("parse {0}", path);
+
     if (isDescriptor(value))
         return context.activate(value, path);
 
     if (value instanceof Array)
-        return value.map((x, i) => this._parse(x, context, `${path}[${i}]`));
+        return value.map((x, i) => _parse(x, context, `${path}[${i}]`));
 
     const t = {};
     for (const p of Object.keys(value))
-        t[p] = this._parse(value[p], context, `${path}.${p}`);
-    return t;
+        t[p] = _parse(value[p], context, `${path}.${p}`);
 
+    return t;
 }
 
 export interface ServiceDescriptorParams {
