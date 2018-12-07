@@ -28,9 +28,6 @@ export interface RegistrationWithServices {
 }
 
 export interface ServiceRegistration extends RegistrationWithServices {
-    $type?: string | Constructor;
-
-    $factory?: string | Factory;
 
     activation?: "singleton" | "container" | "hierarchy" | "context" | "call";
 
@@ -38,7 +35,15 @@ export interface ServiceRegistration extends RegistrationWithServices {
 
     inject?: object | object[];
 
-    cleanup: (instance) => void | string;
+    cleanup?: (instance) => void | string;
+}
+
+export interface TypeRegistration extends ServiceRegistration {
+    $type: string | Constructor;
+}
+
+export interface FactoryRegistration extends ServiceRegistration {
+    $factory: string | Factory;
 }
 
 export interface ValueRegistration {
@@ -53,7 +58,11 @@ export interface DependencyRegistration extends RegistrationWithServices {
     default?;
 }
 
-export function isServiceRegistration(x): x is ServiceRegistration {
+export function isTypeRegistration(x): x is TypeRegistration {
+    return (!isPrimitive(x)) && ("$type" in x || "$factory" in x);
+}
+
+export function isFactoryRegistration(x): x is FactoryRegistration {
     return (!isPrimitive(x)) && ("$type" in x || "$factory" in x);
 }
 
