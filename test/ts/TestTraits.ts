@@ -1,6 +1,6 @@
 import { IObservable, ICancellation, IDestroyable } from "@implab/core/interfaces";
 import { Cancellation } from "@implab/core/Cancellation";
-import { TraceEvent, LogLevel, WarnLevel } from "@implab/core/log/TraceSource";
+import { TraceEvent, LogLevel, WarnLevel, DebugLevel, TraceSource } from "@implab/core/log/TraceSource";
 import * as tape from "tape";
 import { argumentNotNull } from "@implab/core/safe";
 
@@ -23,12 +23,14 @@ export class TapeWriter implements IDestroyable {
     }
 
     writeEvent(next: TraceEvent) {
-        if (next.level >= LogLevel) {
-            this._tape.comment("LOG " + next.arg);
+        if (next.level >= DebugLevel) {
+            this._tape.comment(`DEBUG ${next.source.id} ${next.arg}`);
+        } else if (next.level >= LogLevel) {
+            this._tape.comment(`LOG   ${next.source.id} ${next.arg}`);
         } else if (next.level >= WarnLevel) {
-            this._tape.comment("WARN " + next.arg);
+            this._tape.comment(`WARN  ${next.source.id} ${next.arg}`);
         } else {
-            this._tape.comment("ERROR " + next.arg);
+            this._tape.comment(`ERROR ${next.source.id} ${next.arg}`);
         }
     }
 
@@ -63,6 +65,13 @@ export async function delay(timeout: number, ct: ICancellation = Cancellation.no
 
 export function test(name: string, cb: (t: tape.Test) => any) {
     tape(name, async t => {
+        const writer = new TapeWriter(t);
+
+        TraceSource.on(ts => {
+            ts.level = DebugLevel;
+            writer.writeEvents(ts.events);
+        });
+
         try {
             await cb(t);
         } catch (e) {
@@ -74,6 +83,7 @@ export function test(name: string, cb: (t: tape.Test) => any) {
 
         } finally {
             t.end();
+            writer.destroy();
         }
     });
 }

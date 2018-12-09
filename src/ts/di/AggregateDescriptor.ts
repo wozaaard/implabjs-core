@@ -1,6 +1,6 @@
 import { Descriptor, isDescriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
-import { isPrimitive } from "util";
+import { isPrimitive } from "../safe";
 
 export class AggregateDescriptor implements Descriptor {
     _value: object;

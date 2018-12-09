@@ -1,10 +1,48 @@
-import { ServiceRegistration, TypeRegistration, FactoryRegistration, ServiceMap, Descriptor, isDescriptor, isDependencyRegistration, DependencyRegistration, ValueRegistration, ActivationType, isValueRegistration, isTypeRegistration, isFactoryRegistration } from "./interfaces";
-import { isNullOrEmptyString, argumentNotEmptyString, isPrimitive } from "../safe";
+import {
+    ServiceRegistration,
+    TypeRegistration,
+    FactoryRegistration,
+    ServiceMap,
+    isDescriptor,
+    isDependencyRegistration,
+    DependencyRegistration,
+    ValueRegistration,
+    ActivationType,
+    isValueRegistration,
+    isTypeRegistration,
+    isFactoryRegistration
+} from "./interfaces";
+
+import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get } from "../safe";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { ValueDescriptor } from "./ValueDescriptor";
-import { ServiceDescriptorParams } from "./ServiceDescriptor";
 import { Container } from "./Container";
-import { Constructor } from "../interfaces";
+import { ReferenceDescriptor } from "./ReferenceDescriptor";
+import { TypeServiceDescriptor } from "./TypeServiceDescriptor";
+import { FactoryServiceDescriptor } from "./FactoryServiceDescriptor";
+import { rjs, createContextRequire, RequireFn } from "./RequireJsHelper";
+import { TraceSource } from "../log/TraceSource";
+import { ConfigError } from "./ConfigError";
+import { Cancellation } from "../Cancellation";
+
+const trace = TraceSource.get("@implab/core/di/Configuration");
+
+async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
+    if (data instanceof Array) {
+        return Promise.all(map ? data.map(map) : data);
+    } else {
+        const keys = Object.keys(data);
+
+        const o: any = {};
+
+        await Promise.all(keys.map(async k => {
+            const v = map ? map(data[k], k) : data[k];
+            o[k] = isPromise(v) ? await v : v;
+        }));
+
+        return o;
+    }
+}
 
 interface MapOf<T> {
     [key: string]: T;
@@ -20,8 +58,103 @@ export class Configuration {
 
     _path: Array<_key>;
 
+    _configName: string;
+
+    _require = rjs;
+
+    constructor(container: Container) {
+        argumentNotNull(container, container);
+        this._container = container;
+        this._path = [];
+    }
+
+    async loadConfiguration(moduleName: string, ct = Cancellation.none) {
+        argumentNotEmptyString(moduleName, "moduleName");
+
+        trace.log("loadConfiguration {0}", moduleName);
+
+        this._configName = moduleName;
+
+        const config = await this._loadModule(moduleName);
+
+        this._require = await this._createContextRequire(moduleName);
+
+        let services: ServiceMap;
+
+        try {
+            services = await this._visitRegistrations(config, moduleName);
+        } catch (e) {
+            throw this._makeError(e);
+        }
+
+        this._container.register(services);
+    }
+
+    async applyConfiguration(data: object, contextRequire?: RequireFn, ct = Cancellation.none) {
+        argumentNotNull(data, "data");
+
+        trace.log("applyConfiguration");
+
+        this._configName = "$";
+
+        if (contextRequire)
+            this._require = contextRequire;
+
+        let services: ServiceMap;
+
+        try {
+            services = await this._visitRegistrations(data, "$");
+        } catch (e) {
+            throw this._makeError(e);
+        }
+
+        this._container.register(services);
+    }
+
+    _makeError(inner) {
+        const e = new ConfigError("Failed to load configuration", inner);
+        e.configName = this._configName;
+        e.path = this._makePath();
+        return e;
+    }
+
+    _makePath() {
+        return this._path
+            .reduce(
+                (prev, cur) => typeof cur === "number" ?
+                    `${prev}[${cur}]` :
+                    `${prev}.${cur}`
+            )
+            .toString();
+    }
+
+    async _resolveType(moduleName: string, localName: string) {
+        trace.log("resolveType moduleName={0}, localName={1}", moduleName, localName);
+        try {
+            const m = await this._loadModule(moduleName);
+            return localName ? get(localName, m) : m;
+        } catch (e) {
+            trace.error("Failed to resolve type moduleName={0}, localName={1}", moduleName, localName);
+            throw e;
+        }
+    }
+
+    async _loadModule(moduleName: string) {
+        trace.log("loadModule {0}", moduleName);
+
+        const m = await new Promise(fulfill => {
+            this._require([moduleName], fulfill);
+        });
+
+        return m;
+    }
+
+    _createContextRequire(moduleName: string) {
+        return createContextRequire(moduleName);
+    }
+
     async _visitRegistrations(data, name: _key) {
-        this._path.push(name);
+        this._enter(name);
 
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
@@ -30,14 +163,24 @@ export class Configuration {
         const o: ServiceMap = {};
         const keys = Object.keys(data);
 
-        const res = await Promise.all(keys.map(k => this._visit(data[k], k)));
-        keys.forEach((k, i) => {
-            o[k] = isDescriptor(res[i]) ? res[i] : new AggregateDescriptor(res[i]);
-        });
+        const services = await mapAll(data, async (v, k) => {
+            const d = await this._visit(v, k);
+            return isDescriptor(d) ? d : new AggregateDescriptor(d);
+        }) as ServiceMap;
 
-        this._path.pop();
+        this._leave();
 
-        return o;
+        return services;
+    }
+
+    _enter(name: _key) {
+        this._path.push(name);
+        trace.debug(">{0}", name);
+    }
+
+    _leave() {
+        const name = this._path.pop();
+        trace.debug("<{0}", name);
     }
 
     async _visit(data, name: string): Promise<any> {
@@ -59,37 +202,64 @@ export class Configuration {
         return this._visitObject(data, name);
     }
 
-    async _resolveType(moduleName: string, typeName: string): Promise<Constructor> {
+    async _visitObject(data: object, name: _key) {
+        if (data.constructor &&
+            data.constructor.prototype !== Object.prototype)
+            return new ValueDescriptor(data);
 
+        this._enter(name);
+
+        const v = await mapAll(data, delegate(this, "_visit"));
+
+        // TODO: handle inline descriptors properly
+        // const ex = {
+        //     activate(ctx) {
+        //         const value = ctx.activate(this.prop, "prop");
+        //         // some code
+        //     },
+        //     // will be turned to ReferenceDescriptor
+        //     prop: { $dependency: "depName" }
+        // };
+
+        this._leave();
+        return v;
     }
 
-    async _visitObject(data: object, name: _key): Promise<object> {
-        this._path.push(name);
-        this._path.pop();
+    async _visitArray(data: any[], name: _key) {
+        if (data.constructor &&
+            data.constructor.prototype !== Array.prototype)
+            return new ValueDescriptor(data);
+
+        this._enter(name);
+
+        const v = await mapAll(data, delegate(this, "_visit"));
+        this._leave();
+
+        return v;
     }
 
-    async _visitArray(data: any[], name: _key): Promise<any[]> {
-        this._path.push(name);
-        this._path.pop();
-    }
-
-    async _makeServiceParams(data: ServiceRegistration) {
-        const opts: any = {};
+    _makeServiceParams(data: ServiceRegistration) {
+        const opts: any = {
+            owner: this._container
+        };
         if (data.services)
-            opts.services = await this._visitRegistrations(data.services, "services");
+            opts.services = this._visitRegistrations(data.services, "services");
 
         if (data.inject) {
-            if (data.inject instanceof Array) {
-                this._path.push("inject");
-                opts.inject = Promise.all(data.inject.map((x, i) => this._visitObject(x, i)));
-                this._path.pop();
-            } else {
-                opts.inject = [this._visitObject(data.inject, "inject")];
-            }
+            this._path.push("inject");
+            opts.inject = mapAll(
+                data.inject instanceof Array ?
+                    data.inject :
+                    [data.inject],
+                delegate(this, "_visitObject")
+            );
+            this._leave();
         }
 
-        if (data.params)
-            opts.params = await this._visit(data.params, "params");
+        if ("params" in data)
+            opts.params = data.params instanceof Array ?
+                this._visitArray(data.params, "params") :
+                this._visit(data.params, "params");
 
         if (data.activation) {
             if (typeof (data.activation) === "string") {
@@ -120,23 +290,64 @@ export class Configuration {
 
         if (data.cleanup)
             opts.cleanup = data.cleanup;
+
+        return opts;
     }
 
-    async _visitValueRegistration(item: ValueRegistration, name: _key) {
-        this._path.push(name);
-        this._path.pop();
+    async _visitValueRegistration(data: ValueRegistration, name: _key) {
+        this._enter(name);
+        const d = data.parse ? new AggregateDescriptor(data.$value) : new ValueDescriptor(data.$value);
+        this._leave();
+        return d;
     }
 
-    async _visitDependencyRegistration(item: DependencyRegistration, name: _key) {
-        this._path.push(name);
-        this._path.pop();
+    async _visitDependencyRegistration(data: DependencyRegistration, name: _key) {
+        argumentNotEmptyString(data && data.$dependency, "data.$dependency");
+        this._enter(name);
+        const d = new ReferenceDescriptor({
+            name: data.$dependency,
+            lazy: data.lazy,
+            optional: data.optional,
+            default: data.default,
+            services: data.services && await this._visitRegistrations(data.services, "services")
+        });
+        this._leave();
+        return d;
     }
 
-    async _visitTypeRegistration(item: TypeRegistration, name: _key) {
-        argumentNotEmptyString(item.$type, "item.$type");
+    async _visitTypeRegistration(data: TypeRegistration, name: _key) {
+        argumentNotNull(data.$type, "data.$type");
+        this._enter(name);
+
+        const opts = this._makeServiceParams(data);
+        if (data.$type instanceof Function) {
+            opts.type = data.$type;
+        } else {
+            const [moduleName, typeName] = data.$type.split(":", 2);
+            opts.type = this._resolveType(moduleName, typeName);
+        }
+
+        const d = new TypeServiceDescriptor(
+            await mapAll(opts)
+        );
+
+        this._leave();
+
+        return d;
     }
 
-    async _visitFactoryRegistration(item: FactoryRegistration, name: _key) {
-        argumentNotEmptyString(item.$factory, "item.$type");
+    async _visitFactoryRegistration(data: FactoryRegistration, name: _key) {
+        argumentOfType(data.$factory, Function, "data.$type");
+        this._enter(name);
+
+        const opts = this._makeServiceParams(data);
+        opts.factory = opts.$factory;
+
+        const d = new FactoryServiceDescriptor(
+            await mapAll(opts)
+        );
+
+        this._leave();
+        return d;
     }
 }

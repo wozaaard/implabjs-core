@@ -1,8 +1,7 @@
 import { ActivationContext } from "./ActivationContext";
 import { Descriptor, ActivationType, ServiceMap, isDescriptor } from "./interfaces";
 import { Container } from "./Container";
-import { argumentNotNull, isPrimitive, oid, isPromise } from "../safe";
-import { Constructor, Factory } from "../interfaces";
+import { argumentNotNull, isPrimitive } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 
 let cacheId = 0;
@@ -57,10 +56,6 @@ export interface ServiceDescriptorParams {
 
     owner: Container;
 
-    type?: Constructor;
-
-    factory?: Factory;
-
     params?;
 
     inject?: object[];
@@ -79,10 +74,6 @@ export class ServiceDescriptor implements Descriptor {
 
     _services: ServiceMap;
 
-    _type: Constructor = null;
-
-    _factory: Factory = null;
-
     _params;
 
     _inject: object[];
@@ -99,15 +90,8 @@ export class ServiceDescriptor implements Descriptor {
 
         this._owner = opts.owner;
 
-        if (!(opts.type || opts.factory))
-            throw new Error(
-                "Either a type or a factory must be specified");
-
         if (opts.activation)
             this._activationType = opts.activation;
-
-        if (opts.type)
-            this._type = opts.type;
 
         if (opts.params)
             this._params = opts.params;
@@ -118,9 +102,6 @@ export class ServiceDescriptor implements Descriptor {
         if (opts.services)
             this._services = opts.services;
 
-        if (opts.factory)
-            this._factory = opts.factory;
-
         if (opts.cleanup) {
             if (!(typeof (opts.cleanup) === "string" || opts.cleanup instanceof Function))
                 throw new Error(
@@ -128,23 +109,15 @@ export class ServiceDescriptor implements Descriptor {
 
             this._cleanup = opts.cleanup;
         }
-
-        if (this._activationType === ActivationType.Singleton) {
-            const tof = this._type || this._factory;
-
-            // create the persistent cache identifier for the type
-            if (isPrimitive(tof))
-                this._cacheId = tof;
-            else
-                this._cacheId = oid(tof);
-        } else {
-            this._cacheId = ++cacheId;
-        }
     }
 
     activate(context: ActivationContext) {
         // if we have a local service records, register them first
         let instance;
+
+        // ensure we have a cache id
+        if (!this._cacheId)
+            this._cacheId = ++cacheId;
 
         switch (this._activationType) {
             case ActivationType.Singleton: // SINGLETON
@@ -224,6 +197,10 @@ export class ServiceDescriptor implements Descriptor {
         return this._instance;
     }
 
+    _factory(...params: any[]): any {
+        throw Error("Not implemented");
+    }
+
     _create(context: ActivationContext) {
         trace.debug(`constructing ${context._name}`);
 
@@ -237,21 +214,6 @@ export class ServiceDescriptor implements Descriptor {
         }
 
         let instance;
-
-        if (!this._factory) {
-            const ctor = this._type;
-            if (this._params && this._params.length) {
-                this._factory = (...args) => {
-                    const t = Object.create(ctor.prototype);
-                    const inst = ctor.apply(t, args);
-                    return isPrimitive(inst) ? t : inst;
-                };
-            } else {
-                this._factory = () => {
-                    return new ctor();
-                };
-            }
-        }
 
         if (this._params === undefined) {
             instance = this._factory();
@@ -269,20 +231,5 @@ export class ServiceDescriptor implements Descriptor {
         }
 
         return instance;
-    }
-
-    // @constructor {singleton} foo/bar/Baz
-    // @factory {singleton}
-    toString() {
-        const parts = [];
-
-        parts.push(this._type ? "@constructor" : "@factory");
-
-        parts.push(ActivationType[this._activationType]);
-
-        if (typeof (this._type) === "string")
-            parts.push(this._type);
-
-        return parts.join(" ");
     }
 }
