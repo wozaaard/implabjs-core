@@ -9,13 +9,6 @@ import { Bar } from "./mock/Bar";
 import { isNull } from "@implab/core/safe";
 
 test("Container register/resolve tests", async t => {
-    const writer = new TapeWriter(t);
-
-    TraceSource.on(ts => {
-        ts.level = DebugLevel;
-        writer.writeEvents(ts.events);
-    });
-
     const container = new Container();
 
     const connection1 = "db://localhost";
@@ -30,7 +23,7 @@ test("Container register/resolve tests", async t => {
         "register ValueDescriptor"
     );
 
-    t.equals(container.getService("connection"), connection1, "resolve string value");
+    t.equals(container.resolve("connection"), connection1, "resolve string value");
 
     t.doesNotThrow(
         () => container.register(
@@ -43,19 +36,11 @@ test("Container register/resolve tests", async t => {
         "register AggregateDescriptor"
     );
 
-    const dbParams = container.getService("dbParams");
+    const dbParams = container.resolve("dbParams");
     t.equals(dbParams.connection, connection1, "should get string value 'dbParams.connection'");
-
-    writer.destroy();
 });
 
 test("Container configure/resolve tests", async t => {
-    const writer = new TapeWriter(t);
-
-    TraceSource.on(ts => {
-        ts.level = DebugLevel;
-        writer.writeEvents(ts.events);
-    });
 
     const container = new Container();
 
@@ -90,17 +75,9 @@ test("Container configure/resolve tests", async t => {
 
     t.throws(() => container.resolve("bar"), "should not resolve dependency 'db'");
 
-    writer.destroy();
 });
 
 test("Load configuration from module", async t => {
-    const writer = new TapeWriter(t);
-
-    TraceSource.on(ts => {
-        ts.level = DebugLevel;
-        writer.writeEvents(ts.events);
-    });
-
     const container = new Container();
 
     await container.configure("test/mock/config1");
@@ -113,6 +90,4 @@ test("Load configuration from module", async t => {
     const b1 = container.resolve("bar");
 
     t.assert(!isNull(b1), "foo should be not null");
-
-    writer.destroy();
 });

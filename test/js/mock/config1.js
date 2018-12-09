@@ -1,10 +1,10 @@
 define({
     foo: {
-        $type: "./Foo#Foo"
+        $type: "./Foo:Foo"
     },
 
     bar: {
-        $type: "./Bar#Bar",
+        $type: "./Bar:Bar",
         params: {
             db: {
                 provider: {

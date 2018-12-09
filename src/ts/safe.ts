@@ -1,5 +1,7 @@
 let _nextOid = 0;
-const _oid = typeof Symbol === "function" ? Symbol("__oid") : "__oid";
+const _oid = typeof Symbol === "function" ?
+    Symbol("__implab__oid__") :
+    "__implab__oid__";
 
 export function oid(instance: object): string {
     if (isNull(instance))
