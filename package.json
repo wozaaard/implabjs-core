@@ -16,7 +16,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
+  "peerDependencies": {
     "dojo": "^1.10.0"
   },
   "devDependencies": {
@@ -24,7 +24,8 @@
     "tape": "latest",
     "@types/tape": "latest",
     "requirejs": "latest",
-    "faucet": "latest"
+    "faucet": "latest",
+    "dojo": "^1.10.0"
   },
   "types": "main.d.ts"
 }

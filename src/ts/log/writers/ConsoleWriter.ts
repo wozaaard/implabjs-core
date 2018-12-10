@@ -1,12 +1,13 @@
 import { IObservable, IDestroyable, ICancellation } from "../../interfaces";
+import { TraceEvent, LogLevel, WarnLevel, DebugLevel } from "../TraceSource";
 import { Cancellation } from "../../Cancellation";
-import { TraceEvent, LogLevel, WarnLevel } from "../TraceSource";
+import { destroy } from "../../safe";
 
 export class ConsoleWriter implements IDestroyable {
     readonly _subscriptions = new Array<IDestroyable>();
 
     writeEvents(source: IObservable<TraceEvent>, ct: ICancellation = Cancellation.none) {
-        var subscription = source.on(this.writeEvent.bind(this));
+        const subscription = source.on(this.writeEvent.bind(this));
         if (ct.isSupported()) {
             ct.register(subscription.destroy.bind(subscription));
         }
@@ -14,16 +15,22 @@ export class ConsoleWriter implements IDestroyable {
     }
 
     writeEvent(next: TraceEvent) {
-        if (next.level >= LogLevel) {
+        if (next.level >= DebugLevel) {
+            // tslint:disable-next-line
+            console.debug(next.source.id.toString(), next.arg);
+        } else if (next.level >= LogLevel) {
+            // tslint:disable-next-line
             console.log(next.source.id.toString(), next.arg);
-        } else if(next.level >= WarnLevel) {
+        } else if (next.level >= WarnLevel) {
+            // tslint:disable-next-line
             console.warn(next.source.id.toString(), next.arg);
         } else {
+            // tslint:disable-next-line
             console.error(next.source.id.toString(), next.arg);
         }
     }
 
     destroy() {
-        this._subscriptions.forEach(x => x.destroy());
+        this._subscriptions.forEach(destroy);
     }
 }
