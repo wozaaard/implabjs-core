@@ -140,7 +140,7 @@ export class Configuration {
     }
 
     async _loadModule(moduleName: string) {
-        trace.log("loadModule {0}", moduleName);
+        trace.debug("loadModule {0}", moduleName);
 
         const m = await new Promise(fulfill => {
             this._require([moduleName], fulfill);

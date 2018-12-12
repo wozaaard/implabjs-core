@@ -229,7 +229,6 @@ export class ServiceDescriptor implements Descriptor {
                     injectMethod(instance, m, context, spec[m]);
             });
         }
-
         return instance;
     }
 }
