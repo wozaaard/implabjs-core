@@ -3,7 +3,6 @@
         "target": "es3",
         "module": "amd",
         "sourceMap": true,
-        "outDir" : "build/dist",
         "declaration": true,
         "lib": [
             "es5",
@@ -12,6 +11,6 @@
         ]
     },
     "include" : [
-        "src/ts/**/*.ts"
+        "ts/**/*.ts"
     ]
 }

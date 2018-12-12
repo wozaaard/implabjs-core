@@ -3,13 +3,12 @@
         "target": "es3",
         "module": "amd",
         "sourceMap": true,
-        "outDir" : "build/test",
         "moduleResolution": "node",
         "lib": [
             "es2015"
         ]
     },
     "include" : [
-        "test/ts/**/*.ts"
+        "ts/**/*.ts"
     ]
 }

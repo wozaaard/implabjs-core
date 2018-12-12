@@ -2,15 +2,26 @@ if (release != 'rtm') {
     version += "-$release"
 }
 
-println "version: $version"
+if(!npmName)
+    npmName = name;
 
-def distDir = "$buildDir/dist"
-def testDir = "$buildDir/test"
+ext.packageName="$npmScope/$npmName";
+
+def packageDir = "$buildDir/dist"
+def distDir = "$packageDir/$platform"
+def testDir = "$packageDir/$platform"
+
+task printVersion {
+    println "version: $version"
+    println "packageName: $packageName"
+    println "platform: $platform"
+}
+
 
 task clean {
     doLast {
         delete buildDir
-        delete 'node_modules/@implab'
+        delete "node_modules/$packageName"
     }
 }
 
@@ -40,7 +51,7 @@ task _buildTs(dependsOn: _npmInstall, type:Exec) {
     inputs.file('tsconfig.json')
     outputs.dir(distDir)
 
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsconfig.json'
+    commandLine 'node_modules/.bin/tsc', '-p', 'src/tsconfig.json', '--outDir', distDir
 }
 
 task _packageMeta(type: Copy) {
@@ -64,7 +75,7 @@ task build(dependsOn: [_legacyJs, _npmInstall, _buildTs, _packageMeta]) {
 task _localInstall(dependsOn: build, type: Exec) {
     inputs.file("$distDir/package.json")
     outputs.upToDateWhen {
-        new File("$projectDir/node_modules/@implab/core").exists()
+        new File("$projectDir/node_modules/$packageName").exists()
     }
 
     commandLine 'npm', 'install', '--no-save', '--force', distDir
@@ -77,10 +88,10 @@ task copyJsTests(type: Copy) {
 
 task buildTests(dependsOn: _localInstall, type: Exec) {
     inputs.dir('test/ts')
-    inputs.file('tsconfig.test.json')
+    inputs.file('test/tsconfig.json')
     outputs.dir(testDir)
-
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsconfig.test.json'
+    
+    commandLine 'node_modules/.bin/tsc', '-p', 'test/tsconfig.json', '--outDir', distDir
 }
 
 task test(dependsOn: [copyJsTests, buildTests], type: Exec) {
