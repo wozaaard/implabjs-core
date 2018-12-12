@@ -15,12 +15,18 @@ export class TypeServiceDescriptor extends ServiceDescriptor {
 
         const ctor = this._type = opts.type;
 
-        if (this._params && this._params.length) {
-            this._factory = (...args) => {
-                const t = Object.create(ctor.prototype);
-                const inst = ctor.apply(t, args);
-                return isPrimitive(inst) ? t : inst;
-            };
+        if (this._params) {
+            if (this._params.length) {
+                this._factory = (...args) => {
+                    const t = Object.create(ctor.prototype);
+                    const inst = ctor.apply(t, args);
+                    return isPrimitive(inst) ? t : inst;
+                };
+            } else {
+                this._factory = arg => {
+                    return new ctor(arg);
+                };
+            }
         } else {
             this._factory = () => {
                 return new ctor();

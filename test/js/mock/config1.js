@@ -10,6 +10,9 @@ define({
                 provider: {
                     $dependency: "db"
                 }
+            },
+            foo: {
+                $type: "./Foo:Foo"
             }
         }
     },
