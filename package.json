@@ -23,6 +23,7 @@
     "typescript": "latest",
     "tape": "latest",
     "@types/tape": "latest",
+    "@types/requirejs": "latest",
     "requirejs": "latest",
     "faucet": "latest",
     "dojo": "^1.10.0"
