@@ -20,7 +20,7 @@ import { Container } from "./Container";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
 import { TypeServiceDescriptor } from "./TypeServiceDescriptor";
 import { FactoryServiceDescriptor } from "./FactoryServiceDescriptor";
-import { rjs, createContextRequire, RequireFn } from "./RequireJsHelper";
+import { rjs, createContextRequire, RequireFn } from "../../amd/ts/RequireJsHelper";
 import { TraceSource } from "../log/TraceSource";
 import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";

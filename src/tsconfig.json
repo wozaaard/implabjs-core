@@ -7,10 +7,16 @@
         "lib": [
             "es5",
             "es2015.promise",
-            "es2015.symbol"
-        ]
+            "es2015.symbol",
+            "dom"
+        ],
+        "rootDirs": [
+            "ts",
+            "amd/ts"
+        ],
+        "types": []
     },
     "include" : [
-        "ts/**/*.ts"
+        "ts/**/*.ts", "amd/ts/**/*.ts"
     ]
 }
