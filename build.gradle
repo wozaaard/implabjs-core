@@ -12,9 +12,11 @@ def distDir = "$packageDir/$platform"
 def testDir = "$packageDir/$platform"
 
 task printVersion {
-    println "version: $version"
-    println "packageName: $packageName"
-    println "platform: $platform"
+    doLast {
+        println "version: $version"
+        println "packageName: $packageName"
+        println "platform: $platform"
+    }
 }
 
 
@@ -48,10 +50,14 @@ task _legacyJs(type:Copy) {
 
 task _buildTs(dependsOn: _npmInstall, type:Exec) {
     inputs.dir('src/ts')
-    inputs.file('tsconfig.json')
+    inputs.file('src/tsconfig.json')
     outputs.dir(distDir)
 
-    commandLine 'node_modules/.bin/tsc', '-p', 'src/tsconfig.json', '--outDir', distDir
+    commandLine 'node_modules/.bin/tsc',
+        '-p', 'src/tsconfig.json',
+        '--outDir', distDir,
+        '--listFiles',
+        '--traceResolution'
 }
 
 task _packageMeta(type: Copy) {

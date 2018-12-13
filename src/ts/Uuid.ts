@@ -6,7 +6,9 @@
 //     Copyright (c) 2010-2012 Robert Kieffer
 //     MIT License - http://opensource.org/licenses/mit-license.php
 
-declare var window: any;
+declare const window: any;
+declare const require;
+declare const Buffer;
 
 const _window: any = "undefined" !== typeof window ? window : null;
 
