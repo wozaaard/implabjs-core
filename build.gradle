@@ -44,20 +44,19 @@ task _npmInstall() {
 }
 
 task _legacyJs(type:Copy) {
-    from 'src/js/'
+    from 'src/main/js/'
     into distDir
 }
 
 task _buildTs(dependsOn: _npmInstall, type:Exec) {
-    inputs.dir('src/ts')
+    inputs.dir('src/main/ts')
     inputs.file('src/tsconfig.json')
+    inputs.file('src/main/tsconfig.json')
     outputs.dir(distDir)
 
     commandLine 'node_modules/.bin/tsc',
-        '-p', 'src/tsconfig.json',
-        '--outDir', distDir,
-        '--listFiles',
-        '--traceResolution'
+        '-p', 'src/main/tsconfig.json',
+        '--outDir', distDir
 }
 
 task _packageMeta(type: Copy) {

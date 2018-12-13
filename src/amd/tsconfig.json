@@ -1,0 +1,11 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "@types/requirejs"
+        ]
+    },
+    "include": [
+        "ts/**/*.ts"
+    ]
+}

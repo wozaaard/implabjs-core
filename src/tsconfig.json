@@ -4,6 +4,8 @@
         "module": "amd",
         "sourceMap": true,
         "declaration": true,
+        "moduleResolution": "node",
+        "listFiles": true,
         "lib": [
             "es5",
             "es2015.promise",
@@ -11,12 +13,9 @@
             "dom"
         ],
         "rootDirs": [
-            "ts",
+            "main/ts",
             "amd/ts"
         ],
         "types": []
-    },
-    "include" : [
-        "ts/**/*.ts", "amd/ts/**/*.ts"
-    ]
+    }
 }
