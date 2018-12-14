@@ -1,11 +1,6 @@
 import { Uuid } from "../Uuid";
-import { argumentNotEmptyString } from "../safe";
+import { argumentNotEmptyString, argumentNotNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
-
-export const rjs = require;
-
-declare function define(name: string, modules: string[], cb?: (...args: any[]) => any, eb?: (e) => any): void;
-declare function define(modules: string[], cb?: (...args: any[]) => any, eb?: (e) => any): void;
 
 const trace = TraceSource.get("@implab/core/di/RequireJsHelper");
 
@@ -25,11 +20,21 @@ export async function createContextRequire(moduleName: string): Promise<Require>
 
     trace.debug(`define shim ${shim}`);
 
-    return new Promise<Require>(fulfill => {
+    return new Promise<Require>(cb => {
         define(shim, ["require"], r => {
             trace.debug("shim resolved");
             return r;
         });
-        require([shim], fulfill);
+        require([shim], cb);
     });
+}
+
+export function makeResolver(req: Require) {
+    argumentNotNull(req, "req");
+
+    return (name: string) => {
+        return new Promise<any>((cb, eb) => {
+            req([name], cb, eb);
+        });
+    };
 }

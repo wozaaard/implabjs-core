@@ -99,7 +99,7 @@ export class Container {
      *  The function which will be used to load a configuration or types for services.
      *
      */
-    async configure(config: string | object, opts?: any, ct = Cancellation.none) {
+    async configure(config: string | object, opts?, ct = Cancellation.none) {
         const c = new Configuration(this);
 
         if (typeof (config) === "string") {
