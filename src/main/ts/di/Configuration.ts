@@ -20,7 +20,6 @@ import { Container } from "./Container";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
 import { TypeServiceDescriptor } from "./TypeServiceDescriptor";
 import { FactoryServiceDescriptor } from "./FactoryServiceDescriptor";
-import { rjs, createContextRequire } from "./RequireJsHelper";
 import { TraceSource } from "../log/TraceSource";
 import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";
@@ -44,9 +43,7 @@ async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
     }
 }
 
-interface MapOf<T> {
-    [key: string]: T;
-}
+type Resolver = (qname: string) => any;
 
 type _key = string | number;
 
@@ -60,7 +57,7 @@ export class Configuration {
 
     _configName: string;
 
-    _require = rjs;
+    _require: Resolver;
 
     constructor(container: Container) {
         argumentNotNull(container, container);
@@ -68,37 +65,15 @@ export class Configuration {
         this._path = [];
     }
 
-    async loadConfiguration(moduleName: string, ct = Cancellation.none) {
-        argumentNotEmptyString(moduleName, "moduleName");
-
-        trace.log("loadConfiguration {0}", moduleName);
-
-        this._configName = moduleName;
-
-        const config = await this._loadModule(moduleName);
-
-        this._require = await this._createContextRequire(moduleName);
-
-        let services: ServiceMap;
-
-        try {
-            services = await this._visitRegistrations(config, moduleName);
-        } catch (e) {
-            throw this._makeError(e);
-        }
-
-        this._container.register(services);
-    }
-
-    async applyConfiguration(data: object, contextRequire?: Require, ct = Cancellation.none) {
+    async applyConfiguration(data: object, resolver?: Resolver, ct = Cancellation.none) {
         argumentNotNull(data, "data");
 
         trace.log("applyConfiguration");
 
         this._configName = "$";
 
-        if (contextRequire)
-            this._require = contextRequire;
+        if (resolver)
+            this._require = resolver;
 
         let services: ServiceMap;
 
@@ -142,15 +117,9 @@ export class Configuration {
     async _loadModule(moduleName: string) {
         trace.debug("loadModule {0}", moduleName);
 
-        const m = await new Promise(fulfill => {
-            this._require([moduleName], fulfill);
-        });
+        const m = await this._require(moduleName);
 
         return m;
-    }
-
-    _createContextRequire(moduleName: string) {
-        return createContextRequire(moduleName);
     }
 
     async _visitRegistrations(data, name: _key) {

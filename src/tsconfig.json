@@ -14,7 +14,8 @@
         ],
         "rootDirs": [
             "main/ts",
-            "amd/ts"
+            "amd/ts",
+            "cjs/ts"
         ],
         "types": []
     }
