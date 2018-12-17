@@ -2,18 +2,13 @@ var requirejs = require('requirejs');
 
 requirejs.config({
     baseUrl: '.',
-    map: {
-        "*": {
-            "@implab/core": "core"
-        }
-    },
     packages: [{
-            name: "core",
-            location: "build/dist"
+            name: "@implab/core",
+            location: "build/dist/amd"
         },
         {
             name: "test",
-            location: "build/test"
+            location: "build/test/amd"
         },
         {
             name: "dojo",

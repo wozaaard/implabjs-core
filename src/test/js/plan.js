@@ -1,4 +1,8 @@
-//define(["./ActivatableTests", "./trace-test", "./TraceSourceTests", "./CancellationTests"]);
-//define(["./CancellationTests"]);
-//define(["./ObservableTests"]);
-define(["./ContainerTests"]);
+define([
+    "./ActivatableTests",
+    "./trace-test",
+    "./TraceSourceTests",
+    "./CancellationTests",
+    "./ObservableTests",
+    "./ContainerTests"
+]);

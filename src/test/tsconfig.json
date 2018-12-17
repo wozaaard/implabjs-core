@@ -1,12 +1,13 @@
 {
+    "extends": "../tsconfig",
     "compilerOptions": {
-        "target": "es3",
-        "module": "amd",
-        "sourceMap": true,
-        "moduleResolution": "node",
-        "lib": [
-            "es2015"
-        ]
+        "rootDir": "ts",
+        "baseUrl": ".",
+        "paths": {
+            "@implab/core/*": [
+                "../../build/dist/amd/*"
+            ]
+        }
     },
     "include" : [
         "ts/**/*.ts"
