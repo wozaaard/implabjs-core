@@ -26,6 +26,13 @@ import { Cancellation } from "../Cancellation";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 
+declare const define;
+declare const require;
+
+function hasAmdLoader() {
+    return (typeof define === "function" && define.amd);
+}
+
 async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
@@ -63,6 +70,25 @@ export class Configuration {
         argumentNotNull(container, container);
         this._container = container;
         this._path = [];
+    }
+
+    async loadConfiguration(moduleName: string, ct = Cancellation.none) {
+        argumentNotEmptyString(moduleName, "moduleName");
+        // TODO remove the code below somewehere else
+        if (hasAmdLoader()) {
+            // if we have a requirejs loader, use it directly
+            // don't rely on typescript 'import' function
+            const m = await new Promise<any>(cb => require(["./RequireJsHelper"], cb));
+            const r = m.makeResolver(require);
+            const config = await r(moduleName);
+
+            return this.applyConfiguration(
+                config,
+                m.makeResolver(await m.createContextRequire(moduleName))
+            );
+        } else {
+            throw new Error("This feature is supported only with the amd loader");
+        }
     }
 
     async applyConfiguration(data: object, resolver?: Resolver, ct = Cancellation.none) {

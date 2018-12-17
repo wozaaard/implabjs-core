@@ -1,6 +1,6 @@
 {
     "name": "${packageName}",
-    "version": "${verstion}",
+    "version": "${version}",
     "description": "${description}",
     "main": "main.js",
     "keywords": [

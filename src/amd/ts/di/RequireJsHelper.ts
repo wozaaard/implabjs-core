@@ -1,8 +1,9 @@
 import { Uuid } from "../Uuid";
 import { argumentNotEmptyString, argumentNotNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
+import m = require("module");
 
-const trace = TraceSource.get("@implab/core/di/RequireJsHelper");
+const trace = TraceSource.get(m.id);
 
 export async function createContextRequire(moduleName: string): Promise<Require> {
     argumentNotEmptyString(moduleName, "moduleName");
