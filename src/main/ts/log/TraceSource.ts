@@ -1,7 +1,6 @@
 import * as format from "../text/format";
-import { argumentNotNull } from "../safe";
 import { Observable } from "../Observable";
-import { IDestroyable } from "../interfaces";
+import { Registry } from "./Registry";
 
 export const DebugLevel = 400;
 
@@ -13,91 +12,33 @@ export const ErrorLevel = 100;
 
 export const SilentLevel = 0;
 
-export class TraceEvent {
+export interface TraceEvent {
     readonly source: TraceSource;
 
     readonly level: number;
 
     readonly arg: any;
-
-    constructor(source: TraceSource, level: number, arg: any) {
-        this.source = source;
-        this.level = level;
-        this.arg = arg;
-    }
-}
-
-class Registry {
-    static readonly instance = new Registry();
-
-    private _registry: object = new Object();
-    private _listeners: object = new Object();
-    private _nextCookie: number = 1;
-
-    get(id: any): TraceSource {
-        argumentNotNull(id, "id");
-
-        if (this._registry[id])
-            return this._registry[id];
-
-        var source = new TraceSource(id);
-        this._registry[id] = source;
-        this._onNewSource(source);
-
-        return source;
-    }
-
-    add(id: any, source: TraceSource) {
-        argumentNotNull(id, "id");
-        argumentNotNull(source, "source");
-
-        this._registry[id] = source;
-        this._onNewSource(source);
-    }
-
-    _onNewSource(source: TraceSource) {
-        for (let i in this._listeners)
-            this._listeners[i].call(null, source);
-    }
-
-    on(handler: (source: TraceSource) => void): IDestroyable {
-        argumentNotNull(handler, "handler");
-        var me = this;
-
-        var cookie = this._nextCookie++;
-
-        this._listeners[cookie] = handler;
-
-        for (let i in this._registry)
-            handler(this._registry[i]);
-
-        return {
-            destroy() {
-                delete me._listeners[cookie];
-            }
-        };
-    }
 }
 
 export class TraceSource {
-    readonly id: any
+    readonly id: any;
 
-    level: number
+    level: number;
 
-    readonly events: Observable<TraceEvent>
+    readonly events: Observable<TraceEvent>;
 
-    _notifyNext: (arg: TraceEvent) => void
+    _notifyNext: (arg: TraceEvent) => void;
 
     constructor(id: any) {
 
         this.id = id || new Object();
-        this.events = new Observable((next) => {
+        this.events = new Observable(next => {
             this._notifyNext = next;
-        })
+        });
     }
 
     protected emit(level: number, arg: any) {
-        this._notifyNext(new TraceEvent(this, level, arg));
+        this._notifyNext({ source: this, level, arg});
     }
 
     isDebugEnabled() {
@@ -136,7 +77,7 @@ export class TraceSource {
 
     /**
      * Traces a error.
-     * 
+     *
      * @param msg the message.
      * @param args parameters which will be substituted in the message.
      */
@@ -148,7 +89,7 @@ export class TraceSource {
     /**
      * Checks whether the specified level is enabled for this
      * trace source.
-     * 
+     *
      * @param level the trace level which should be checked.
      */
     isEnabled(level: number) {
@@ -157,7 +98,7 @@ export class TraceSource {
 
     /**
      * Traces a raw event, passing data as it is to the underlying listeners
-     * 
+     *
      * @param level the level of the event
      * @param arg the data of the event, can be a simple string or any object.
      */
@@ -169,7 +110,7 @@ export class TraceSource {
     /**
      * Register the specified handler to be called for every new and already
      * created trace source.
-     * 
+     *
      * @param handler the handler which will be called for each trace source
      */
     static on(handler: (source: TraceSource) => void) {
@@ -178,7 +119,7 @@ export class TraceSource {
 
     /**
      * Creates or returns already created trace source for the specified id.
-     * 
+     *
      * @param id the id for the trace source
      */
     static get(id: any) {
