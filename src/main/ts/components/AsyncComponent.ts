@@ -7,19 +7,19 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
 
     _completion: Promise<void> = Promise.resolve();
 
-    getCompletion() { return this._completion };
+    getCompletion() { return this._completion; }
 
     runOperation(op: (ct: ICancellation) => any, ct: ICancellation = Cancellation.none) {
         // create inner cancellation bound to the passed cancellation token
         let h: IDestroyable;
-        let inner = new Cancellation(cancel => {
+        const inner = new Cancellation(cancel => {
 
             this._cancel = cancel;
             h = ct.register(cancel);
         });
 
         // TODO create cancellation source here
-        let guard = async () => {
+        const guard = async () => {
             try {
                 await op(inner);
             } finally {
@@ -28,7 +28,7 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
                 destroy(h);
                 this._cancel = null;
             }
-        }
+        };
 
         return this._completion = guard();
     }
