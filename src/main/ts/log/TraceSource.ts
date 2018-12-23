@@ -1,6 +1,6 @@
-import * as format from "../text/format";
 import { Observable } from "../Observable";
 import { Registry } from "./Registry";
+import { format } from "../text/FormatString";
 
 export const DebugLevel = 400;
 
@@ -47,7 +47,7 @@ export class TraceSource {
 
     debug(msg: string, ...args: any[]) {
         if (this.isEnabled(DebugLevel))
-            this.emit(DebugLevel, format.apply(null, arguments));
+            this.emit(DebugLevel, format(msg, args));
     }
 
     isLogEnabled() {
@@ -56,7 +56,7 @@ export class TraceSource {
 
     log(msg: string, ...args: any[]) {
         if (this.isEnabled(LogLevel))
-            this.emit(LogLevel, format.apply(null, arguments));
+            this.emit(LogLevel, format(msg, args));
     }
 
     isWarnEnabled() {
@@ -65,7 +65,7 @@ export class TraceSource {
 
     warn(msg: string, ...args: any[]) {
         if (this.isEnabled(WarnLevel))
-            this.emit(WarnLevel, format.apply(null, arguments));
+            this.emit(WarnLevel, format(msg, args));
     }
 
     /**
