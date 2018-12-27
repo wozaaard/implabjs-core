@@ -1,7 +1,8 @@
-import { isPrimitive, isNumber, isNull } from "../safe";
+import { isPrimitive, isNull, each } from "../safe";
+import { MapOf } from "../interfaces";
 
 type SubstFn = (name: string, format?: string) => string;
-type FormatFn = (subst: SubstFn) => string;
+type TemplateFn = (subst: SubstFn) => string;
 type ConvertFn = (value: any, format?: string) => string;
 
 const map = {
@@ -88,12 +89,10 @@ function _compile(str: string) {
 
     // the code for this function is generated from the template
     // tslint:disable-next-line:function-constructor
-    return new Function("subst", code.join("\n")) as FormatFn;
+    return new Function("subst", code.join("\n")) as TemplateFn;
 }
 
-const cache = {} as {
-    [i: string]: FormatFn
-};
+const cache: MapOf<TemplateFn> = {};
 
 export function compile(template: string) {
     let compiled = cache[template];
@@ -104,11 +103,8 @@ export function compile(template: string) {
     return compiled;
 }
 
-function convert(value: any, pattern) {
-    if (!pattern)
-        return value.toString();
-
-    if (pattern.toLocaleLowerCase() === "json") {
+function defaultConverter(value: any, pattern: string) {
+    if (pattern && pattern.toLocaleLowerCase() === "json") {
         const seen = [];
         return JSON.stringify(value, (k, v) => {
             if (!isPrimitive(v)) {
@@ -123,38 +119,55 @@ function convert(value: any, pattern) {
                 return v;
             }
         }, 2);
-    }
-
-    defaultFormatter(value, pattern);
-}
-
-function defaultFormatter(value: any, pattern: string) {
-    if (value instanceof Date) {
+    } else if (isNull(value)) {
+        return "";
+    } else if (value instanceof Date) {
         return value.toISOString();
     } else {
-        return value.toString(pattern);
+        return pattern ? value.toString(pattern) : value.toString();
     }
 }
 
-export function format(fmt: string, ...args: any[]) {
-    if (args.length === 0)
-        return fmt;
+export class Formatter {
+    _converters: ConvertFn[];
 
-    const template = compile(fmt);
+    constructor(converters?: ConvertFn[]) {
+        this._converters = converters || [];
+        this._converters.push(defaultConverter);
+    }
 
-    return template((name, pattern) => {
-        const value = args[name];
-        return !isNull(value) ? convert(value, pattern) : "";
-    });
-}
+    convert(value: any, pattern: string) {
+        for (const c of this._converters) {
+            const res = c(value, pattern);
+            if (!isNull(res))
+                return res;
+        }
+        return "";
+    }
 
-export function compileFormat(fmt: string) {
-    const template = compile(fmt);
+    format(msg: string, ...args: any[]) {
+        const template = compile(msg);
 
-    return (...args: any[]) => {
         return template((name, pattern) => {
             const value = args[name];
-            return !isNull(value) ? convert(value, pattern) : "";
+            return !isNull(value) ? this.convert(value, pattern) : "";
         });
-    };
+
+    }
+
+    compile(msg: string) {
+        const template = compile(msg);
+        return (...args: any[]) => {
+            return template((name, pattern) => {
+                const value = args[name];
+                return !isNull(value) ? this.convert(value, pattern) : "";
+            });
+        };
+    }
+}
+
+const _default = new Formatter();
+
+export function format(msg: string, ...args: any[]) {
+    return _default.format(msg, ...args);
 }

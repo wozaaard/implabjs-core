@@ -1,14 +1,15 @@
 import { format as dojoFormatNumber } from "dojo/number";
 import { format as dojoFormatDate } from "dojo/date/locale";
+import { Formatter } from "./StringFormat";
 
-import { isNumber } from "./safe";
+import { isNumber } from "../safe";
 
 interface NumberFormatOptions {
     round?: number;
     pattern?: string;
 }
 
-function formatNumber(value: any, pattern: string) {
+function convertNumber(value: any, pattern: string) {
     if (isNumber(value)) {
         const nopt = {} as NumberFormatOptions;
         if (pattern.indexOf("!") === 0) {
@@ -21,7 +22,7 @@ function formatNumber(value: any, pattern: string) {
     }
 }
 
-function formatDate(value: any, pattern: string) {
+function convertDate(value: any, pattern: string) {
     if (value instanceof Date) {
         const m = pattern.match(/^(\w+)-(\w+)$/);
         if (m)
@@ -38,3 +39,9 @@ function formatDate(value: any, pattern: string) {
             });
     }
 }
+
+const _formatter = new Formatter([convertNumber, convertDate]);
+
+export = function format(msg: string, ...args: any[]) {
+    return _formatter.format.apply(msg, ...args);
+};

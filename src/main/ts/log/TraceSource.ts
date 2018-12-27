@@ -1,6 +1,6 @@
 import { Observable } from "../Observable";
 import { Registry } from "./Registry";
-import { format } from "../text/FormatString";
+import { format } from "../text/StringFormat";
 
 export const DebugLevel = 400;
 
@@ -38,7 +38,7 @@ export class TraceSource {
     }
 
     protected emit(level: number, arg: any) {
-        this._notifyNext({ source: this, level, arg});
+        this._notifyNext({ source: this, level, arg });
     }
 
     isDebugEnabled() {
