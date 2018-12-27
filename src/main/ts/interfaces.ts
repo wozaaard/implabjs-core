@@ -2,6 +2,10 @@ export type Constructor<T = {}> = new (...args: any[]) => T;
 
 export type Factory<T = {}> = (...args: any[]) => T;
 
+export interface MapOf<T> {
+    [key: string]: T;
+}
+
 export interface IDestroyable {
     destroy();
 }
