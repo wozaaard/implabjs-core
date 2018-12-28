@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "es3",
+        "sourceMap": true,
+        "declaration": true,
+        "moduleResolution": "node",
+        "noEmitOnError": true,
+        "listFiles": true,
+        "lib": [
+            "es5",
+            "es2015.promise",
+            "es2015.symbol",
+            "dom"
+        ],
+        "types": []
+    },
+    "files": []
+}

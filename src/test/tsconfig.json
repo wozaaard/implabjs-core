@@ -1,0 +1,15 @@
+{
+    "extends": "../tsconfig",
+    "compilerOptions": {
+        "rootDir": "ts",
+        "baseUrl": ".",
+        "paths": {
+            "@implab/core/*": [
+                "../../build/dist/amd/*"
+            ]
+        }
+    },
+    "include" : [
+        "ts/**/*.ts"
+    ]
+}

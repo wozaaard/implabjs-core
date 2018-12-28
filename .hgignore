@@ -2,3 +2,4 @@ syntax: glob
 .gradle/
 build/
 node_modules/
+src/typings/
