@@ -2,15 +2,41 @@ if (release != 'rtm') {
     version += "-$release"
 }
 
-println "version: $version"
+if(!npmName)
+    npmName = name;
 
-def distDir = "$buildDir/dist"
-def testDir = "$buildDir/test"
+if(!["amd", "cjs"].contains(platform))
+    throw new Exception("Invalid platform specified: $platform");
+
+def moduleTypes = [
+    "amd": "amd",
+    "cjs": "commonjs"
+]
+
+ext.packageName="$npmScope/$npmName-$platform";
+
+def srcDir = "$projectDir/src"
+def typingsDir = "$srcDir/typings"
+def distDir = "$buildDir/dist/$platform"
+def testDir = "$buildDir/test/$platform"
+def moduleType = moduleTypes[platform]
+
+def sourceSets = ["main", "amd", "cjs", "test"];
+
+task printVersion {
+    doLast {
+        println "version: $version"
+        println "packageName: $packageName"
+        println "platform: $platform"
+        println "module: $moduleType"
+    }
+}
 
 task clean {
     doLast {
         delete buildDir
-        delete 'node_modules/@implab'
+        delete "node_modules/$packageName"
+        delete typingsDir
     }
 }
 
@@ -30,65 +56,79 @@ task _npmInstall() {
     }
 }
 
-task _legacyJs(type:Copy) {
-    from 'src/js/'
-    into distDir
+sourceSets.each {
+    def setName = it.capitalize();
+
+    def destDir = "$buildDir/compile/$it"
+    def declDir = "$typingsDir/$it"
+    def setDir = "$projectDir/src/$it"
+
+    task "_copyJs$setName"(type:Copy) {
+        from "$setDir/js"
+        into distDir
+    }
+
+    task "_compileTs$setName"(dependsOn: _npmInstall, type:Exec) {
+        inputs.dir("$setDir/ts")
+        inputs.file("$srcDir/tsconfig.json")
+        inputs.file("$setDir/tsconfig.json")
+        outputs.dir(destDir)
+        outputs.dir(declDir)
+
+        commandLine 'node_modules/.bin/tsc',
+            '-p', "$setDir/tsconfig.json",
+            '-m', moduleType,
+            '--outDir', destDir,
+            '--declarationDir', declDir
+    }
+
+    task "_buildTs$setName"(dependsOn: "_compileTs$setName", type:Copy) {
+        from tasks.getByPath("_compileTs$setName");
+        into distDir
+    }
 }
 
-task _buildTs(dependsOn: _npmInstall, type:Exec) {
-    inputs.dir('src/ts')
-    inputs.file('tsc.json')
-    outputs.dir(distDir)
+_compileTsAmd {
+    dependsOn _buildTsMain
+}
 
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.json'
+_buildTsTest {
+    into testDir
+}
+
+_copyJsTest {
+    into testDir
 }
 
 task _packageMeta(type: Copy) {
     inputs.property("version", version)
     from('.') {
-        include 'package.json', '.npmignore', 'readme.md', 'license', 'history.md'
+        include '.npmignore', 'readme.md', 'license', 'history.md'
+    }
+    from("$srcDir/package.template.json") {
+        expand project.properties
+        rename { "package.json" }
     }
     into distDir
-    doLast {
-        exec {
-            workingDir distDir
-            commandLine 'npm', 'version', version
-        }
-    }
 }
 
-task build(dependsOn: [_npmInstall, _buildTs, _legacyJs, _packageMeta]) {
+task build(dependsOn: [_copyJsMain, _copyJsAmd, _npmInstall, _buildTsMain, _buildTsAmd, _packageMeta]) {
 
 }
 
-task _localInstall(dependsOn: build, type: Exec) {
-    inputs.file("$distDir/package.json")
-    outputs.upToDateWhen {
-        new File("$projectDir/node_modules/@implab/core").exists()
-    }
-
-    commandLine 'npm', 'install', '--no-save', '--force', distDir
+_compileTsTest {
+    dependsOn build
 }
 
-task copyJsTests(type: Copy) {
-    from 'test/js'
-    into testDir
+task buildTests(dependsOn: [_copyJsTest, _buildTsTest]) {
 }
 
-task buildTests(dependsOn: _localInstall, type: Exec) {
-    inputs.dir('test/ts')
-    inputs.file('tsc.test.json')
-    outputs.dir(testDir)
-
-    commandLine 'node_modules/.bin/tsc', '-p', 'tsc.test.json'
-}
-
-task test(dependsOn: [copyJsTests, buildTests], type: Exec) {
-    commandLine 'node', 'run-amd-tests.js'
+task test(dependsOn: buildTests, type: Exec) {
+    commandLine 'node', "$testDir/run-amd-tests.js"
 }
 
 task pack(dependsOn: build, type: Exec) {
-    workingDir = distDir
+    workingDir distDir
 
     commandLine 'npm', 'pack'
 }

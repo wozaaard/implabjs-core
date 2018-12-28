@@ -1,0 +1,16 @@
+{
+    "extends": "../tsconfig",
+    "compilerOptions": {
+        "types": [
+            "requirejs"
+        ],
+        "rootDir": "ts",
+        "rootDirs": [
+            "ts",
+            "../typings/main"
+        ]
+    },
+    "include": [
+        "ts/**/*.ts"
+    ]
+}

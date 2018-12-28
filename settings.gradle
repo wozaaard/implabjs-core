@@ -12,4 +12,4 @@
 
 //include 'sub-project-name'
 
-rootProject.name = 'implab-core'
+rootProject.name = 'core'

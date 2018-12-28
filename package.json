@@ -16,15 +16,20 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "dojo": "^1.10.0"
+  "peerDependencies": {
+    "dojo": "^1.10.0",
+    "tslib": "latest"
   },
   "devDependencies": {
     "typescript": "latest",
     "tape": "latest",
     "@types/tape": "latest",
+    "@types/requirejs": "latest",
+    "@types/node": "latest",
     "requirejs": "latest",
-    "faucet": "latest"
+    "faucet": "latest",
+    "dojo": "^1.10.0",
+    "tslib": "latest"
   },
   "types": "main.d.ts"
 }

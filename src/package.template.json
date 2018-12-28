@@ -1,0 +1,23 @@
+{
+    "name": "${packageName}",
+    "version": "${version}",
+    "description": "${description}",
+    "main": "main.js",
+    "keywords": [
+      "di",
+      "ioc",
+      "logging",
+      "template engine",
+      "dependency injection"
+    ],
+    "author": "${author}",
+    "license": "${license}",
+    "repository": "$repository",
+    "publishConfig": {
+      "access": "public"
+    },
+    "peerDependencies": {
+      "dojo": "^1.10.0"
+    }
+  }
+  
