@@ -1,14 +1,14 @@
-var requirejs = require('requirejs');
+var rjs = require('requirejs');
 
-requirejs.config({
+rjs.config({
     baseUrl: '.',
     packages: [{
             name: "@implab/core",
-            location: "build/dist/amd"
+            location: "build/dist"
         },
         {
             name: "test",
-            location: "build/test/amd"
+            location: "build/test"
         },
         {
             name: "dojo",
@@ -19,4 +19,4 @@ requirejs.config({
 });
 
 
-requirejs(['test/plan']);
+rjs(['test/plan']);

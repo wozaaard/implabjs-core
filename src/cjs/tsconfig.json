@@ -2,7 +2,12 @@
     "extends": "../tsconfig",
     "compilerOptions": {
         "types": [
-            "@types/node"
+            "node"
+        ],
+        "rootDir": "ts",
+        "rootDirs": [
+            "ts",
+            "../typings/main"
         ]
     },
     "include": [

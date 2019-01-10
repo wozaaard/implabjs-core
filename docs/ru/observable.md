@@ -119,18 +119,14 @@ let msg = await pushEvents.next();
 
 class Map {
     /**
-    
     Получает координаты по щелчку мыши.
-    
     @async
-    
     @returns [lon,lat]
-    
     */
     async peekCoordinates(ct: ICancellation = Cancellation.none) {
         // получаем событие клика
         let evt = this.viewport.click.next(ct);
-    
+
         // преобразуем позицию на экране в координаты карты
         return this.clientToCoodinates([evt.clientx,evt.clientY]);
     }

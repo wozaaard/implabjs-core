@@ -2,6 +2,8 @@ export type Constructor<T = {}> = new (...args: any[]) => T;
 
 export type Factory<T = {}> = (...args: any[]) => T;
 
+export type Predicate<T = any> = (x: T) => boolean;
+
 export interface MapOf<T> {
     [key: string]: T;
 }

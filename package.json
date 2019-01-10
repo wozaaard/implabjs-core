@@ -21,15 +21,15 @@
     "tslib": "latest"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "tape": "latest",
-    "@types/tape": "latest",
-    "@types/requirejs": "latest",
     "@types/node": "latest",
-    "requirejs": "latest",
-    "faucet": "latest",
+    "@types/requirejs": "latest",
+    "@types/tape": "latest",
     "dojo": "^1.10.0",
-    "tslib": "latest"
+    "faucet": "latest",
+    "requirejs": "latest",
+    "tape": "^4.9.2",
+    "tslib": "latest",
+    "typescript": "latest"
   },
   "types": "main.d.ts"
 }

@@ -23,14 +23,30 @@ import { FactoryServiceDescriptor } from "./FactoryServiceDescriptor";
 import { TraceSource } from "../log/TraceSource";
 import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";
+import { makeResolver } from "./ResolverHelper";
+import { ICancellation } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 
 declare const define;
 declare const require;
+declare const module;
 
 function hasAmdLoader() {
-    return (typeof define === "function" && define.amd);
+    try {
+        // es6 may throw the exception
+        return (typeof define === "function" && define.amd);
+    } catch {
+        return false;
+    }
+}
+
+function hasNodeJs() {
+    try {
+        return (typeof module !== "undefined" && module.exports);
+    } catch {
+        return false;
+    }
 }
 
 async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
@@ -50,7 +66,7 @@ async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
     }
 }
 
-type Resolver = (qname: string) => any;
+export type ModuleResolver = (moduleName: string, ct?: ICancellation) => any;
 
 type _key = string | number;
 
@@ -64,7 +80,7 @@ export class Configuration {
 
     _configName: string;
 
-    _require: Resolver;
+    _require: ModuleResolver;
 
     constructor(container: Container) {
         argumentNotNull(container, container);
@@ -72,28 +88,31 @@ export class Configuration {
         this._path = [];
     }
 
-    async loadConfiguration(moduleName: string, ct = Cancellation.none) {
+    async loadConfiguration(moduleName: string, contextRequire?: any, ct = Cancellation.none) {
         argumentNotEmptyString(moduleName, "moduleName");
-        // TODO remove the code below somewehere else
-        if (hasAmdLoader()) {
-            // if we have a requirejs loader, use it directly
-            // don't rely on typescript 'import' function
-            const m = await new Promise<any>(cb => require(["./RequireJsHelper"], cb));
-            const r = m.makeResolver(require);
-            const config = await r(moduleName);
 
-            return this.applyConfiguration(
-                config,
-                m.makeResolver(await m.createContextRequire(moduleName))
-            );
-        } else {
-            throw new Error("This feature is supported only with the amd loader");
-        }
+        trace.log("loadConfiguration moduleName={0}", moduleName);
+
+        this._configName = moduleName;
+
+        const r = makeResolver(null, contextRequire);
+
+        const config = await r(moduleName, ct);
+
+        await this._applyConfiguration(
+            config,
+            makeResolver(moduleName, contextRequire),
+            ct
+        );
     }
 
-    async applyConfiguration(data: object, resolver?: Resolver, ct = Cancellation.none) {
+    applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
         argumentNotNull(data, "data");
 
+        return this._applyConfiguration(data, makeResolver(void(0), contextRequire), ct);
+    }
+
+    async _applyConfiguration(data: object, resolver?: ModuleResolver, ct = Cancellation.none) {
         trace.log("applyConfiguration");
 
         this._configName = "$";
@@ -140,12 +159,10 @@ export class Configuration {
         }
     }
 
-    async _loadModule(moduleName: string) {
+    _loadModule(moduleName: string) {
         trace.debug("loadModule {0}", moduleName);
 
-        const m = await this._require(moduleName);
-
-        return m;
+        return this._require(moduleName);
     }
 
     async _visitRegistrations(data, name: _key) {
@@ -178,7 +195,7 @@ export class Configuration {
         trace.debug("<{0}", name);
     }
 
-    async _visit(data, name: string): Promise<any> {
+    _visit(data, name: string): Promise<any> {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 
