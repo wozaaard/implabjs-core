@@ -1,12 +1,20 @@
 HISTORY
 =======
 
+1.2.0
+-----
+
+Major rafactoring, moving to support browser (rjs) and server (cjs) environments.
+
+- dependency injection container ported to typescript
+- sources are split to several sets to provide the ability for the conditional build of the project.
+
 1.0.1
 -----
 
-First release, intorduces the followinf features
+First release, intorduces the following features
 
-- `di` - dependency injection conyainer
+- `di` - dependency injection container
 - `log` - log4 style logging system
 - `text` - simple and fast text templating and formatting
 - `Uuid` - uuid generation traits

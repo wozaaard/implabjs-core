@@ -1,8 +1,9 @@
 import { format } from "./StringFormat";
 import { TraceSource, DebugLevel } from "../log/TraceSource";
 import { ITemplateParser, TokenType } from "./TemplateParser";
+import m = require("module");
 
-const trace = TraceSource.get("@implab/text/TemplateCompiler");
+const trace = TraceSource.get(m.id);
 
 type TemplateFn = (obj: object) => string;
 
@@ -25,6 +26,7 @@ export class TemplateCompiler {
         const text = this._code.join("\n");
 
         try {
+            // tslint:disable-next-line:function-constructor
             const compiled = new Function("obj, format, $data", text);
             /**
              * Функция форматирования по шаблону

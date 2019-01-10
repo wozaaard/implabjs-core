@@ -5,38 +5,125 @@ if (release != 'rtm') {
 if(!npmName)
     npmName = name;
 
-if(!["amd", "cjs"].contains(platform))
-    throw new Exception("Invalid platform specified: $platform");
+if(!["amd", "commonjs", "system", "umd", "es6", "esnext"].contains(jsmodule))
+    throw new Exception("Invalid jsmodule specified: $jsmodule");
+if(!["es3", "es5", "es6", "es2016", "es2017", "esnext"].contains(target))
+    throw new Exception("Invalid target specified: $target")
 
-def moduleTypes = [
-    "amd": "amd",
-    "cjs": "commonjs"
-]
+def targetLibs = [
+    "es3" : "es5,es2015.promise,es2015.symbol,dom,scripthost",
+    "es5" : "es5,es2015.promise,es2015.symbol,dom,scripthost"
+];
 
-ext.packageName="$npmScope/$npmName-$platform";
+ext.packageName="$npmScope/$npmName";
 
 def srcDir = "$projectDir/src"
 def typingsDir = "$srcDir/typings"
-def distDir = "$buildDir/dist/$platform"
-def testDir = "$buildDir/test/$platform"
-def moduleType = moduleTypes[platform]
+def distDir = "$buildDir/dist"
+def testDir = "$buildDir/test"
+def lib = targetLibs[target] ?: "${target},dom";
 
-def sourceSets = ["main", "amd", "cjs", "test"];
+println "lib: $lib";
+
+def sourceSets = ["main", "amd", "cjs"];
+def testSets = ["test", "testAmd", "testCjs"];
+
+task beforeBuild {
+}
+
+def createSoursetTasks = { String name, String outDir ->
+    def setName = name.capitalize();
+
+    def destDir = "$buildDir/compile/$name"
+    def declDir = "$typingsDir/$name"
+    def setDir = "$projectDir/src/$name"
+
+    def beforeBuildTask = task "beforeBuild$setName"(dependsOn: beforeBuild) {
+    }
+
+    def copyJsTask = task "copyJs$setName"(dependsOn: beforeBuildTask, type: Copy) {
+        from "$setDir/js"
+        into outDir
+    }
+
+    def compileTypingsTask = task "compileTypings$setName"(dependsOn: beforeBuildTask, type: Exec) {
+        inputs.dir("$setDir/ts")
+        inputs.file("$srcDir/tsconfig.json")
+        inputs.file("$setDir/tsconfig.json")
+        outputs.dir(declDir)
+
+        commandLine 'node_modules/.bin/tsc',
+            '-p', "$setDir/tsconfig.json",
+            '-t', target,
+            '-m', jsmodule,
+            '-d',
+            '--emitDeclarationOnly',
+            '--declarationDir', declDir
+
+        if (lib)
+            args '--lib', lib
+    }
+
+    def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
+        inputs.dir("$setDir/ts")
+        inputs.file("$srcDir/tsconfig.json")
+        inputs.file("$setDir/tsconfig.json")
+        outputs.dir(destDir)
+
+        commandLine 'node_modules/.bin/tsc',
+            '-p', "$setDir/tsconfig.json",
+            '-t', target,
+            '-m', jsmodule,
+            '--outDir', destDir
+
+        if (lib)
+            args '--lib', lib
+    }
+
+    def copyTsOutputTask = task "copyTsOutput$setName"(dependsOn: compileTsTask, type: Copy) {
+        from compileTsTask
+        into outDir
+    }
+
+    def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTypingsTask, type: Copy) {
+        from compileTypingsTask
+        into outDir
+    }
+
+    task "build$setName"(dependsOn: [copyTypingsTask, copyTsOutputTask, copyJsTask]) {
+    }
+}
 
 task printVersion {
     doLast {
         println "version: $version"
         println "packageName: $packageName"
-        println "platform: $platform"
-        println "module: $moduleType"
+        println "target: $target"
+        println "module: $jsmodule"
     }
 }
 
 task clean {
     doLast {
         delete buildDir
-        delete "node_modules/$packageName"
         delete typingsDir
+    }
+}
+
+task _initBuild {
+    mustRunAfter clean
+
+    def buildInfoFile = "$buildDir/platform";
+    inputs.property('target',target);
+    inputs.property('jsmodule',jsmodule);
+    outputs.file(buildInfoFile);
+
+    doLast {
+        delete buildDir
+        mkdir buildDir
+
+        def f = new File(buildInfoFile);
+        f << "$target-$jsmodule";
     }
 }
 
@@ -56,78 +143,55 @@ task _npmInstall() {
     }
 }
 
-sourceSets.each {
-    def setName = it.capitalize();
-
-    def destDir = "$buildDir/compile/$it"
-    def declDir = "$typingsDir/$it"
-    def setDir = "$projectDir/src/$it"
-
-    task "_copyJs$setName"(type:Copy) {
-        from "$setDir/js"
-        into distDir
-    }
-
-    task "_compileTs$setName"(dependsOn: _npmInstall, type:Exec) {
-        inputs.dir("$setDir/ts")
-        inputs.file("$srcDir/tsconfig.json")
-        inputs.file("$setDir/tsconfig.json")
-        outputs.dir(destDir)
-        outputs.dir(declDir)
-
-        commandLine 'node_modules/.bin/tsc',
-            '-p', "$setDir/tsconfig.json",
-            '-m', moduleType,
-            '--outDir', destDir,
-            '--declarationDir', declDir
-    }
-
-    task "_buildTs$setName"(dependsOn: "_compileTs$setName", type:Copy) {
-        from tasks.getByPath("_compileTs$setName");
-        into distDir
-    }
+beforeBuild {
+    dependsOn _initBuild
+    dependsOn _npmInstall
 }
 
-_compileTsAmd {
-    dependsOn _buildTsMain
+sourceSets.each { createSoursetTasks(it, distDir) }
+
+testSets.each { createSoursetTasks(it, testDir) }
+
+compileTsAmd {
+    dependsOn compileTypingsMain
 }
 
-_buildTsTest {
-    into testDir
+compileTypingsAmd {
+    dependsOn compileTypingsMain
 }
 
-_copyJsTest {
-    into testDir
+task build(dependsOn: buildMain) {
+    if (jsmodule == "amd")
+        dependsOn buildAmd
+}
+
+compileTsTest {
+    dependsOn build
+}
+
+compileTsTestAmd {
+    dependsOn compileTypingsTestAmd
+}
+
+task test(dependsOn: [buildTest, buildTestAmd], type: Exec) {
+    commandLine 'node', "$testDir/run-amd-tests.js"
 }
 
 task _packageMeta(type: Copy) {
+    mustRunAfter build
+
     inputs.property("version", version)
     from('.') {
         include '.npmignore', 'readme.md', 'license', 'history.md'
     }
-    from("$srcDir/package.template.json") {
+    from("$srcDir/package.${jsmodule}.tmpl.json") {
         expand project.properties
         rename { "package.json" }
     }
     into distDir
 }
 
-task build(dependsOn: [_copyJsMain, _copyJsAmd, _npmInstall, _buildTsMain, _buildTsAmd, _packageMeta]) {
-
-}
-
-_compileTsTest {
-    dependsOn build
-}
-
-task buildTests(dependsOn: [_copyJsTest, _buildTsTest]) {
-}
-
-task test(dependsOn: buildTests, type: Exec) {
-    commandLine 'node', "$testDir/run-amd-tests.js"
-}
-
-task pack(dependsOn: build, type: Exec) {
+task pack(dependsOn: [build, _packageMeta], type: Exec) {
     workingDir distDir
 
     commandLine 'npm', 'pack'

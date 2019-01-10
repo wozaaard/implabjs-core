@@ -2,7 +2,7 @@ import { IObservable, ICancellation, IDestroyable } from "@implab/core/interface
 import { Cancellation } from "@implab/core/Cancellation";
 import { TraceEvent, LogLevel, WarnLevel, DebugLevel, TraceSource } from "@implab/core/log/TraceSource";
 import * as tape from "tape";
-import { argumentNotNull } from "@implab/core/safe";
+import { argumentNotNull, destroy } from "@implab/core/safe";
 
 export class TapeWriter implements IDestroyable {
     readonly _tape: tape.Test;
@@ -35,7 +35,7 @@ export class TapeWriter implements IDestroyable {
     }
 
     destroy() {
-        this._subscriptions.forEach(x => x.destroy());
+        this._subscriptions.forEach(destroy);
     }
 }
 
@@ -58,8 +58,7 @@ export async function delay(timeout: number, ct: ICancellation = Cancellation.no
             }
         });
     } finally {
-        if (un)
-            un.destroy();
+        destroy(un);
     }
 }
 
@@ -83,7 +82,7 @@ export function test(name: string, cb: (t: tape.Test) => any) {
 
         } finally {
             t.end();
-            writer.destroy();
+            destroy(writer);
         }
     });
 }

@@ -7,7 +7,14 @@
             "@implab/core/*": [
                 "../../build/dist/*"
             ]
-        }
+        },
+        "types": [
+            "requirejs"
+        ],
+        "rootDirs": [
+            "ts",
+            "../typings/test"
+        ]
     },
     "include" : [
         "ts/**/*.ts"
