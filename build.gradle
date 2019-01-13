@@ -46,10 +46,11 @@ def createSoursetTasks = { String name, String outDir ->
         into outDir
     }
 
-    def compileTypingsTask = task "compileTypings$setName"(dependsOn: beforeBuildTask, type: Exec) {
+    def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
         inputs.dir("$setDir/ts")
         inputs.file("$srcDir/tsconfig.json")
         inputs.file("$setDir/tsconfig.json")
+        outputs.dir(destDir)
         outputs.dir(declDir)
 
         commandLine 'node_modules/.bin/tsc',
@@ -57,36 +58,20 @@ def createSoursetTasks = { String name, String outDir ->
             '-t', target,
             '-m', jsmodule,
             '-d',
-            '--emitDeclarationOnly',
+            '--outDir', destDir,
             '--declarationDir', declDir
 
         if (lib)
             args '--lib', lib
     }
 
-    def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/ts")
-        inputs.file("$srcDir/tsconfig.json")
-        inputs.file("$setDir/tsconfig.json")
-        outputs.dir(destDir)
-
-        commandLine 'node_modules/.bin/tsc',
-            '-p', "$setDir/tsconfig.json",
-            '-t', target,
-            '-m', jsmodule,
-            '--outDir', destDir
-
-        if (lib)
-            args '--lib', lib
-    }
-
     def copyTsOutputTask = task "copyTsOutput$setName"(dependsOn: compileTsTask, type: Copy) {
-        from compileTsTask
+        from destDir
         into outDir
     }
 
-    def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTypingsTask, type: Copy) {
-        from compileTypingsTask
+    def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTsTask, type: Copy) {
+        from declDir
         into outDir
     }
 
@@ -153,16 +138,18 @@ sourceSets.each { createSoursetTasks(it, distDir) }
 testSets.each { createSoursetTasks(it, testDir) }
 
 compileTsAmd {
-    dependsOn compileTypingsMain
+    dependsOn compileTsMain
 }
 
-compileTypingsAmd {
-    dependsOn compileTypingsMain
+compileTsCjs {
+    dependsOn compileTsMain
 }
 
 task build(dependsOn: buildMain) {
     if (jsmodule == "amd")
         dependsOn buildAmd
+    if (jsmodule == "commonjs")
+        dependsOn buildCjs
 }
 
 compileTsTest {
@@ -170,11 +157,33 @@ compileTsTest {
 }
 
 compileTsTestAmd {
-    dependsOn compileTypingsTestAmd
+    dependsOn compileTsTest
 }
 
-task test(dependsOn: [buildTest, buildTestAmd], type: Exec) {
-    commandLine 'node', "$testDir/run-amd-tests.js"
+compileTsTestCjs {
+    dependsOn compileTsTest
+}
+
+task _installLocalCjsDependency(dependsOn: [buildTestCjs, "_packageMeta"], type: Exec) {
+    inputs.file("$distDir/package.json")
+    outputs.upToDateWhen {
+        new File("$testDir/$packageName").exists()
+    }
+
+    workingDir testDir
+
+    commandLine 'npm', 'install', '--no-save', '--force', distDir
+}
+
+task test(dependsOn: [buildTest], type: Exec) {
+    if (jsmodule == "amd")
+        dependsOn buildTestAmd
+    if (jsmodule == "commonjs") {
+        dependsOn buildTestCjs
+        dependsOn _installLocalCjsDependency
+    }
+
+    commandLine 'node', "$testDir/run-tests.js"
 }
 
 task _packageMeta(type: Copy) {

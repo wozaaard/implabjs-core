@@ -91,7 +91,11 @@ export class Configuration {
     async loadConfiguration(moduleName: string, contextRequire?: any, ct = Cancellation.none) {
         argumentNotEmptyString(moduleName, "moduleName");
 
-        trace.log("loadConfiguration moduleName={0}", moduleName);
+        trace.log(
+            "loadConfiguration moduleName={0}, contextRequire={1}",
+            moduleName,
+            contextRequire ? typeof (contextRequire) : "<nil>"
+        );
 
         this._configName = moduleName;
 
@@ -109,7 +113,7 @@ export class Configuration {
     applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
         argumentNotNull(data, "data");
 
-        return this._applyConfiguration(data, makeResolver(void(0), contextRequire), ct);
+        return this._applyConfiguration(data, makeResolver(void (0), contextRequire), ct);
     }
 
     async _applyConfiguration(data: object, resolver?: ModuleResolver, ct = Cancellation.none) {
