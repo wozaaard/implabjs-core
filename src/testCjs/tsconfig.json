@@ -1,0 +1,22 @@
+{
+    "extends": "../tsconfig",
+    "compilerOptions": {
+        "rootDir": "ts",
+        "baseUrl": ".",
+        "paths": {
+            "@implab/core/*": [
+                "../../build/dist/*"
+            ]
+        },
+        "types": [
+            "node"
+        ],
+        "rootDirs": [
+            "ts",
+            "../typings/test"
+        ]
+    },
+    "include" : [
+        "ts/**/*.ts"
+    ]
+}

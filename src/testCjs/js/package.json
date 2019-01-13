@@ -1,0 +1,11 @@
+{
+  "name": "@implab/core-test",
+  "version": "0.0.1-dev",
+  "main": "main.js",
+  "author": "Implab team",
+  "license": "BSD-2-Clause",
+  "repository": "https://bitbucket.org/implab/implabjs",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -59,6 +59,12 @@ class ModuleResolver {
 }
 
 export function makeResolver(moduleName: string, contextRequire: Require) {
+    trace.debug(
+        "makeResolver moduleName={0}, contextRequire={1}",
+        moduleName || "<nil>",
+        contextRequire ? typeof (contextRequire) : "<nil>"
+    );
+
     const base = moduleName && moduleName.split("/").slice(0, -1).join("/");
 
     const resolver = new ModuleResolver(contextRequire, base);
