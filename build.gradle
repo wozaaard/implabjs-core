@@ -1,5 +1,29 @@
-if (release != 'rtm') {
-    version += "-$release"
+// если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
+// результатом будет версия '{num}.{distance}' где distance - расстояние от
+// текущей ревизии до ревизии с тэгом
+if (!version) {
+    def tagDistance = 0;
+
+    def rev = ["hg", "log", "-r", ".", "--template", "{latesttag('re:^v') % '{tag}-{distance}'}"].execute().text.trim();
+
+    def tagVersion;
+
+    def match = (rev =~ /^v(\d+\.\d+).*-(\d+)$/);
+    
+    if (match.size()) {
+        tagVersion = match[0][1];
+        tagDistance = match[0][2].toInteger();
+    } else {
+        throw new Exception("A version must be specied");
+    }
+
+    version = "${tagVersion}.$tagDistance";
+} else {
+    println "explicit version: $version";
+}
+
+if (hasProperty('versionSuffix') && versionSuffix) {
+    version += "-$versionSuffix"
 }
 
 if(!npmName)
