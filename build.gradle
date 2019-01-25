@@ -58,23 +58,29 @@ task beforeBuild {
 def createSoursetTasks = { String name, String outDir ->
     def setName = name.capitalize();
 
-    def destDir = "$buildDir/compile/$name"
+    def compileDir = "$buildDir/compile/$name"
     def declDir = "$typingsDir/$name"
     def setDir = "$projectDir/src/$name"
+    def jsDir = outDir;
 
     def beforeBuildTask = task "beforeBuild$setName"(dependsOn: beforeBuild) {
     }
 
     def copyJsTask = task "copyJs$setName"(dependsOn: beforeBuildTask, type: Copy) {
         from "$setDir/js"
-        into outDir
+        into jsDir
+    }
+
+    def lintJsTask = task "lintJs$setName"(dependsOn: beforeBuildTask, type: Exec) {
+        inputs.dir("$setDir/js/").skipWhenEmpty();
+        commandLine "eslint", '--format', 'stylish', "$setDir/js/"
     }
 
     def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/ts")
+        inputs.dir("$setDir/ts").skipWhenEmpty()
         inputs.file("$srcDir/tsconfig.json")
         inputs.file("$setDir/tsconfig.json")
-        outputs.dir(destDir)
+        outputs.dir(compileDir)
         outputs.dir(declDir)
 
         commandLine 'node_modules/.bin/tsc',
@@ -82,7 +88,7 @@ def createSoursetTasks = { String name, String outDir ->
             '-t', target,
             '-m', jsmodule,
             '-d',
-            '--outDir', destDir,
+            '--outDir', compileDir,
             '--declarationDir', declDir
 
         if (lib)
@@ -90,16 +96,26 @@ def createSoursetTasks = { String name, String outDir ->
     }
 
     def copyTsOutputTask = task "copyTsOutput$setName"(dependsOn: compileTsTask, type: Copy) {
-        from destDir
-        into outDir
+        from compileDir
+        into jsDir
     }
 
     def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTsTask, type: Copy) {
         from declDir
+        into jsDir
+    }
+
+    def copyResourcesTask = task "copyResources$setName"(dependsOn: beforeBuildTask, type: Copy) {
+        from "$setDir/resources"
         into outDir
     }
 
-    task "build$setName"(dependsOn: [copyTypingsTask, copyTsOutputTask, copyJsTask]) {
+    task "build$setName" {
+        dependsOn copyTypingsTask,
+            copyTsOutputTask,
+            copyJsTask,
+            copyResourcesTask,
+            lintJsTask
     }
 }
 

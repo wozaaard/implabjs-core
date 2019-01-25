@@ -76,26 +76,23 @@
                                 },
                                 handleAs: 'json'
                             })
-                            .then(
-                                function (id) {
-                                    me
-                                        .log(
-                                            "CLIENT id=${0}, mode=${1}, destination=${2}",
+                            .then(function (id) {
+                                me.log(
+                                    "CLIENT id=${0}, mode=${1}, destination=${2}",
+                                    id,
+                                    options.mode,
+                                    options.destination);
+                                me._clients[id] = options.client ?
+                                    options.client :
+                                    function () {
+                                        me.warn(
+                                            "The client id=${0}, mode=${1}, destination=${2} isn't accepting mesages",
                                             id,
                                             options.mode,
                                             options.destination);
-                                    me._clients[id] = options.client ?
-                                        options.client :
-                                        function (msg) {
-                                            me
-                                                .warn(
-                                                    "The client id=${0}, mode=${1}, destination=${2} isn't accepting mesages",
-                                                    id,
-                                                    options.mode,
-                                                    options.destination);
-                                        };
-                                    return id;
-                                });
+                                    };
+                                return id;
+                            });
                     });
 
             },
