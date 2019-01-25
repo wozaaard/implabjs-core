@@ -4,7 +4,7 @@ HISTORY
 1.2.0
 -----
 
-Major rafactoring, moving to support browser (rjs) and server (cjs) environments.
+Major rafactoring, moving to support both browser (rjs) and server (cjs) environments.
 
 - dependency injection container ported to typescript
 - sources are split to several sets to provide the ability for the conditional build of the project.

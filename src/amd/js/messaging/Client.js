@@ -7,7 +7,7 @@
             _destination : null,
             _id : null,
 
-            constructor : function(session, destination, options) {
+            constructor : function(session, destination) {
                 this._destination = destination;
                 this._session = session;
             },
@@ -35,7 +35,7 @@
                 return options;
             },
 
-            process : function(msg) {
+            process : function() {
                 this.warn("Messages are not acceped by this client");
             },
 
