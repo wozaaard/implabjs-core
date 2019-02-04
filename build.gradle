@@ -39,7 +39,7 @@ def targetLibs = [
     "es5" : "es5,es2015.promise,es2015.symbol,dom,scripthost"
 ];
 
-ext.packageName="$npmScope/$npmName";
+ext.packageName="@$npmScope/$npmName";
 
 def srcDir = "$projectDir/src"
 def typingsDir = "$srcDir/typings"
@@ -123,6 +123,7 @@ task printVersion {
     doLast {
         println "version: $version"
         println "packageName: $packageName"
+        println "bundle: ${pack.outputs.files.join(',')}"
         println "target: $target"
         println "module: $jsmodule"
     }
@@ -242,6 +243,13 @@ task _packageMeta(type: Copy) {
 
 task pack(dependsOn: [build, _packageMeta], type: Exec) {
     workingDir distDir
+    outputs.file("$npmScope-$npmName-${version}.tgz")
 
     commandLine 'npm', 'pack'
+}
+
+task publish(dependsOn: [build, _packageMeta], type: Exec) {
+    workingDir distDir
+
+    commandLine 'npm', 'publish', '--access', 'public'
 }
