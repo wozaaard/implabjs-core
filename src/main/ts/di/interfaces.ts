@@ -16,7 +16,7 @@ export interface ServiceMap {
 }
 
 export enum ActivationType {
-    Singleton,
+    Singleton = 1,
     Container,
     Hierarchy,
     Context,
@@ -59,11 +59,11 @@ export interface DependencyRegistration extends RegistrationWithServices {
 }
 
 export function isTypeRegistration(x): x is TypeRegistration {
-    return (!isPrimitive(x)) && ("$type" in x || "$factory" in x);
+    return (!isPrimitive(x)) && ("$type" in x);
 }
 
 export function isFactoryRegistration(x): x is FactoryRegistration {
-    return (!isPrimitive(x)) && ("$type" in x || "$factory" in x);
+    return (!isPrimitive(x)) && ("$factory" in x);
 }
 
 export function isValueRegistration(x): x is ValueRegistration {

@@ -14,7 +14,7 @@ export class FactoryServiceDescriptor extends ServiceDescriptor {
         argumentNotNull(opts && opts.factory, "opts.factory");
 
         // bind to null
-        this._factory = () => opts.factory();
+        this._factory = (...args) => opts.factory.apply(null, args);
 
         if (opts.activation === ActivationType.Singleton) {
             this._cacheId = oid(opts.factory);

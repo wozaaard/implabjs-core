@@ -1,5 +1,9 @@
 import { argumentNotEmptyString } from "../safe";
 import { MapOf } from "../interfaces";
+import { TraceSource, DebugLevel } from "../log/TraceSource";
+import m = require("module");
+
+const trace = TraceSource.get(m.id);
 
 const splitRx = /(<%=|\[%=|<%|\[%|%\]|%>)/;
 
@@ -45,6 +49,7 @@ export class TemplateParser implements ITemplateParser {
         if (this._pos < this._tokens.length) {
             this._value = this._tokens[this._pos];
             this._type = tokenMap[this._value] || TokenType.Text;
+
             return true;
         } else {
             this._type = TokenType.None;

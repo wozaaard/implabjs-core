@@ -2,7 +2,9 @@ import { TraceSource } from "./TraceSource";
 import { Predicate } from "../interfaces";
 
 export = {
-    on(filter: any , cb: any) {
+    level: 0,
+
+    on(filter: any, cb: any) {
         if (arguments.length === 1) {
             cb = filter;
             filter = undefined;
@@ -18,11 +20,13 @@ export = {
 
         if (test) {
             TraceSource.on(source => {
+                source.level = this.level;
                 if (test(source.id))
                     source.events.on(cb);
             });
         } else {
             TraceSource.on(source => {
+                source.level = this.level;
                 source.events.on(cb);
             });
         }

@@ -1,3 +1,3 @@
 import { ModuleResolver } from "./Configuration";
 
-export declare function makeResolver(moduleName?: string, contextRequire?: any): ModuleResolver;
+export declare function makeResolver(moduleName?: string, contextRequire?: any): Promise<ModuleResolver>;

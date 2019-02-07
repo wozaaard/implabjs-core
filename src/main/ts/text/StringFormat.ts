@@ -124,7 +124,7 @@ function defaultConverter(value: any, pattern: string) {
     } else if (value instanceof Date) {
         return value.toISOString();
     } else {
-        return pattern ? value.toString(pattern) : value.toString();
+        return value.toString();
     }
 }
 
@@ -170,4 +170,8 @@ const _default = new Formatter();
 
 export function format(msg: string, ...args: any[]) {
     return _default.format(msg, ...args);
+}
+
+export function convert(value: any, pattern: string) {
+    return _default.format(value, pattern);
 }

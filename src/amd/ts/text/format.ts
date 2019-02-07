@@ -1,8 +1,8 @@
 import { format as dojoFormatNumber } from "dojo/number";
 import { format as dojoFormatDate } from "dojo/date/locale";
-import { Formatter } from "./StringFormat";
+import { Formatter, compile as _compile } from "./StringFormat";
 
-import { isNumber } from "../safe";
+import { isNumber, isNull } from "../safe";
 
 interface NumberFormatOptions {
     round?: number;
@@ -42,6 +42,26 @@ function convertDate(value: any, pattern: string) {
 
 const _formatter = new Formatter([convertNumber, convertDate]);
 
-export = function format(msg: string, ...args: any[]) {
-    return _formatter.format.apply(msg, ...args);
-};
+function format(msg: string, ...args: any[]) {
+    return _formatter.format(msg, ...args);
+}
+
+function _convert(value: any, pattern: string) {
+    return _formatter.convert(value, pattern);
+}
+
+namespace format {
+    export const convert = _convert;
+    export function compile(text: string) {
+        const template = _compile(text);
+
+        return (...data) => {
+            return template((name, pattern) => {
+                const value = data[name];
+                return !isNull(value) ? convert(value, pattern) : "";
+            });
+        };
+    }
+}
+
+export = format;

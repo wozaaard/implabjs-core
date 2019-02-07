@@ -3,6 +3,9 @@ const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
 
+declare const window: any;
+declare const global: any;
+
 export function oid(instance: object): string {
     if (isNull(instance))
         return null;
@@ -55,7 +58,7 @@ export function isString(val) {
 }
 
 export function isPromise(val): val is PromiseLike<any> {
-    return "then" in val && val.then instanceof Function;
+    return val && typeof val.then === "function";
 }
 
 export function isNullOrEmptyString(str) {
@@ -68,8 +71,23 @@ export function isNotEmptyArray(arg): arg is Array<any> {
     return (arg instanceof Array && arg.length > 0);
 }
 
-export function getGlobal() {
+function _isStrictMode() {
+    return !this;
+}
+
+function _getNonStrictGlobal() {
     return this;
+}
+
+export function getGlobal() {
+    // in es3 we can't use indirect call to eval, since it will
+    // be executed in the current call context.
+    if (!_isStrictMode()) {
+        return _getNonStrictGlobal();
+    } else {
+        // tslint:disable-next-line:no-eval
+        return eval.call(null, "this");
+    }
 }
 
 export function get(member: string, context?: object) {
@@ -134,6 +152,9 @@ export function each(obj, cb, thisArg?) {
 export function mixin<T, S>(dest: T, source: S, template?: string[] | object): T & S {
     argumentNotNull(dest, "to");
     const _res = dest as T & S;
+
+    if (isPrimitive(source))
+        return _res;
 
     if (template instanceof Array) {
         for (const p of template) {
@@ -263,6 +284,31 @@ export function pmap(items, cb) {
             }
         }
         return result;
+    }
+
+    return next();
+}
+
+export function pfor(items, cb) {
+    argumentNotNull(cb, "cb");
+
+    if (isPromise(items))
+        return items.then(data => {
+            return pmap(data, cb);
+        });
+
+    if (isNull(items) || !items.length)
+        return items;
+
+    let i = 0;
+
+    function next() {
+        while (i < items.length) {
+            const r = cb(items[i], i);
+            i++;
+            if (isPromise(r))
+                return r.then(next);
+        }
     }
 
     return next();

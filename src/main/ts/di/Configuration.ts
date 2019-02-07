@@ -28,27 +28,6 @@ import { ICancellation } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 
-declare const define;
-declare const require;
-declare const module;
-
-function hasAmdLoader() {
-    try {
-        // es6 may throw the exception
-        return (typeof define === "function" && define.amd);
-    } catch {
-        return false;
-    }
-}
-
-function hasNodeJs() {
-    try {
-        return (typeof module !== "undefined" && module.exports);
-    } catch {
-        return false;
-    }
-}
-
 async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
@@ -99,21 +78,21 @@ export class Configuration {
 
         this._configName = moduleName;
 
-        const r = makeResolver(null, contextRequire);
+        const r = await makeResolver(null, contextRequire);
 
         const config = await r(moduleName, ct);
 
         await this._applyConfiguration(
             config,
-            makeResolver(moduleName, contextRequire),
+            await makeResolver(moduleName, contextRequire),
             ct
         );
     }
 
-    applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
+    async applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
         argumentNotNull(data, "data");
 
-        return this._applyConfiguration(data, makeResolver(void (0), contextRequire), ct);
+        await this._applyConfiguration(data, await makeResolver(void (0), contextRequire), ct);
     }
 
     async _applyConfiguration(data: object, resolver?: ModuleResolver, ct = Cancellation.none) {
@@ -262,7 +241,7 @@ export class Configuration {
             opts.services = this._visitRegistrations(data.services, "services");
 
         if (data.inject) {
-            this._path.push("inject");
+            this._enter("inject");
             opts.inject = mapAll(
                 data.inject instanceof Array ?
                     data.inject :
@@ -353,11 +332,11 @@ export class Configuration {
     }
 
     async _visitFactoryRegistration(data: FactoryRegistration, name: _key) {
-        argumentOfType(data.$factory, Function, "data.$type");
+        argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 
         const opts = this._makeServiceParams(data);
-        opts.factory = opts.$factory;
+        opts.factory = data.$factory;
 
         const d = new FactoryServiceDescriptor(
             await mapAll(opts)

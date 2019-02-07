@@ -1,5 +1,5 @@
 import { Uuid } from "../Uuid";
-import { argumentNotEmptyString, getGlobal } from "../safe";
+import { argumentNotEmptyString, getGlobal, isNullOrEmptyString } from "../safe";
 import { TraceSource, DebugLevel } from "../log/TraceSource";
 import m = require("module");
 
@@ -7,7 +7,7 @@ const sandboxId = Uuid();
 define(sandboxId, ["require"], r => r);
 
 // tslint:disable-next-line:no-var-requires
-const globalRequire = require(sandboxId);
+const globalRequire = getGlobal().require as Require;
 
 const trace = TraceSource.get(m.id);
 
@@ -58,15 +58,17 @@ class ModuleResolver {
     }
 }
 
-export function makeResolver(moduleName: string, contextRequire: Require) {
+export async function makeResolver(moduleName: string, contextRequire: Require) {
     trace.debug(
         "makeResolver moduleName={0}, contextRequire={1}",
         moduleName || "<nil>",
         contextRequire ? typeof (contextRequire) : "<nil>"
     );
 
-    const base = moduleName && moduleName.split("/").slice(0, -1).join("/");
+    const nestedRequire = isNullOrEmptyString(moduleName) ? null : await createContextRequire(moduleName);
 
-    const resolver = new ModuleResolver(contextRequire, base);
+    // const base = moduleName && moduleName.split("/").slice(0, -1).join("/");
+
+    const resolver = new ModuleResolver(nestedRequire, null);
     return (id: string) => resolver.resolve(id);
 }
