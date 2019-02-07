@@ -14,9 +14,9 @@ function injectMethod(target, method, context, args) {
         throw new Error("Method '" + method + "' not found");
 
     if (args instanceof Array)
-        return m.apply(target, context.parse(args, "." + method));
+        return m.apply(target, _parse(args, context, "." + method));
     else
-        return m.call(target, context.parse(args, "." + method));
+        return m.call(target, _parse(args, context, "." + method));
 }
 
 function makeClenupCallback(target, method: ((instance) => void) | string) {
@@ -90,10 +90,10 @@ export class ServiceDescriptor implements Descriptor {
 
         this._owner = opts.owner;
 
-        if (opts.activation)
+        if ("activation" in opts)
             this._activationType = opts.activation;
 
-        if (opts.params)
+        if ("params" in opts)
             this._params = opts.params;
 
         if (opts.inject)

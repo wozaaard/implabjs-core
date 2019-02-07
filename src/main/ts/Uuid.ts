@@ -54,9 +54,9 @@ function setupBrowser() {
 
             return _rnds;
         };
-        if ("undefined" !== typeof console && console.warn) {
-            console.warn("[SECURITY] node-uuid: crypto not usable, falling back to insecure Math.random()");
-        }
+        // if ("undefined" !== typeof console && console.warn) {
+        //    console.warn("[SECURITY] node-uuid: crypto not usable, falling back to insecure Math.random()");
+        // }
     }
 }
 
@@ -92,7 +92,7 @@ for (let i = 0; i < 256; i++) {
 }
 
 // **`parse()` - Parse a UUID into it's component bytes**
-export function _parse(s, buf?, offset?): Array<string> {
+function _parse(s, buf?, offset?): Array<string> {
     const i = (buf && offset) || 0; let ii = 0;
 
     buf = buf || [];
@@ -146,7 +146,7 @@ let _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
 let _lastMSecs = 0; let _lastNSecs = 0;
 
 // See https://github.com/broofa/node-uuid for API details
-export function _v1(options?, buf?, offset?): string {
+function _v1(options?, buf?, offset?): string {
     let i = buf && offset || 0;
     const b = buf || [];
 
@@ -231,7 +231,7 @@ export function _v1(options?, buf?, offset?): string {
 // **`v4()` - Generate random UUID**
 
 // See https://github.com/broofa/node-uuid for API details
-export function _v4(options?, buf?, offset?): string {
+function _v4(options?, buf?, offset?): string {
     // Deprecated - 'format' argument, as supported in v1.2
     const i = buf && offset || 0;
 
@@ -257,13 +257,16 @@ export function _v4(options?, buf?, offset?): string {
     return buf || _unparse(rnds);
 }
 
-export function Uuid() {
+function _Uuid() {
     return _v4();
 }
 
-export namespace Uuid {
+namespace _Uuid {
     export const v4 = _v4;
     export const v1 = _v1;
     export const empty = "00000000-0000-0000-0000-000000000000";
     export const parse = _parse;
+    export const Uuid = _v4;
 }
+
+export = _Uuid;

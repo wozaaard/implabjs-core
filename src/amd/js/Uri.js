@@ -1,4 +1,4 @@
-define(["./declare", "./log/trace!"], function (declare, trace) {
+define(["dojo/_base/declare", "./log/trace!"], function (declare, trace) {
     trace.warn("THIS MODULE IS DEPRECATED! use uri-js or similar alternatives.");
     
     function parseURI(uri) {

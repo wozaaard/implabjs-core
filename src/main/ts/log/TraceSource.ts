@@ -1,6 +1,6 @@
 import { Observable } from "../Observable";
 import { Registry } from "./Registry";
-import { format } from "../text/StringFormat";
+import { format as _format } from "../text/StringFormat";
 
 export const DebugLevel = 400;
 
@@ -18,6 +18,12 @@ export interface TraceEvent {
     readonly level: number;
 
     readonly arg: any;
+}
+
+function format(msg) {
+    if (typeof(msg) !== "string" || arguments.length === 1)
+        return msg;
+    return _format.apply(null, arguments);
 }
 
 export class TraceSource {

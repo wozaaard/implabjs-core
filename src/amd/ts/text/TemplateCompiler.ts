@@ -1,4 +1,4 @@
-import { format } from "./StringFormat";
+import * as format from "./format";
 import { TraceSource, DebugLevel } from "../log/TraceSource";
 import { ITemplateParser, TokenType } from "./TemplateParser";
 import m = require("module");
@@ -98,7 +98,7 @@ export class TemplateCompiler {
     }
 
     visitTextFragment(parser: ITemplateParser) {
-        const i = this._data.push(parser.value());
+        const i = this._data.push(parser.value()) - 1;
         this._code.push("$p.push($data[" + i + "]);");
     }
 }
