@@ -261,6 +261,10 @@ task pack(dependsOn: [build, _packageMeta], type: Exec) {
 }
 
 task publish(dependsOn: [build, _packageMeta], type: Exec) {
+    doFirst {
+        if (!isRelease)
+            throw new Exception("Can't publish an unreleased version");
+    }
     workingDir distDir
 
     commandLine 'npm', 'publish', '--access', 'public'
