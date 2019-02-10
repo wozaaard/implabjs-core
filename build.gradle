@@ -1,14 +1,16 @@
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
 // результатом будет версия '{num}.{distance}' где distance - расстояние от
 // текущей ревизии до ревизии с тэгом
-if (!version) {
-    def tagDistance = 0;
+def tagDistance = 0;
+def isRelease = false;
 
+if (!version) {
+    
     def rev = ["hg", "log", "-r", ".", "--template", "{latesttag('re:^v') % '{tag}-{distance}'}"].execute().text.trim();
 
     def tagVersion;
 
-    def match = (rev =~ /^v(\d+\.\d+).*-(\d+)$/);
+    def match = (rev =~ /^v(\d+\.\d+\.\d+).*-(\d+)$/);
     
     if (match.size()) {
         tagVersion = match[0][1];
@@ -17,7 +19,10 @@ if (!version) {
         throw new Exception("A version must be specied");
     }
 
-    version = "${tagVersion}.$tagDistance";
+    version = tagVersion;
+
+    if (tagDistance > 0)
+        version++;
 } else {
     println "explicit version: $version";
 }
@@ -28,6 +33,12 @@ if (hasProperty('versionSuffix') && versionSuffix) {
 
 if(!npmName)
     npmName = name;
+
+if (hasProperty('release')) {
+    isRelease = (release != 'false')
+} else {
+    isRelease = (tagDistance == 0);
+}
 
 if(!["amd", "commonjs", "system", "umd", "es6", "esnext"].contains(jsmodule))
     throw new Exception("Invalid jsmodule specified: $jsmodule");
@@ -121,11 +132,12 @@ def createSoursetTasks = { String name, String outDir ->
 
 task printVersion {
     doLast {
-        println "version: $version"
-        println "packageName: $packageName"
-        println "bundle: ${pack.outputs.files.join(',')}"
-        println "target: $target"
-        println "module: $jsmodule"
+        println "version: $version";
+        println "isRelease: $isRelease, tagDistance: $tagDistance";
+        println "packageName: $packageName";
+        println "bundle: ${pack.outputs.files.join(',')}";
+        println "target: $target";
+        println "module: $jsmodule";
     }
 }
 
@@ -252,4 +264,9 @@ task publish(dependsOn: [build, _packageMeta], type: Exec) {
     workingDir distDir
 
     commandLine 'npm', 'publish', '--access', 'public'
+}
+
+task markRelease(type: Exec) {
+    onlyIf { tagDistance > 1 }
+    commandLine "hg", "tag", "v$version";
 }
