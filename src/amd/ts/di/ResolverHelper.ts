@@ -1,15 +1,15 @@
 import { Uuid } from "../Uuid";
-import { argumentNotEmptyString, getGlobal, isNullOrEmptyString } from "../safe";
+import { argumentNotEmptyString, getGlobal } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 import m = require("module");
 
 const sandboxId = Uuid();
 define(sandboxId, ["require"], r => r);
 
-// tslint:disable-next-line:no-var-requires
-const globalRequire = getGlobal().require as Require;
+const globalRequire = getGlobal().require as Require || requirejs;
 
 const trace = TraceSource.get(m.id);
+trace.debug("globalRequire = {0}", globalRequire);
 
 class ModuleResolver {
     _base: string;
@@ -36,6 +36,10 @@ class ModuleResolver {
 export function makeResolver(moduleName: string, contextRequire: Require) {
     const base = moduleName && moduleName.split("/").slice(0, -1).join("/");
 
-    const resolver = new ModuleResolver(contextRequire, base);
+    const req = contextRequire || globalRequire;
+    if (!req)
+        throw new Error("A global require isn't defined, the contextRequire parameter is mandatory");
+
+    const resolver = new ModuleResolver(req, base);
     return (id: string) => resolver.resolve(id);
 }
