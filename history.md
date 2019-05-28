@@ -1,6 +1,14 @@
 HISTORY
 =======
 
+1.2.16
+------
+
+Minor fixes and improvements
+
+- added `isCancellable` type predicate function to `safe` module
+- `isString, isNumber, isInteger, isPrimitive` are now type predicates
+
 1.2.0
 -----
 
