@@ -1,3 +1,5 @@
+import { ICancellable } from "./interfaces";
+
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
@@ -40,25 +42,29 @@ export function isNull(arg) {
     return (arg === null || arg === undefined);
 }
 
-export function isPrimitive(arg) {
+export function isPrimitive(arg): arg is string | number | boolean | undefined | null {
     return (arg === null || arg === undefined || typeof (arg) === "string" ||
         typeof (arg) === "number" || typeof (arg) === "boolean");
 }
 
-export function isInteger(arg) {
+export function isInteger(arg): arg is number {
     return parseInt(arg, 10) === arg;
 }
 
-export function isNumber(arg) {
+export function isNumber(arg): arg is number {
     return parseFloat(arg) === arg;
 }
 
-export function isString(val) {
+export function isString(val): val is string {
     return typeof (val) === "string" || val instanceof String;
 }
 
 export function isPromise(val): val is PromiseLike<any> {
     return val && typeof val.then === "function";
+}
+
+export function isCancellable(val): val is ICancellable {
+    return val && typeof val.cancel === "function";
 }
 
 export function isNullOrEmptyString(str) {

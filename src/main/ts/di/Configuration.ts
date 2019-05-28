@@ -178,7 +178,7 @@ export class Configuration {
         trace.debug("<{0}", name);
     }
 
-    _visit(data, name: string): Promise<any> {
+    async _visit(data, name: string) {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 
