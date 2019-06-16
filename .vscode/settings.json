@@ -1,6 +1,5 @@
 {
     "java.configuration.updateBuildConfiguration": "disabled",
-    "tslint.enable": true,
     "search.exclude": {
         "**/node_modules": true,
         "**/bower_components": true,

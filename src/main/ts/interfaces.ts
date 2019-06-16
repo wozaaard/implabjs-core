@@ -1,4 +1,7 @@
-export type Constructor<T = {}> = new (...args: any[]) => T;
+export interface Constructor<T = {}> {
+    new (...args: any[]): T;
+    prototype: T;
+}
 
 export type Factory<T = {}> = (...args: any[]) => T;
 
@@ -9,7 +12,11 @@ export interface MapOf<T> {
 }
 
 export interface IDestroyable {
-    destroy();
+    destroy(): void;
+}
+
+export interface IRemovable {
+    remove(): void;
 }
 
 export interface ICancellation {
