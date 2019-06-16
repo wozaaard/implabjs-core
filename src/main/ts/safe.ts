@@ -1,12 +1,9 @@
-import { ICancellable } from "./interfaces";
+import { ICancellable, Constructor } from "./interfaces";
 
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
-
-declare const window: any;
-declare const global: any;
 
 export function oid(instance: object): string {
     if (isNull(instance))
@@ -18,62 +15,62 @@ export function oid(instance: object): string {
         return (instance[_oid] = "oid_" + (++_nextOid));
 }
 
-export function argumentNotNull(arg, name) {
+export function argumentNotNull(arg: any, name: string) {
     if (arg === null || arg === undefined)
         throw new Error("The argument " + name + " can't be null or undefined");
 }
 
-export function argumentNotEmptyString(arg, name) {
+export function argumentNotEmptyString(arg: any, name: string) {
     if (typeof (arg) !== "string" || !arg.length)
         throw new Error("The argument '" + name + "' must be a not empty string");
 }
 
-export function argumentNotEmptyArray(arg, name) {
+export function argumentNotEmptyArray(arg: any, name: string) {
     if (!(arg instanceof Array) || !arg.length)
         throw new Error("The argument '" + name + "' must be a not empty array");
 }
 
-export function argumentOfType(arg, type, name) {
+export function argumentOfType(arg: any, type: Constructor<{}>, name: string) {
     if (!(arg instanceof type))
         throw new Error("The argument '" + name + "' type doesn't match");
 }
 
-export function isNull(arg) {
-    return (arg === null || arg === undefined);
+export function isNull(val: any) {
+    return (val === null || val === undefined);
 }
 
-export function isPrimitive(arg): arg is string | number | boolean | undefined | null {
-    return (arg === null || arg === undefined || typeof (arg) === "string" ||
-        typeof (arg) === "number" || typeof (arg) === "boolean");
+export function isPrimitive(val: any): val is string | number | boolean | undefined | null {
+    return (val === null || val === undefined || typeof (val) === "string" ||
+        typeof (val) === "number" || typeof (val) === "boolean");
 }
 
-export function isInteger(arg): arg is number {
-    return parseInt(arg, 10) === arg;
+export function isInteger(val: any): val is number {
+    return parseInt(val, 10) === val;
 }
 
-export function isNumber(arg): arg is number {
-    return parseFloat(arg) === arg;
+export function isNumber(val: any): val is number {
+    return parseFloat(val) === val;
 }
 
-export function isString(val): val is string {
+export function isString(val: any): val is string {
     return typeof (val) === "string" || val instanceof String;
 }
 
-export function isPromise(val): val is PromiseLike<any> {
+export function isPromise(val: any): val is PromiseLike<any> {
     return val && typeof val.then === "function";
 }
 
-export function isCancellable(val): val is ICancellable {
+export function isCancellable(val: any): val is ICancellable {
     return val && typeof val.cancel === "function";
 }
 
-export function isNullOrEmptyString(str) {
-    if (str === null || str === undefined ||
-        ((typeof (str) === "string" || str instanceof String) && str.length === 0))
+export function isNullOrEmptyString(val: any): val is string | null | undefined {
+    if (val === null || val === undefined ||
+        ((typeof (val) === "string" || val instanceof String) && val.length === 0))
         return true;
 }
 
-export function isNotEmptyArray(arg): arg is Array<any> {
+export function isNotEmptyArray(arg: any): arg is Array<any> {
     return (arg instanceof Array && arg.length > 0);
 }
 
@@ -320,6 +317,13 @@ export function pfor(items, cb) {
     return next();
 }
 
+export function first<T>(sequence: ArrayLike<T>): T;
+export function first<T>(sequence: PromiseLike<ArrayLike<T>>): PromiseLike<T>;
+export function first<T>(
+    sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    cb: (x: T) => void,
+    err?: (x: Error) => void
+): void;
 /**
  * Выбирает первый элемент из последовательности, или обещания, если в
  * качестве параметра используется обещание, оно должно вернуть массив.
@@ -333,28 +337,92 @@ export function pfor(items, cb) {
  *          обещание, либо первый элемент.
  * @async
  */
-export function first(sequence, cb: (x) => any, err: (x) => any) {
-    if (sequence) {
-        if (isPromise(sequence)) {
-            return sequence.then(res => first(res, cb, err));
-        } else if (sequence && "length" in sequence) {
-            if (sequence.length === 0) {
-                if (err)
-                    return err(new Error("The sequence is empty"));
-                else
-                    throw new Error("The sequence is empty");
-            }
-            return cb ? cb(sequence[0]) : sequence[0];
+export function first<T>(
+    sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    cb?: (x: T) => void,
+    err?: (x: Error) => void
+) {
+    if (isPromise(sequence)) {
+        return sequence.then(res => first(res, cb, err));
+    } else if (sequence && "length" in sequence) {
+        if (sequence.length === 0) {
+            if (err)
+                return err(new Error("The sequence is empty"));
+            else
+                throw new Error("The sequence is empty");
+        } else if (cb) {
+            cb(sequence[0]);
+        } else {
+            return sequence[0];
         }
+    } else {
+        if (err)
+            err(new Error("The sequence is required"));
+        else
+            throw new Error("The sequence is required");
     }
-
-    if (err)
-        return err(new Error("The sequence is required"));
-    else
-        throw new Error("The sequence is required");
 }
 
-export function destroy(d) {
+export function firstWhere<T>(
+    sequence: ArrayLike<T>,
+    predicate: (x: T) => boolean
+): T;
+export function firstWhere<T>(
+    sequence: PromiseLike<ArrayLike<T>>,
+    predicate: (x: T) => boolean
+): PromiseLike<T>;
+export function firstWhere<T>(
+    sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    predicate: (x: T) => boolean,
+    cb: (x: T) => void,
+    err?: (x: Error) => void
+): void;
+
+export function firstWhere<T>(
+    sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    predicate?: (x: T) => boolean,
+    cb?: (x: T) => void,
+    err?: (x: Error) => void
+) {
+    if (isPromise(sequence)) {
+        return sequence.then(res => firstWhere(res, predicate, cb, err));
+    } else if (sequence && "length" in sequence) {
+        if (sequence.length === 0) {
+            if (err)
+                err(new Error("The sequence is empty"));
+            else
+                throw new Error("The sequence is empty");
+        } else {
+            if (!predicate) {
+                return cb ? cb(sequence[0]) : sequence[0];
+            } else {
+                for (let i = 0; i < sequence.length; i++) {
+                    const v = sequence[i];
+                    if (predicate(v))
+                        return cb ? cb(v) : v;
+                }
+                if (err)
+                    err(new Error("The sequence doesn't contain matching items"));
+                else
+                    throw new Error("The sequence doesn't contain matching items");
+            }
+        }
+    } else {
+        if (err)
+            err(new Error("The sequence is required"));
+        else
+            throw new Error("The sequence is required");
+    }
+}
+
+export function destroy(d: any) {
     if (d && "destroy" in d)
         d.destroy();
+}
+
+/**
+ * Used to mark that the async operation isn't awaited intentionally.
+ * @param p The promise which represents the async operation.
+ */
+export function nowait(p: Promise<any>) {
 }
