@@ -91,3 +91,11 @@ export interface IObservable<T> {
     on(next: (x: T) => void, error?: (e: any) => void, complete?: () => void): IDestroyable;
     next(ct?: ICancellation): Promise<T>;
 }
+
+export interface IObserver<T> {
+    next(event: T): void;
+
+    error(e: any): void;
+
+    complete(): void;
+}

@@ -1,21 +1,16 @@
-import { IObservable, IDestroyable, ICancellation } from "./interfaces";
+import { IObservable, IDestroyable, ICancellation, IObserver } from "./interfaces";
 import { Cancellation } from "./Cancellation";
-import { argumentNotNull } from "./safe";
+import { argumentNotNull, destroyed } from "./safe";
 
 type Handler<T> = (x: T) => void;
 
 type Initializer<T> = (notify: Handler<T>, error?: (e: any) => void, complete?: () => void) => void;
 
-// TODO: think about to move this interfaces.ts and make it public
-interface IObserver<T> {
-    next(event: T): void;
-
-    error(e: any): void;
-
-    complete(): void;
-}
-
 const noop = () => { };
+
+function isObserver(val: any): val is IObserver<any> {
+    return val && (typeof val.next === "function");
+}
 
 export class Observable<T> implements IObservable<T> {
     private _once = new Array<IObserver<T>>();
@@ -65,6 +60,35 @@ export class Observable<T> implements IObservable<T> {
         return observer;
     }
 
+    subscribe(next: IObserver<T> | Handler<T>, error?: Handler<any>, complete?: () => void): IDestroyable {
+        if (isObserver(next)) {
+            const me = this;
+            const subscription = {
+                destroy() {
+                    me._removeObserver(next);
+                }
+            };
+            this._addObserver(next);
+            return subscription;
+        } else if (next) {
+            const observer = {
+                next,
+                error,
+                complete
+            };
+            const me = this;
+            const subscription = {
+                destroy() {
+                    me._removeObserver(observer);
+                }
+            };
+            this._addObserver(observer);
+            return subscription;
+        } else {
+            return destroyed;
+        }
+    }
+
     private _addObserver(observer: IObserver<T>) {
         if (this._complete) {
             try {
@@ -86,7 +110,7 @@ export class Observable<T> implements IObservable<T> {
      *
      * @param ct a cancellation token
      */
-    next(ct: ICancellation = Cancellation.none): Promise<T> {
+    next(ct: ICancellation = Cancellation.none) {
         return new Promise<T>((resolve, reject) => {
             const observer: IObserver<T> = {
                 next: resolve,

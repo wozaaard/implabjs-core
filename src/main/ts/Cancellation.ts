@@ -1,16 +1,11 @@
 import { ICancellation, IDestroyable } from "./interfaces";
-import { argumentNotNull } from "./safe";
-
-const destroyed = {
-    destroy() {
-    }
-};
+import { argumentNotNull, destroyed } from "./safe";
 
 export class Cancellation implements ICancellation {
     private _reason: any;
-    private _cbs: Array<(e) => void>;
+    private _cbs: Array<(e: any) => void>;
 
-    constructor(action: (cancel: (e) => void) => void) {
+    constructor(action: (cancel: (e?: any) => void) => void) {
         argumentNotNull(action, "action");
 
         action(this._cancel.bind(this));
