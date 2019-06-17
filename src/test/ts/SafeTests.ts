@@ -1,7 +1,6 @@
 import tape = require("tape");
-import { delay } from "./TestTraits";
 import { Cancellation } from "@implab/core/Cancellation";
-import { first, isPromise } from "@implab/core/safe";
+import { first, isPromise, firstWhere, delay, nowait } from "@implab/core/safe";
 
 tape("await delay test", async t => {
     // schedule delay
@@ -33,15 +32,10 @@ tape("await delay test", async t => {
         t.pass("the delay is cancelled");
     }
 
-    let died = false;
-
-    // try schedule delay after the cancellation is requested
-    res = delay(0, ct).then(x => true, () => died = true);
-
-    t.false(died, "The delay should be scheduled even if the cancellation is requested");
-
-    await res;
-    t.true(died, "the delay should fail when cancelled");
+    t.throws(() => {
+        // try schedule delay after the cancellation is requested
+        nowait(delay(0, ct));
+    }, "Should throw if cancelled before start");
 
     t.end();
 });
@@ -52,19 +46,38 @@ tape("sequemce test", async t => {
 
     // synchronous tests
     t.equals(first(sequence), "a", "Should return the first element");
+    t.equals(firstWhere(sequence, x => x === "b"), "b", "Should get the second element");
 
     let v: string;
     let e: Error;
     first(sequence, x => v = x);
     t.equal(v, "a", "The callback should be called for the first element");
+    firstWhere(sequence, x => x === "b", x => v = x);
+    t.equal(v, "b", "The callback should be called for the second element");
 
     t.throws(() => {
         first(empty);
     }, "Should throw when the sequence is empty");
 
     t.throws(() => {
+        firstWhere(empty, x => x === "b");
+    }, "Should throw when the sequence is empty");
+
+    t.throws(() => {
         first(empty, x => v = x);
     }, "Should throw when the sequence is empty");
+
+    t.throws(() => {
+        firstWhere(empty, x => x === "b", x => v = x);
+    }, "Should throw when the sequence is empty");
+
+    t.throws(() => {
+        firstWhere(sequence, x => x === "z");
+    }, "Should throw when the element isn't found");
+
+    t.throws(() => {
+        firstWhere(sequence, x => x === "z", x => v = x);
+    }, "Should throw when the element isn't found");
 
     first(empty, null, x => e = x);
     t.true(e, "The errorback should be called for the empty sequence");

@@ -39,29 +39,6 @@ export class TapeWriter implements IDestroyable {
     }
 }
 
-export async function delay(timeout: number, ct: ICancellation = Cancellation.none) {
-    let un: IDestroyable;
-
-    try {
-        await new Promise((resolve, reject) => {
-            if (ct.isRequested()) {
-                un = ct.register(reject);
-            } else {
-                const ht = setTimeout(() => {
-                    resolve();
-                }, timeout);
-
-                un = ct.register(e => {
-                    clearTimeout(ht);
-                    reject(e);
-                });
-            }
-        });
-    } finally {
-        destroy(un);
-    }
-}
-
 export function test(name: string, cb: (t: tape.Test) => any) {
     tape(name, async t => {
         const writer = new TapeWriter(t);

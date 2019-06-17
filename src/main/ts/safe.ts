@@ -248,20 +248,18 @@ export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn))
 }
 
 export function delay(timeMs: number, ct = Cancellation.none) {
+    ct.throwIfRequested();
     return new Promise((resolve, reject) => {
-        if (ct.isRequested()) {
-            ct.register(reject);
-        } else {
-            const h = ct.register(e => {
-                clearTimeout(id);
-                reject(e);
-                // we don't nedd to unregister h, since ct is already disposed
-            });
-            const id = setTimeout(() => {
-                h.destroy();
-                resolve();
-            }, timeMs);
-        }
+        const h = ct.register(e => {
+            clearTimeout(id);
+            reject(e);
+            // we don't nedd to unregister h, since ct is already disposed
+        });
+        const id = setTimeout(() => {
+            h.destroy();
+            resolve();
+        }, timeMs);
+
     });
 }
 
