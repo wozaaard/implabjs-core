@@ -1,8 +1,8 @@
 import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
 import * as tape from "tape";
-import { TapeWriter, delay } from "./TestTraits";
 import { Observable } from "@implab/core/Observable";
 import { IObservable } from "@implab/core/interfaces";
+import { delay } from "@implab/core/safe";
 
 const trace = TraceSource.get("ObservableTests");
 

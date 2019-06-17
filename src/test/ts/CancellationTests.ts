@@ -1,7 +1,6 @@
 import * as tape from "tape";
 import { Cancellation } from "@implab/core/Cancellation";
-import { ICancellation } from "@implab/core/interfaces";
-import { delay } from "./TestTraits";
+import { delay } from "@implab/core/safe";
 
 tape("standalone cancellation", async t => {
 
