@@ -62,7 +62,7 @@ export class Configuration {
     _require: ModuleResolver;
 
     constructor(container: Container) {
-        argumentNotNull(container, container);
+        argumentNotNull(container, "container");
         this._container = container;
         this._path = [];
     }

@@ -1,4 +1,5 @@
 import { ICancellable, Constructor } from "./interfaces";
+import { Cancellation } from "./Cancellation";
 
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
@@ -246,6 +247,24 @@ export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn))
     };
 }
 
+export function delay(timeMs: number, ct = Cancellation.none) {
+    return new Promise((resolve, reject) => {
+        if (ct.isRequested()) {
+            ct.register(reject);
+        } else {
+            const h = ct.register(e => {
+                clearTimeout(id);
+                reject(e);
+                // we don't nedd to unregister h, since ct is already disposed
+            });
+            const id = setTimeout(() => {
+                h.destroy();
+                resolve();
+            }, timeMs);
+        }
+    });
+}
+
 /**
  * Для каждого элемента массива вызывает указанную функцию и сохраняет
  * возвращенное значение в массиве результатов.
@@ -381,8 +400,8 @@ export function firstWhere<T>(
 export function firstWhere<T>(
     sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
     predicate?: (x: T) => boolean,
-    cb?: (x: T) => void,
-    err?: (x: Error) => void
+    cb?: (x: T) => any,
+    err?: (x: Error) => any
 ) {
     if (isPromise(sequence)) {
         return sequence.then(res => firstWhere(res, predicate, cb, err));
@@ -394,7 +413,7 @@ export function firstWhere<T>(
                 throw new Error("The sequence is empty");
         } else {
             if (!predicate) {
-                return cb ? cb(sequence[0]) : sequence[0];
+                return cb ? cb(sequence[0]) && void (0) : sequence[0];
             } else {
                 for (let i = 0; i < sequence.length; i++) {
                     const v = sequence[i];
@@ -426,3 +445,12 @@ export function destroy(d: any) {
  */
 export function nowait(p: Promise<any>) {
 }
+
+/** represents already destroyed object.
+ */
+export const destroyed = {
+    /** Calling to this method doesn't affect anything, noop.
+     */
+    destroy() {
+    }
+};
