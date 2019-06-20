@@ -34,17 +34,21 @@ export class FormatCompiler {
 
         this.pushSubst(fieldName, filedFormat);
     }
+
     pushSubst(fieldName: string, filedFormat: string) {
         throw new Error("Method not implemented.");
     }
+
     readFieldFormat(scanner: FormatScanner): string {
         throw new Error("Method not implemented.");
     }
+
     readColon(scanner: FormatScanner) {
         if (!scanner.next())
             this.dieUnexpectedEnd();
         if (scanner.getTokenType() !== TokeType.Colon)
             return false;
+
     }
 
     pushText(text: string) {
