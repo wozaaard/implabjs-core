@@ -99,3 +99,8 @@ export interface IObserver<T> {
 
     complete(): void;
 }
+
+export interface TextWriter {
+    formatter;
+    Write(data, format?: string);
+}
