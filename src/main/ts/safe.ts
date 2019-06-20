@@ -153,7 +153,7 @@ export function each(obj, cb, thisArg?) {
  *  own properties of the source are entirely copied to the destination.
  *
  */
-export function mixin<T, S>(dest: T, source: S, template?: string[] | object): T & S {
+export function mixin<T extends object, S extends object>(dest: T, source: S, template?: string[] | object): T & S {
     argumentNotNull(dest, "to");
     const _res = dest as T & S;
 
@@ -232,7 +232,6 @@ type _AnyFn = (...args) => any;
 
 export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn)) {
     let method;
-
     if (!(_method instanceof Function)) {
         argumentNotNull(target, "target");
         method = target[_method];
@@ -264,74 +263,73 @@ export function delay(timeMs: number, ct = Cancellation.none) {
 }
 
 /**
- * Для каждого элемента массива вызывает указанную функцию и сохраняет
- * возвращенное значение в массиве результатов.
+ * Iterates over the specified array of items and calls the callback `cb`, if
+ * the result of the callback is a promise the next item from the array will be
+ * proceeded after the promise is resolved.
  *
- * @remarks cb может выполняться асинхронно, при этом одновременно будет
- *          только одна операция.
- *
- * @async
  */
-export function pmap(items, cb) {
+export function pmap<T, T2>(
+    items: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    cb: (item: T, i: number) => T2 | PromiseLike<T2>
+): T2[] | PromiseLike<T2[]> {
     argumentNotNull(cb, "cb");
 
-    if (isPromise(items))
+    if (isPromise(items)) {
         return items.then(data => pmap(data, cb));
+    } else {
 
-    if (isNull(items) || !items.length)
-        return items;
+        if (isNull(items) || !items.length)
+            return [];
 
-    let i = 0;
-    const result = [];
+        let i = 0;
+        const result = new Array<T2>();
 
-    function next() {
-        let r;
-        let ri;
-
-        function chain(x) {
-            result[ri] = x;
-            return next();
-        }
-
-        while (i < items.length) {
-            r = cb(items[i], i);
-            ri = i;
-            i++;
-            if (isPromise(r)) {
-                return r.then(chain);
-            } else {
-                result[ri] = r;
+        const next = () => {
+            while (i < items.length) {
+                const r = cb(items[i], i);
+                const ri = i;
+                i++;
+                if (isPromise(r)) {
+                    return r.then(x => {
+                        result[ri] = x;
+                        return next();
+                    });
+                } else {
+                    result[ri] = r;
+                }
             }
-        }
-        return result;
-    }
+            return result;
+        };
 
-    return next();
+        return next();
+    }
 }
 
-export function pfor(items, cb) {
+export function pfor<T>(
+    items: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
+    cb: (item: T, i: number) => any
+): void | PromiseLike<void> {
     argumentNotNull(cb, "cb");
 
-    if (isPromise(items))
-        return items.then(data => {
-            return pmap(data, cb);
-        });
+    if (isPromise(items)) {
+        return items.then(data => pfor(data, cb));
+    } else {
+        if (isNull(items) || !items.length)
+            return;
 
-    if (isNull(items) || !items.length)
-        return items;
+        let i = 0;
 
-    let i = 0;
+        const next = () => {
+            while (i < items.length) {
+                const r = cb(items[i], i);
+                i++;
+                if (isPromise(r))
+                    return r.then(next);
+            }
+        };
 
-    function next() {
-        while (i < items.length) {
-            const r = cb(items[i], i);
-            i++;
-            if (isPromise(r))
-                return r.then(next);
-        }
+        return next();
     }
-
-    return next();
 }
 
 export function first<T>(sequence: ArrayLike<T>): T;
@@ -368,13 +366,13 @@ export function first<T>(
             else
                 throw new Error("The sequence is empty");
         } else if (cb) {
-            cb(sequence[0]);
+            return cb(sequence[0]);
         } else {
             return sequence[0];
         }
     } else {
         if (err)
-            err(new Error("The sequence is required"));
+            return err(new Error("The sequence is required"));
         else
             throw new Error("The sequence is required");
     }
