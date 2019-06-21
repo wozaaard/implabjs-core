@@ -1,5 +1,5 @@
 export interface Constructor<T = {}> {
-    new (...args: any[]): T;
+    new(...args: any[]): T;
     prototype: T;
 }
 
@@ -101,6 +101,11 @@ export interface IObserver<T> {
 }
 
 export interface TextWriter {
-    formatter;
-    Write(data, format?: string);
+    Write(obj: any): void;
+    Write(format: string, ...args: any[]): void;
+
+    WriteLine(obj: any): void;
+    WriteLine(format: string, ...args: any[]): void;
+
+    WriteValue(value: any, spec?: string): void;
 }
