@@ -9,7 +9,7 @@ export class StringBuilder {
 
     WriteLine(obj: any);
     WriteLine(format: string, ...args: any[]) {
-
+        
     }
 
     WriteValue(value: any, spec?: string) {
