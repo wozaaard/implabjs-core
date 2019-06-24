@@ -83,4 +83,7 @@ test("console writer", (t, trace) => {
 
     trace.log({ foo: "bar" });
     t.deepEqual(mockConsole.getLine(1), ["console writer: ", { foo: "bar" }], "Log an object");
+
+    trace.log("json: {0:json}", { foo: "bar" });
+    t.deepEqual(mockConsole.getLine(2), ['console writer: json: {\n  "foo": "bar"\n}'], "should convert to string substitutions with spec");
 });

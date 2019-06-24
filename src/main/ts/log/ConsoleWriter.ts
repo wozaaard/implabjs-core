@@ -95,6 +95,6 @@ export class ConsoleWriter extends TextWriterBase {
         if (isNullOrEmptyString(spec))
             this._buffer.push(value);
         else
-            super.writeValue(value);
+            super.writeValue(value, spec);
     }
 }
