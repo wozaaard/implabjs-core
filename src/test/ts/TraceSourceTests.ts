@@ -2,7 +2,7 @@ import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
 import * as tape from "tape";
 import { TapeWriter, test } from "./TestTraits";
 import { MockConsole } from "./mock/MockConsole";
-import { ConsoleLog } from "@implab/core/log/writers/ConsoleLog";
+import { ConsoleLogger } from "@implab/core/log/writers/ConsoleLogger";
 import { ConsoleWriter } from "@implab/core/log/ConsoleWriter";
 
 const sourceId = "test/TraceSourceTests";
@@ -75,7 +75,7 @@ test("console writer", (t, trace) => {
 
     const mockConsole = new MockConsole();
     const writer = new ConsoleWriter(mockConsole);
-    const consoleLog = new ConsoleLog(writer);
+    const consoleLog = new ConsoleLogger(writer);
     consoleLog.writeEvents(trace.events);
 
     trace.log("Hello, world!");
