@@ -7,6 +7,23 @@ const trace = TraceSource.get(m.id);
 
 type TemplateFn = (obj: object) => string;
 
+const htmlEscapes = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#x27;",
+    "/": "&#x2F;"
+};
+
+// Regex containing the keys listed immediately above.
+const htmlEscaper = /[&<>"'\/]/g;
+
+// Escape a string for HTML interpolation.
+function escapeHtml(string: any) {
+    return ("" + string).replace(htmlEscaper, match => htmlEscapes[match]);
+}
+
 export class TemplateCompiler {
 
     _data: string[];
@@ -27,14 +44,14 @@ export class TemplateCompiler {
 
         try {
             // tslint:disable-next-line:function-constructor
-            const compiled = new Function("obj, format, $data", text);
+            const compiled = new Function("obj, format, $data, escapeHtml", text);
             /**
              * Функция форматирования по шаблону
              *
              * @type{Function}
              * @param{Object} obj объект с параметрами для подстановки
              */
-            return (obj: object) => compiled(obj || {}, format, this._data);
+            return (obj: object) => compiled(obj || {}, format, this._data, escapeHtml);
         } catch (e) {
             trace.traceEvent(DebugLevel, [e, text, this._data]);
             throw e;
@@ -69,6 +86,9 @@ export class TemplateCompiler {
                 case TokenType.OpenInlineBlock:
                     this.visitInline(parser);
                     break;
+                case TokenType.OpenFilterBlock:
+                    this.visitFilter(parser);
+                    break;
                 default:
                     this.visitTextFragment(parser);
                     break;
@@ -84,6 +104,17 @@ export class TemplateCompiler {
             code.push(parser.value());
         }
         code.push(");");
+        this._code.push(code.join(""));
+    }
+
+    visitFilter(parser: ITemplateParser) {
+        const code = ["$p.push(escapeHtml("];
+        while (parser.next()) {
+            if (parser.token() === TokenType.CloseBlock)
+                break;
+            code.push(parser.value());
+        }
+        code.push("));");
         this._code.push(code.join(""));
     }
 

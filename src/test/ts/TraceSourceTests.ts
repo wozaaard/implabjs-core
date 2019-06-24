@@ -1,6 +1,9 @@
 import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
 import * as tape from "tape";
-import { TapeWriter } from "./TestTraits";
+import { TapeWriter, test } from "./TestTraits";
+import { MockConsole } from "./mock/MockConsole";
+import { ConsoleLog } from "@implab/core/log/writers/ConsoleLog";
+import { ConsoleWriter } from "@implab/core/log/ConsoleWriter";
 
 const sourceId = "test/TraceSourceTests";
 
@@ -12,7 +15,7 @@ tape("trace message", t => {
     const h = trace.events.on(ev => {
         t.equal(ev.source, trace, "sender should be the current trace source");
         t.equal(ev.level, DebugLevel, "level should be debug level");
-        t.equal(ev.arg, "Hello, World!", "The message should be a formatted message");
+        t.equal(ev.toString(), "Hello, World!", "The message should be a formatted message");
 
         t.end();
     });
@@ -34,7 +37,7 @@ tape("trace event", t => {
     const h = trace.events.on(ev => {
         t.equal(ev.source, trace, "sender should be the current trace source");
         t.equal(ev.level, DebugLevel, "level should be debug level");
-        t.equal(ev.arg, event, "The message should be the specified object");
+        t.equal(ev.message, event, "The message should be the specified object");
 
         t.end();
     });
@@ -66,4 +69,18 @@ tape("tape comment writer", async t => {
     t.comment("DONE");
 
     t.end();
+});
+
+test("console writer", (t, trace) => {
+
+    const mockConsole = new MockConsole();
+    const writer = new ConsoleWriter(mockConsole);
+    const consoleLog = new ConsoleLog(writer);
+    consoleLog.writeEvents(trace.events);
+
+    trace.log("Hello, world!");
+    t.deepEqual(mockConsole.getLine(0), ["console writer: Hello, world!"], "Log one string");
+
+    trace.log({ foo: "bar" });
+    t.deepEqual(mockConsole.getLine(1), ["console writer: ", { foo: "bar" }], "Log an object");
 });

@@ -1,8 +1,8 @@
-import * as tape from "tape";
 import { Cancellation } from "@implab/core/Cancellation";
 import { delay } from "@implab/core/safe";
+import { test } from "./TestTraits";
 
-tape("standalone cancellation", async t => {
+test("standalone cancellation", async t => {
 
     let doCancel: (e) => void;
 
@@ -43,11 +43,9 @@ tape("standalone cancellation", async t => {
         msg = e;
     }
     t.equals(msg, reason, "The cancellation reason should be catched");
-
-    t.end();
 });
 
-tape("async cancellation", async t => {
+test("async cancellation", async t => {
 
     const ct = new Cancellation(cancel => {
         cancel("STOP!");
@@ -59,11 +57,9 @@ tape("async cancellation", async t => {
     } catch (e) {
         t.equals(e, "STOP!", "Should throw the cancellation reason");
     }
-
-    t.end();
 });
 
-tape("cancel with external event", async t => {
+test("cancel with external event", async t => {
     const ct = new Cancellation(cancel => {
         setTimeout(x => cancel("STOP!"), 0);
     });
@@ -74,11 +70,9 @@ tape("cancel with external event", async t => {
     } catch (e) {
         t.equals(e, "STOP!", "Should throw the cancellation reason");
     }
-
-    t.end();
 });
 
-tape("operation normal flow", async t => {
+test("operation normal flow", async t => {
 
     let htimeout;
     const ct = new Cancellation(cancel => {
@@ -91,6 +85,4 @@ tape("operation normal flow", async t => {
     } finally {
         clearTimeout(htimeout);
     }
-
-    t.end();
 });

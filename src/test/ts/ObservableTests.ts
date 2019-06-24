@@ -1,12 +1,12 @@
 import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
-import * as tape from "tape";
 import { Observable } from "@implab/core/Observable";
 import { IObservable } from "@implab/core/interfaces";
 import { delay } from "@implab/core/safe";
+import { test } from "./TestTraits";
 
 const trace = TraceSource.get("ObservableTests");
 
-tape("events sequence example", async t => {
+test("events sequence example", async t => {
 
     let events: IObservable<number>;
 
@@ -34,11 +34,9 @@ tape("events sequence example", async t => {
 
     t.equals(count, 45, "the summ of the evetns");
     t.true(complete, "the sequence is complete");
-
-    t.end();
 });
 
-tape("event sequence termination", async t => {
+test("event sequence termination", async t => {
     let events: IObservable<number>;
 
     const done = new Promise<void>(resolve => {
@@ -68,6 +66,4 @@ tape("event sequence termination", async t => {
     await done;
 
     t.equals(count, 1, "the sequence must be terminated once");
-
-    t.end();
 });

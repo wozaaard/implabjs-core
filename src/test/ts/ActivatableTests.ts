@@ -1,8 +1,8 @@
-import * as tape from "tape";
 import { MockActivationController } from "./mock/MockActivationController";
 import { SimpleActivatable } from "./mock/SimpleActivatable";
+import { test } from "./TestTraits";
 
-tape("simple activation", async t => {
+test("simple activation", async t => {
 
     const a = new SimpleActivatable();
     t.false(a.isActive());
@@ -12,11 +12,9 @@ tape("simple activation", async t => {
 
     await a.deactivate();
     t.false(a.isActive());
-
-    t.end();
 });
 
-tape("controller activation", async t => {
+test("controller activation", async t => {
 
     const a = new SimpleActivatable();
     const c = new MockActivationController();
@@ -37,11 +35,9 @@ tape("controller activation", async t => {
     t.false(a.isActive(), "The component should successfully deactivate");
     t.equal(c.getActive(), null, "The controller shouldn't point to any component");
     t.equal(a.getActivationController(), c, "The componet should point to it's controller");
-
-    t.end();
 });
 
-tape("handle error in onActivating", async t => {
+test("handle error in onActivating", async t => {
     const a = new SimpleActivatable();
 
     a.onActivating = async () => {
@@ -55,6 +51,4 @@ tape("handle error in onActivating", async t => {
     }
 
     t.false(a.isActive(), "the component should remain inactive");
-
-    t.end();
 });

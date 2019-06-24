@@ -101,11 +101,11 @@ export interface IObserver<T> {
 }
 
 export interface TextWriter {
-    Write(obj: any): void;
-    Write(format: string, ...args: any[]): void;
+    write(obj: any): void;
+    write(format: string, ...args: any[]): void;
 
-    WriteLine(obj: any): void;
-    WriteLine(format: string, ...args: any[]): void;
+    writeLine(obj?: any): void;
+    writeLine(format: string, ...args: any[]): void;
 
-    WriteValue(value: any, spec?: string): void;
+    writeValue(value: any, spec?: string): void;
 }

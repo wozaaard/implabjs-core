@@ -5,12 +5,13 @@ import m = require("module");
 
 const trace = TraceSource.get(m.id);
 
-const splitRx = /(<%=|\[%=|<%|\[%|%\]|%>)/;
+const splitRx = /(<%=|<%~|\[%~|\[%=|<%|\[%|%\]|%>)/;
 
 export enum TokenType {
     None,
     Text,
     OpenInlineBlock,
+    OpenFilterBlock,
     OpenBlock,
     CloseBlock
 }
@@ -20,6 +21,8 @@ const tokenMap: MapOf<TokenType> = {
     "[%": TokenType.OpenBlock,
     "<%=": TokenType.OpenInlineBlock,
     "[%=": TokenType.OpenInlineBlock,
+    "<%~": TokenType.OpenFilterBlock,
+    "[%~": TokenType.OpenFilterBlock,
     "%>": TokenType.CloseBlock,
     "%]": TokenType.CloseBlock
 };

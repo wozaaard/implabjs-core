@@ -99,6 +99,8 @@ def createSoursetTasks = { String name, String outDir ->
             '-t', target,
             '-m', jsmodule,
             '-d',
+            '--sourceMap',
+            '--sourceRoot', "file://$setDir/ts",
             '--outDir', compileDir,
             '--declarationDir', declDir
 

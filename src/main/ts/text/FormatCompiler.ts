@@ -1,20 +1,41 @@
 import { FormatScanner, TokeType } from "./FormatScanner";
-import { isNullOrEmptyString } from "../safe";
-import { TextWriter } from "../interfaces";
+import { isNullOrEmptyString, isPrimitive, get } from "../safe";
+import { TextWriter, MapOf } from "../interfaces";
+
+type CompiledPattern = (writer: TextWriter, args: any) => void;
 
 export class FormatCompiler {
     _scanner: FormatScanner;
+    _cache: MapOf<CompiledPattern> = {};
 
-    _parts: [];
+    _parts: Array<string | { name: string; format: string; }>;
 
-    compile() {
-        return (writer: TextWriter, args: any) => {
-            this._parts.forEach(x => writer.WriteValue(x))
-        };
+    compile(pattern: string) {
+        let compiledPattern = this._cache && this._cache[pattern];
+        if (!compiledPattern) {
+            this._scanner = new FormatScanner(pattern);
+            this._parts = [];
+
+            this.visitText();
+            const parts = this._parts;
+
+            compiledPattern = (writer: TextWriter, args: any) => {
+                parts.forEach(x => {
+                    if (isPrimitive(x))
+                        writer.writeValue(x);
+                    else
+                        writer.writeValue(get(x.name, args), x.format);
+                });
+            };
+            if (this._cache)
+                this._cache[pattern] = compiledPattern;
+        }
+        return compiledPattern;
     }
 
     visitText() {
         while (this._scanner.next()) {
+            // console.log(this._scanner.getTokenType(), this._scanner.getTokenValue());
             switch (this._scanner.getTokenType()) {
                 case TokeType.CurlOpen:
                     this.visitCurlOpen();
@@ -25,8 +46,6 @@ export class FormatCompiler {
                 default:
                     this.pushText(this._scanner.getTokenValue());
             }
-            if (this._scanner.getTokenType() === TokeType.CurlOpen)
-                this.visitCurlOpen();
         }
     }
 
@@ -39,12 +58,14 @@ export class FormatCompiler {
     }
 
     visitCurlOpen() {
-        if (this._scanner.next()) {
-            if (this._scanner.getTokenType() === TokeType.CurlOpen)
-                this.pushText("{");
-            else
-                this.visitTemplateSubst();
-        }
+        if (!this._scanner.next())
+            this.dieUnexpectedEnd("{ | TEXT");
+
+        if (this._scanner.getTokenType() === TokeType.CurlOpen)
+            this.pushText("{");
+        else
+            this.visitTemplateSubst();
+
     }
 
     visitTemplateSubst() {
@@ -52,20 +73,23 @@ export class FormatCompiler {
             this.dieUnexpectedToken("TEXT");
 
         const fieldName = this._scanner.getTokenValue();
-        const filedFormat = this.readColon() && this.readFieldFormat();
+        const filedFormat = this.readColon() ? this.readFieldFormat() : null;
+
+        if (this._scanner.getTokenType() !== TokeType.CurlClose)
+            this.dieUnexpectedToken("}");
 
         this.pushSubst(fieldName, filedFormat);
     }
 
     readFieldFormat() {
         const parts = new Array<string>();
-        while (this._scanner.next()) {
+        do {
             if (this._scanner.getTokenType() === TokeType.CurlClose) {
                 return parts.join("");
             } else {
                 parts.push(this._scanner.getTokenValue());
             }
-        }
+        } while (this._scanner.next());
 
         this.dieUnexpectedEnd("}");
     }
@@ -81,11 +105,12 @@ export class FormatCompiler {
     }
 
     pushSubst(fieldName: string, filedFormat: string) {
-
+        // console.log("pushSubst ", fieldName, filedFormat);
+        this._parts.push({ name: fieldName, format: filedFormat });
     }
 
     pushText(text: string) {
-
+        this._parts.push(text);
     }
 
     dieUnexpectedToken(expected?: string) {
