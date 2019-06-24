@@ -5,9 +5,10 @@ import * as tape from "tape";
 import { argumentNotNull, destroy } from "@implab/core/safe";
 
 export class TapeWriter implements IDestroyable {
-    readonly _tape: tape.Test;
+    private readonly _tape: tape.Test;
 
-    _subscriptions = new Array<IDestroyable>();
+    private readonly _subscriptions = new Array<IDestroyable>();
+    private _destroyed;
 
     constructor(t: tape.Test) {
         argumentNotNull(t, "tape");
@@ -15,22 +16,24 @@ export class TapeWriter implements IDestroyable {
     }
 
     writeEvents(source: IObservable<TraceEvent>, ct: ICancellation = Cancellation.none) {
-        const subscription = source.on(this.writeEvent.bind(this));
-        if (ct.isSupported()) {
-            ct.register(subscription.destroy.bind(subscription));
+        if (!this._destroyed) {
+            const subscription = source.on(this.writeEvent.bind(this));
+            if (ct.isSupported()) {
+                ct.register(subscription.destroy.bind(subscription));
+            }
+            this._subscriptions.push(subscription);
         }
-        this._subscriptions.push(subscription);
     }
 
     writeEvent(next: TraceEvent) {
         if (next.level >= DebugLevel) {
-            this._tape.comment(`DEBUG ${next.source.id} ${next.arg}`);
+            this._tape.comment(`DEBUG ${next.source.id} ${next}`);
         } else if (next.level >= LogLevel) {
-            this._tape.comment(`LOG   ${next.source.id} ${next.arg}`);
+            this._tape.comment(`LOG   ${next.source.id} ${next}`);
         } else if (next.level >= WarnLevel) {
-            this._tape.comment(`WARN  ${next.source.id} ${next.arg}`);
+            this._tape.comment(`WARN  ${next.source.id} ${next}`);
         } else {
-            this._tape.comment(`ERROR ${next.source.id} ${next.arg}`);
+            this._tape.comment(`ERROR ${next.source.id} ${next}`);
         }
     }
 
@@ -39,17 +42,22 @@ export class TapeWriter implements IDestroyable {
     }
 }
 
-export function test(name: string, cb: (t: tape.Test) => any) {
+export function test(name: string, cb: (t: tape.Test, trace: TraceSource) => any) {
     tape(name, async t => {
         const writer = new TapeWriter(t);
 
-        TraceSource.on(ts => {
+        // this trace is not announced through the TraceSource global registry
+        const trace = new TraceSource(name);
+        trace.level = DebugLevel;
+        writer.writeEvents(trace.events);
+
+        const h = TraceSource.on(ts => {
             ts.level = DebugLevel;
             writer.writeEvents(ts.events);
         });
 
         try {
-            await cb(t);
+            await cb(t, trace);
         } catch (e) {
 
             // verbose error information
@@ -60,6 +68,7 @@ export function test(name: string, cb: (t: tape.Test) => any) {
         } finally {
             t.end();
             destroy(writer);
+            destroy(h);
         }
     });
 }

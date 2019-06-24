@@ -5,5 +5,6 @@ define([
     "./CancellationTests",
     "./ObservableTests",
     "./ContainerTests",
-    "./SafeTests"
+    "./SafeTests",
+    "./TextTests"
 ]);

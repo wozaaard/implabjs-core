@@ -1,18 +1,31 @@
-export class StringBuilder {
-    private _data: string[];
-    private _newLine = "\n";
+import { TextWriterBase } from "./TextWriterBase";
+import { Converter } from "./Converter";
 
-    Write(obj: any);
-    Write(format: string, ...args: any[]) {
+export class StringBuilder extends TextWriterBase {
+    private _data = new Array<string>();
 
+    constructor(converter = Converter.default) {
+        super(converter);
     }
 
-    WriteLine(obj: any);
-    WriteLine(format: string, ...args: any[]) {
-        
+    writeText(text: string) {
+        this._data.push(text);
     }
 
-    WriteValue(value: any, spec?: string) {
-
+    toString() {
+        return this._data.join("");
     }
+
+    clear() {
+        this._data.length = 0;
+    }
+}
+
+const sb = new StringBuilder();
+
+export function format(format: string, ...args: any): string;
+export function format() {
+    sb.clear();
+    sb.write.apply(sb, arguments);
+    return sb.toString();
 }

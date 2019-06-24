@@ -1,6 +1,6 @@
 import { Observable } from "../Observable";
 import { Registry } from "./Registry";
-import { format as _format } from "../text/StringFormat";
+import { TraceEventData } from "./TraceEventData";
 
 export const DebugLevel = 400;
 
@@ -17,13 +17,9 @@ export interface TraceEvent {
 
     readonly level: number;
 
-    readonly arg: any;
-}
+    readonly message: any;
 
-function format(msg) {
-    if (typeof(msg) !== "string" || arguments.length === 1)
-        return msg;
-    return _format.apply(null, arguments);
+    readonly args?: any[];
 }
 
 export class TraceSource {
@@ -43,35 +39,41 @@ export class TraceSource {
         });
     }
 
-    protected emit(level: number, arg: any) {
-        this._notifyNext({ source: this, level, arg });
+    protected emit(level: number, message: any, args?: any[]) {
+        this._notifyNext(new TraceEventData(this, level, message, args));
     }
 
     isDebugEnabled() {
         return this.level >= DebugLevel;
     }
 
+    debug(data: any): void;
+    debug(msg: string, ...args: any[]): void;
     debug(msg: string, ...args: any[]) {
         if (this.isEnabled(DebugLevel))
-            this.emit(DebugLevel, format.apply(null, arguments));
+            this.emit(DebugLevel, msg, args);
     }
 
     isLogEnabled() {
         return this.level >= LogLevel;
     }
 
+    log(data: any): void;
+    log(msg: string, ...args: any[]): void;
     log(msg: string, ...args: any[]) {
         if (this.isEnabled(LogLevel))
-            this.emit(LogLevel, format.apply(null, arguments));
+            this.emit(LogLevel, msg, args);
     }
 
     isWarnEnabled() {
         return this.level >= WarnLevel;
     }
 
+    warn(data: any): void;
+    warn(msg: string, ...args: any[]): void;
     warn(msg: string, ...args: any[]) {
         if (this.isEnabled(WarnLevel))
-            this.emit(WarnLevel, format.apply(null, arguments));
+            this.emit(WarnLevel, msg, args);
     }
 
     /**
@@ -81,15 +83,20 @@ export class TraceSource {
         return this.level >= ErrorLevel;
     }
 
+    /** Traces a error
+     * @param data The object which will be passed to the underlying listeners
+     */
+    error(data: any): void;
     /**
      * Traces a error.
      *
      * @param msg the message.
      * @param args parameters which will be substituted in the message.
      */
+    error(msg: string, ...args: any[]): void;
     error(msg: string, ...args: any[]) {
         if (this.isEnabled(ErrorLevel))
-            this.emit(ErrorLevel, format.apply(null, arguments));
+            this.emit(ErrorLevel, msg, args);
     }
 
     /**
@@ -106,11 +113,11 @@ export class TraceSource {
      * Traces a raw event, passing data as it is to the underlying listeners
      *
      * @param level the level of the event
-     * @param arg the data of the event, can be a simple string or any object.
+     * @param msg the data of the event, can be a simple string or any object.
      */
-    traceEvent(level: number, arg: any) {
+    traceEvent(level: number, msg: any, ...args: any[]) {
         if (this.isEnabled(level))
-            this.emit(level, arg);
+            this.emit(level, msg, args);
     }
 
     /**

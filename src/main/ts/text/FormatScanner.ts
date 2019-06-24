@@ -2,10 +2,10 @@ import { argumentNotEmptyString } from "../safe";
 import { MapOf } from "../interfaces";
 
 export const enum TokeType {
-    CurlOpen,
-    CurlClose,
-    Colon,
-    Text
+    CurlOpen = 1,
+    CurlClose = 2,
+    Colon = 3,
+    Text = 4
 }
 
 const typeMap = {
@@ -16,7 +16,6 @@ const typeMap = {
 
 export class FormatScanner {
     private _text: string;
-    private _pos: number;
     private _tokenType: TokeType;
     private _tokenValue: string;
     private _rx = /[^{}:]+|(.)/g;
@@ -29,7 +28,6 @@ export class FormatScanner {
     next() {
         if (this._rx.lastIndex >= this._text.length)
             return false;
-        this._pos = this._rx.lastIndex;
 
         const match = this._rx.exec(this._text);
         this._tokenType = typeMap[match[1]] || TokeType.Text;

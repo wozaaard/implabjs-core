@@ -1,8 +1,8 @@
-import tape = require("tape");
 import { Cancellation } from "@implab/core/Cancellation";
 import { first, isPromise, firstWhere, delay, nowait } from "@implab/core/safe";
+import { test } from "./TestTraits";
 
-tape("await delay test", async t => {
+test("await delay test", async t => {
     // schedule delay
     let resolved = false;
     let res = delay(0).then(() => resolved = true);
@@ -36,11 +36,9 @@ tape("await delay test", async t => {
         // try schedule delay after the cancellation is requested
         nowait(delay(0, ct));
     }, "Should throw if cancelled before start");
-
-    t.end();
 });
 
-tape("sequemce test", async t => {
+test("sequemce test", async t => {
     const sequence = ["a", "b", "c"];
     const empty = [];
 
@@ -94,6 +92,4 @@ tape("sequemce test", async t => {
 
     v = await new Promise(resolve => first(asyncSequence, resolve));
     t.equal(v, "a", "The callback should be called for the first element");
-
-    t.end();
 });
