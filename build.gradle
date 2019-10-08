@@ -1,3 +1,7 @@
+plugins {
+  id "org.implab.gradle-typescript" version "1.0-SNAPSHOT"
+}
+
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
 // результатом будет версия '{num}.{distance}' где distance - расстояние от
 // текущей ревизии до ревизии с тэгом
@@ -46,90 +50,34 @@ if(!["es3", "es5", "es6", "es2016", "es2017", "esnext"].contains(target))
     throw new Exception("Invalid target specified: $target")
 
 def targetLibs = [
-    "es3" : "es5,es2015.promise,es2015.symbol,dom,scripthost",
-    "es5" : "es5,es2015.promise,es2015.symbol,dom,scripthost"
+    "es3" : ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"],
+    "es5" : ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"]
 ];
 
-ext.packageName="@$npmScope/$npmName";
+ext {
+    packageName = "@$npmScope/$npmName"
+}
 
 def srcDir = "$projectDir/src"
 def typingsDir = "$srcDir/typings"
 def distDir = "$buildDir/dist"
 def testDir = "$buildDir/test"
-def lib = targetLibs[target] ?: "${target},dom";
+def jstarget = target;
 
-println "lib: $lib";
+sources {
 
-def sourceSets = ["main", "amd", "cjs"];
-def testSets = ["test", "testAmd", "testCjs"];
-
-task beforeBuild {
 }
 
-def createSoursetTasks = { String name, String outDir ->
-    def setName = name.capitalize();
-
-    def compileDir = "$buildDir/compile/$name"
-    def declDir = "$typingsDir/$name"
-    def setDir = "$projectDir/src/$name"
-    def jsDir = outDir;
-
-    def beforeBuildTask = task "beforeBuild$setName"(dependsOn: beforeBuild) {
+typescript {
+    compilerOptions {
+        lib = targetLibs[target] ?: [target, "dom"]
+        target = jstarget
+        module = jsmodule
+        types = []
     }
-
-    def copyJsTask = task "copyJs$setName"(dependsOn: beforeBuildTask, type: Copy) {
-        from "$setDir/js"
-        into jsDir
-    }
-
-    def lintJsTask = task "lintJs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/js/").skipWhenEmpty();
-        commandLine "eslint", '--format', 'stylish', "$setDir/js/"
-    }
-
-    def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/ts").skipWhenEmpty()
-        inputs.file("$srcDir/tsconfig.json")
-        inputs.file("$setDir/tsconfig.json")
-        outputs.dir(compileDir)
-        outputs.dir(declDir)
-
-        commandLine 'node_modules/.bin/tsc',
-            '-p', "$setDir/tsconfig.json",
-            '-t', target,
-            '-m', jsmodule,
-            '-d',
-            '--sourceMap',
-            '--sourceRoot', "file://$setDir/ts",
-            '--outDir', compileDir,
-            '--declarationDir', declDir
-
-        if (lib)
-            args '--lib', lib
-    }
-
-    def copyTsOutputTask = task "copyTsOutput$setName"(dependsOn: compileTsTask, type: Copy) {
-        from compileDir
-        into jsDir
-    }
-
-    def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTsTask, type: Copy) {
-        from declDir
-        into jsDir
-    }
-
-    def copyResourcesTask = task "copyResources$setName"(dependsOn: beforeBuildTask, type: Copy) {
-        from "$setDir/resources"
-        into outDir
-    }
-
-    task "build$setName" {
-        dependsOn copyTypingsTask,
-            copyTsOutputTask,
-            copyJsTask,
-            copyResourcesTask,
-            lintJsTask
-    }
+    tsLintCmd = "tslint"
+	esLintCmd = "eslint"
+	npmCmd = "npm"
 }
 
 task printVersion {
@@ -167,58 +115,7 @@ task _initBuild {
     }
 }
 
-task cleanNpm {
-    doLast {
-        delete 'node_modules'
-    }
-}
-
-task _npmInstall() {
-    inputs.file("package.json")
-    outputs.dir("node_modules")
-    doLast {
-        exec {
-            commandLine 'npm', 'install'
-        }
-    }
-}
-
-beforeBuild {
-    dependsOn _initBuild
-    dependsOn _npmInstall
-}
-
-sourceSets.each { createSoursetTasks(it, distDir) }
-
-testSets.each { createSoursetTasks(it, testDir) }
-
-compileTsAmd {
-    dependsOn compileTsMain
-}
-
-compileTsCjs {
-    dependsOn compileTsMain
-}
-
-task build(dependsOn: buildMain) {
-    if (jsmodule == "amd")
-        dependsOn buildAmd
-    if (jsmodule == "commonjs")
-        dependsOn buildCjs
-}
-
-compileTsTest {
-    dependsOn build
-}
-
-compileTsTestAmd {
-    dependsOn compileTsTest
-}
-
-compileTsTestCjs {
-    dependsOn compileTsTest
-}
-
+/*
 task _installLocalCjsDependency(dependsOn: [buildTestCjs, "_packageMeta"], type: Exec) {
     inputs.file("$distDir/package.json")
     outputs.upToDateWhen {
@@ -230,7 +127,7 @@ task _installLocalCjsDependency(dependsOn: [buildTestCjs, "_packageMeta"], type:
     commandLine 'npm', 'install', '--no-save', '--force', distDir
 }
 
-task test(dependsOn: [buildTest], type: Exec) {
+task _test(dependsOn: [buildTest], type: Exec) {
     if (jsmodule == "amd")
         dependsOn buildTestAmd
     if (jsmodule == "commonjs") {
@@ -240,37 +137,7 @@ task test(dependsOn: [buildTest], type: Exec) {
 
     commandLine 'node', "$testDir/run-tests.js"
 }
-
-task _packageMeta(type: Copy) {
-    mustRunAfter build
-
-    inputs.property("version", version)
-    from('.') {
-        include '.npmignore', 'readme.md', 'license', 'history.md'
-    }
-    from("$srcDir/package.${jsmodule}.tmpl.json") {
-        expand project.properties
-        rename { "package.json" }
-    }
-    into distDir
-}
-
-task pack(dependsOn: [build, _packageMeta], type: Exec) {
-    workingDir distDir
-    outputs.file("$npmScope-$npmName-${version}.tgz")
-
-    commandLine 'npm', 'pack'
-}
-
-task publish(dependsOn: [build, _packageMeta], type: Exec) {
-    doFirst {
-        if (!isRelease)
-            throw new Exception("Can't publish an unreleased version");
-    }
-    workingDir distDir
-
-    commandLine 'npm', 'publish', '--access', 'public'
-}
+*/
 
 task markRelease(type: Exec) {
     onlyIf { tagDistance > 1 }
