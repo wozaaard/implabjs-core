@@ -1,5 +1,5 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.0-SNAPSHOT"
+  id "org.implab.gradle-typescript" version "1.0.1-rc1"
 }
 
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
@@ -58,10 +58,6 @@ ext {
     packageName = "@$npmScope/$npmName"
 }
 
-def srcDir = "$projectDir/src"
-def typingsDir = "$srcDir/typings"
-def distDir = "$buildDir/dist"
-def testDir = "$buildDir/test"
 def jstarget = target;
 
 sources {
@@ -85,8 +81,8 @@ task printVersion {
         println "version: $version";
         println "isRelease: $isRelease, tagDistance: $tagDistance";
         println "packageName: $packageName";
-        println "bundle: ${pack.outputs.files.join(',')}";
-        println "target: $target";
+        println "bundle: ${npmPack.outputs.files.join(',')}";
+        println "target: $jstarget";
         println "module: $jsmodule";
     }
 }
@@ -94,50 +90,14 @@ task printVersion {
 task clean {
     doLast {
         delete buildDir
-        delete typingsDir
     }
 }
 
-task _initBuild {
-    mustRunAfter clean
-
-    def buildInfoFile = "$buildDir/platform";
-    inputs.property('target',target);
-    inputs.property('jsmodule',jsmodule);
-    outputs.file(buildInfoFile);
-
-    doLast {
-        delete buildDir
-        mkdir buildDir
-
-        def f = new File(buildInfoFile);
-        f << "$target-$jsmodule";
+npmPackMeta {
+    meta {
+        name = "@$npmScope/$npmName"
     }
 }
-
-/*
-task _installLocalCjsDependency(dependsOn: [buildTestCjs, "_packageMeta"], type: Exec) {
-    inputs.file("$distDir/package.json")
-    outputs.upToDateWhen {
-        new File("$testDir/$packageName").exists()
-    }
-
-    workingDir testDir
-
-    commandLine 'npm', 'install', '--no-save', '--force', distDir
-}
-
-task _test(dependsOn: [buildTest], type: Exec) {
-    if (jsmodule == "amd")
-        dependsOn buildTestAmd
-    if (jsmodule == "commonjs") {
-        dependsOn buildTestCjs
-        dependsOn _installLocalCjsDependency
-    }
-
-    commandLine 'node', "$testDir/run-tests.js"
-}
-*/
 
 task markRelease(type: Exec) {
     onlyIf { tagDistance > 1 }
