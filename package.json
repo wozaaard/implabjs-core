@@ -21,7 +21,7 @@
     "tslib": "latest"
   },
   "devDependencies": {
-    "@types/node": "latest",
+    "@types/node": "^8.0.0",
     "@types/requirejs": "latest",
     "@types/tape": "latest",
     "dojo": "^1.10.0",
