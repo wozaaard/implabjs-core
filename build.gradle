@@ -6,7 +6,6 @@ plugins {
 // результатом будет версия '{num}.{distance}' где distance - расстояние от
 // текущей ревизии до ревизии с тэгом
 def tagDistance = 0;
-def isRelease = false;
 
 if (!version) {
     
@@ -35,24 +34,10 @@ if (hasProperty('versionSuffix') && versionSuffix) {
     version += "-$versionSuffix"
 }
 
-if(!npmName)
-    npmName = name;
-
-if (hasProperty('release')) {
-    isRelease = (release != 'false')
-} else {
-    isRelease = (tagDistance == 0);
-}
-
-if(!["amd", "commonjs", "system", "umd", "es6", "esnext"].contains(jsmodule))
+if(! jsmodule in ["amd", "commonjs", "system", "umd", "es6", "esnext"])
     throw new Exception("Invalid jsmodule specified: $jsmodule");
-if(!["es3", "es5", "es6", "es2016", "es2017", "esnext"].contains(target))
+if(! target in ["es3", "es5", "es6", "es2016", "es2017", "esnext"])
     throw new Exception("Invalid target specified: $target")
-
-def targetLibs = [
-    "es3" : ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"],
-    "es5" : ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"]
-];
 
 ext {
     packageName = "@$npmScope/$npmName"
@@ -61,25 +46,50 @@ ext {
 def jstarget = target;
 
 sources {
+    amd {
 
+    }
+
+    cjs {
+        
+    }
 }
 
 typescript {
     compilerOptions {
-        lib = targetLibs[target] ?: [target, "dom"]
+        lib = [target, "dom", "scripthost"]
+        if (jstarget in ["es5", "es3"])
+            lib += ["es2015.promise"]
+        
         target = jstarget
         module = jsmodule
         types = []
+        declaration = true
+        listFiles = true
+
     }
     tsLintCmd = "tslint"
 	esLintCmd = "eslint"
 	npmCmd = "npm"
 }
 
+configureTsMain {
+    compilerOptions {
+        if (jstarget in ["es5", "es3"])
+            lib += ["es2015.symbol", "es2015.iterable"]
+    }
+}
+
+configureTsTest {
+    compilerOptions {
+        types += [ "node" ]
+    }
+}
+
 task printVersion {
     doLast {
         println "version: $version";
-        println "isRelease: $isRelease, tagDistance: $tagDistance";
+        println "tagDistance: $tagDistance";
         println "packageName: $packageName";
         println "bundle: ${npmPack.outputs.files.join(',')}";
         println "target: $jstarget";
@@ -95,11 +105,6 @@ task clean {
 
 npmPackMeta {
     meta {
-        name = "@$npmScope/$npmName"
+        name = packageName
     }
-}
-
-task markRelease(type: Exec) {
-    onlyIf { tagDistance > 1 }
-    commandLine "hg", "tag", "v$version";
 }

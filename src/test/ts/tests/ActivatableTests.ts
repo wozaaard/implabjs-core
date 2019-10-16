@@ -1,5 +1,5 @@
-import { MockActivationController } from "./mock/MockActivationController";
-import { SimpleActivatable } from "./mock/SimpleActivatable";
+import { MockActivationController } from "../mock/MockActivationController";
+import { SimpleActivatable } from "../mock/SimpleActivatable";
 import { test } from "./TestTraits";
 
 test("simple activation", async t => {

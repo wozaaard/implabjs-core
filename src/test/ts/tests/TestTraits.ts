@@ -1,8 +1,8 @@
-import { IObservable, ICancellation, IDestroyable } from "@implab/core/interfaces";
-import { Cancellation } from "@implab/core/Cancellation";
-import { TraceEvent, LogLevel, WarnLevel, DebugLevel, TraceSource } from "@implab/core/log/TraceSource";
+import { IObservable, ICancellation, IDestroyable } from "../interfaces";
+import { Cancellation } from "../Cancellation";
+import { TraceEvent, LogLevel, WarnLevel, DebugLevel, TraceSource } from "../log/TraceSource";
 import * as tape from "tape";
-import { argumentNotNull, destroy } from "@implab/core/safe";
+import { argumentNotNull, destroy } from "../safe";
 
 export class TapeWriter implements IDestroyable {
     private readonly _tape: tape.Test;

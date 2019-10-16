@@ -1,7 +1,7 @@
-import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
-import { Observable } from "@implab/core/Observable";
-import { IObservable } from "@implab/core/interfaces";
-import { delay } from "@implab/core/safe";
+import { TraceSource } from "../log/TraceSource";
+import { Observable } from "../Observable";
+import { IObservable } from "../interfaces";
+import { delay } from "../safe";
 import { test } from "./TestTraits";
 
 const trace = TraceSource.get("ObservableTests");
