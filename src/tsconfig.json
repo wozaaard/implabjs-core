@@ -5,6 +5,5 @@
         "listFiles": true,
         "types": [],
         "lib": ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"]
-    },
-    "files": []
+    }
 }

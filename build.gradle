@@ -47,11 +47,31 @@ def jstarget = target;
 
 sources {
     amd {
-
+        typings {
+            srcDir main.output.typingsDir
+        }
     }
 
     cjs {
-        
+        typings {
+            srcDir main.output.typingsDir
+        }
+    }
+
+    testAmd {
+        typings {
+            srcDir main.output.typingsDir
+            srcDir amd.output.typingsDir
+            srcDir test.output.typingsDir
+        }
+    }
+
+    testCjs {
+        typings {
+            srcDir main.output.typingsDir
+            srcDir cjs.output.typingsDir
+            srcDir test.output.typingsDir
+        }
     }
 }
 
@@ -59,7 +79,7 @@ typescript {
     compilerOptions {
         lib = [target, "dom", "scripthost"]
         if (jstarget in ["es5", "es3"])
-            lib += ["es2015.promise"]
+            lib += ["es2015.promise", "es2015.symbol", "es2015.iterable"]
         
         target = jstarget
         module = jsmodule
@@ -68,22 +88,10 @@ typescript {
         listFiles = true
 
     }
+    tscCmd = "$projectDir/node_modules/typescript/bin/tsc"
     tsLintCmd = "tslint"
 	esLintCmd = "eslint"
 	npmCmd = "npm"
-}
-
-configureTsMain {
-    compilerOptions {
-        if (jstarget in ["es5", "es3"])
-            lib += ["es2015.symbol", "es2015.iterable"]
-    }
-}
-
-configureTsTest {
-    compilerOptions {
-        types += [ "node" ]
-    }
 }
 
 task printVersion {
@@ -107,4 +115,24 @@ npmPackMeta {
     meta {
         name = packageName
     }
+}
+
+compileTsAmd {
+    dependsOn sources.main.output
+}
+
+configureTsAmd {
+    compilerOptions {
+        types += [ "requirejs", "dojo-typings" ]
+    }
+}
+
+assembleTest {
+    dependsOn sources.main.output
+    dependsOn sources.amd.output
+    dependsOn sources.testAmd.output
+    
+    from(sources.main.output.compiledDir)
+    from(sources.amd.output.compiledDir)
+    from(sources.testAmd.output.compiledDir)
 }
