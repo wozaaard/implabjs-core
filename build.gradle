@@ -88,9 +88,9 @@ typescript {
         listFiles = true
 
     }
-    tscCmd = "$projectDir/node_modules/typescript/bin/tsc"
-    tsLintCmd = "tslint"
-	esLintCmd = "eslint"
+    tscCmd = "$projectDir/node_modules/.bin/tsc"
+    tsLintCmd = "$projectDir/node_modules/.bin/tslint"
+	esLintCmd = "$projectDir/node_modules/.bin/eslint"
 	npmCmd = "npm"
 }
 
@@ -99,7 +99,6 @@ task printVersion {
         println "version: $version";
         println "tagDistance: $tagDistance";
         println "packageName: $packageName";
-        println "bundle: ${npmPack.outputs.files.join(',')}";
         println "target: $jstarget";
         println "module: $jsmodule";
     }
@@ -125,6 +124,11 @@ configureTsAmd {
     compilerOptions {
         types += [ "requirejs", "dojo-typings" ]
     }
+}
+
+test {
+    workingDir layout.buildDirectory.dir("test");
+    commandLine "node", "tests/index.js"
 }
 
 assembleTest {
