@@ -79,7 +79,7 @@ test("Container configure/resolve tests", async t => {
 test("Load configuration from module", async t => {
     const container = new Container();
 
-    await container.configure("./mock/config1", { contextRequire: require });
+    await container.configure("../mock/config1", { contextRequire: require });
     t.pass("The configuration should load");
 
     const f1 = container.resolve("foo");

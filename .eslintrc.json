@@ -9,7 +9,7 @@
         "ecmaFeatures": {
             "jsx": true
         },
-        "sourceType": "module"
+        "sourceType": "script"
     },
     "extends": "eslint:recommended",
     "rules": {
