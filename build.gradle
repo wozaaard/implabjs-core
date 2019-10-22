@@ -1,11 +1,15 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.0.1-rc2"
+  id "org.implab.gradle-typescript" version "1.0.1-rc3"
 }
 
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
 // результатом будет версия '{num}.{distance}' где distance - расстояние от
 // текущей ревизии до ревизии с тэгом
 def tagDistance = 0;
+
+ext {
+    packageName = "@$npmScope/$name"
+}
 
 if (!version) {
     
@@ -32,10 +36,6 @@ if (!version) {
 
 if (hasProperty('versionSuffix') && versionSuffix) {
     version += "-$versionSuffix"
-}
-
-ext {
-    packageName = "@$npmScope/$npmName"
 }
 
 sources {
@@ -110,6 +110,9 @@ npmPackMeta {
 
 configureTsCjs {
     dependsOn sources.main.output
+    compilerOptions {
+        types += [ "node" ]
+    }
 }
 
 configureTsAmd {
@@ -124,9 +127,32 @@ test {
     commandLine "node", "tests/index.js"
 }
 
+task assembleAmd {
+    dependsOn sources.amd.output
+    assemble.mustRunAfter it
+
+    doLast {
+        assemble {
+            from(sources.amd.output.compiledDir)
+        }
+    }
+}
+
+task assembleCjs {
+    dependsOn sources.cjs.output
+    assemble.mustRunAfter it
+
+    doLast {
+        assemble {
+            from(sources.cjs.output.compiledDir)
+        }
+    }
+}
+
 task assembleTestAmd {
     dependsOn sources.amd.output
     dependsOn sources.testAmd.output
+    assembleTest.mustRunAfter it
 
     doLast {
         assembleTest {
@@ -136,15 +162,22 @@ task assembleTestAmd {
     }
 }
 
-assembleTest {
-    mustRunAfter assembleTestAmd
-    dependsOn sources.main.output
-    from(sources.main.output.compiledDir)
+task assembleTestCjs {
+    dependsOn sources.cjs.output
+    dependsOn sources.testCjs.output
+    assembleTest.mustRunAfter it
+
+    doLast {
+        assembleTest {
+            from(sources.cjs.output.compiledDir)
+            from(sources.testCjs.output.compiledDir)
+        }
+    }
 }
 
-
-
 task prepareTargetEs5 {
+    prepare.mustRunAfter it
+
     doLast {
         typescript {
             compilerOptions {
@@ -156,11 +189,13 @@ task prepareTargetEs5 {
 }
 
 task prepareTargetEsNext {
+    prepare.mustRunAfter it
+
     doLast {
         typescript {
             compilerOptions {
-                target = "esnext"
-                lib = ["esnext", "dom", "scripthost"]
+                target = "es2017"
+                lib = ["es2017", "dom", "scripthost"]
             }
         }
     }
@@ -168,10 +203,11 @@ task prepareTargetEsNext {
 
 task prepareNode {
     dependsOn prepareTargetEsNext
+    prepare.mustRunAfter it
+
     doLast {
         typescript {
             compilerOptions {
-                target = "esnext"
                 module = "commonjs"
             }
         }
@@ -180,15 +216,31 @@ task prepareNode {
 
 task prepareBrowser {
     dependsOn prepareTargetEs5
+    prepare.mustRunAfter it
+
     doLast {
+        packageName = "@$npmScope/$project.name-amd"
+
         typescript {
             compilerOptions {
-                module = "requirejs"
+                module = "amd"
             }
         }
     }
 }
 
-prepare {
-    mustRunAfter prepareNode, prepareBrowser
+task assembleBrowser {
+    dependsOn prepareBrowser, assembleAmd, assemble
+}
+
+task assembleNode {
+    dependsOn prepareNode, assembleCjs, assemble
+}
+
+task testBrowser {
+    dependsOn prepareBrowser, assembleTestAmd, test
+}
+
+task testNode {
+    dependsOn prepareNode, assembleTestCjs, test
 }
