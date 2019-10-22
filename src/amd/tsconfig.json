@@ -2,15 +2,13 @@
     "extends": "../tsconfig",
     "compilerOptions": {
         "types": [
-            "requirejs"
+            "requirejs",
+            "dojo-typings"
         ],
         "rootDir": "ts",
         "rootDirs": [
             "ts",
-            "../typings/main"
+            "../main/ts"
         ]
-    },
-    "include": [
-        "ts/**/*.ts"
-    ]
+    }
 }
