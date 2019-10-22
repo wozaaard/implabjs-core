@@ -1,5 +1,5 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.0.1-rc1"
+  id "org.implab.gradle-typescript" version "1.0.1-rc2"
 }
 
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
@@ -34,16 +34,9 @@ if (hasProperty('versionSuffix') && versionSuffix) {
     version += "-$versionSuffix"
 }
 
-if(! jsmodule in ["amd", "commonjs", "system", "umd", "es6", "esnext"])
-    throw new Exception("Invalid jsmodule specified: $jsmodule");
-if(! target in ["es3", "es5", "es6", "es2016", "es2017", "esnext"])
-    throw new Exception("Invalid target specified: $target")
-
 ext {
     packageName = "@$npmScope/$npmName"
 }
-
-def jstarget = target;
 
 sources {
     amd {
@@ -77,16 +70,9 @@ sources {
 
 typescript {
     compilerOptions {
-        lib = [target, "dom", "scripthost"]
-        if (jstarget in ["es5", "es3"])
-            lib += ["es2015.promise", "es2015.symbol", "es2015.iterable"]
-        
-        target = jstarget
-        module = jsmodule
         types = []
         declaration = true
         listFiles = true
-
     }
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
@@ -94,13 +80,19 @@ typescript {
 	npmCmd = "npm"
 }
 
+task prepare {
+    
+}
+
 task printVersion {
+    dependsOn prepare
+    
     doLast {
-        println "version: $version";
-        println "tagDistance: $tagDistance";
-        println "packageName: $packageName";
-        println "target: $jstarget";
-        println "module: $jsmodule";
+        println "version: ${-> version}";
+        println "tagDistance: ${-> tagDistance}";
+        println "packageName: ${-> packageName}";
+        println "target: ${-> typescript.compilerOptions.target}";
+        println "module: ${-> typescript.compilerOptions.module}";
     }
 }
 
@@ -116,11 +108,12 @@ npmPackMeta {
     }
 }
 
-compileTsAmd {
+configureTsCjs {
     dependsOn sources.main.output
 }
 
 configureTsAmd {
+    dependsOn sources.main.output
     compilerOptions {
         types += [ "requirejs", "dojo-typings" ]
     }
@@ -131,12 +124,71 @@ test {
     commandLine "node", "tests/index.js"
 }
 
-assembleTest {
-    dependsOn sources.main.output
+task assembleTestAmd {
     dependsOn sources.amd.output
     dependsOn sources.testAmd.output
-    
+
+    doLast {
+        assembleTest {
+            from(sources.amd.output.compiledDir)
+            from(sources.testAmd.output.compiledDir)
+        }
+    }
+}
+
+assembleTest {
+    mustRunAfter assembleTestAmd
+    dependsOn sources.main.output
     from(sources.main.output.compiledDir)
-    from(sources.amd.output.compiledDir)
-    from(sources.testAmd.output.compiledDir)
+}
+
+
+
+task prepareTargetEs5 {
+    doLast {
+        typescript {
+            compilerOptions {
+                target = "es5"
+                lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable"]
+            }
+        }
+    }
+}
+
+task prepareTargetEsNext {
+    doLast {
+        typescript {
+            compilerOptions {
+                target = "esnext"
+                lib = ["esnext", "dom", "scripthost"]
+            }
+        }
+    }
+}
+
+task prepareNode {
+    dependsOn prepareTargetEsNext
+    doLast {
+        typescript {
+            compilerOptions {
+                target = "esnext"
+                module = "commonjs"
+            }
+        }
+    }
+}
+
+task prepareBrowser {
+    dependsOn prepareTargetEs5
+    doLast {
+        typescript {
+            compilerOptions {
+                module = "requirejs"
+            }
+        }
+    }
+}
+
+prepare {
+    mustRunAfter prepareNode, prepareBrowser
 }
