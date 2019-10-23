@@ -1,5 +1,6 @@
 plugins {
   id "org.implab.gradle-typescript" version "1.0.1-rc3"
+  id "ivy-publish"
 }
 
 // если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
@@ -37,6 +38,10 @@ if (!version) {
 
 if (hasProperty('versionSuffix') && versionSuffix) {
     version += "-$versionSuffix"
+}
+
+configurations {
+    
 }
 
 sources {
@@ -106,7 +111,7 @@ task printVersion {
 
 task clean {
     prepare.mustRunAfter it
-    
+
     doLast {
         delete buildDir
     }
@@ -253,4 +258,36 @@ task testBrowser {
 
 task testNode {
     dependsOn prepareNode, assembleTestCjs, test
+}
+
+task packJsTar(type: Tar) {
+    dependsOn assemble;
+
+    archiveBaseName = provider { packageName }
+
+    destinationDirectory = buildDir
+    archiveClassifier = provider { typescript.compilerOptions.module }
+    compression = Compression.GZIP
+
+    from(assemble.outputs)
+
+    doLast {
+        println archiveName;
+    }
+}
+
+publishing {
+    publications {
+        local(IvyPublication) {
+            artifact(packJsTar) {
+                type = "js"
+            }
+        }
+    }
+
+    repositories {
+        ivy {
+            url "ivy-repo"
+        }
+    }
 }
