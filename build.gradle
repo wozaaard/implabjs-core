@@ -9,6 +9,7 @@ def tagDistance = 0;
 
 ext {
     packageName = "@$npmScope/$name"
+    lint = project.hasProperty('lint') ? lint : false
 }
 
 if (!version) {
@@ -72,12 +73,19 @@ typescript {
     compilerOptions {
         types = []
         declaration = true
-        listFiles = true
     }
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
 	esLintCmd = "$projectDir/node_modules/.bin/eslint"
 	npmCmd = "npm"
+}
+
+tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
+    dependsOn "prepare"
+}
+
+tasks.matching{ it.name =~ /^lint/ }.configureEach {
+    onlyIf { lint }
 }
 
 task prepare {
@@ -97,6 +105,8 @@ task printVersion {
 }
 
 task clean {
+    prepare.mustRunAfter it
+    
     doLast {
         delete buildDir
     }
