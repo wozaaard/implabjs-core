@@ -78,6 +78,8 @@ typescript {
     compilerOptions {
         types = []
         declaration = true
+        sourceMap = true
+        sourceRoot = "."
     }
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
@@ -244,6 +246,26 @@ task prepareBrowser {
     }
 }
 
+task npmPackTypingsAmd(type: Copy) {
+    dependsOn sources.main.output
+    dependsOn sources.amd.output
+    npmPack.mustRunAfter it
+
+    from sources.main.output.typingsDir
+    from sources.amd.output.typingsDir
+
+    into "${->buildDir}/npm/pack"
+}
+
+task npmPackSourcesAmd(type: Copy) {
+    from sources.main.ts
+    from sources.amd.ts
+
+    npmPack.mustRunAfter it
+
+    into "${->buildDir}/npm/pack"
+}
+
 task assembleBrowser {
     dependsOn prepareBrowser, assembleAmd, assemble
 }
@@ -260,6 +282,11 @@ task testNode {
     dependsOn prepareNode, assembleTestCjs, test
 }
 
+task npmPackBrowser {
+    dependsOn assembleBrowser, npmPack, npmPackSourcesAmd, npmPackTypingsAmd
+}
+
+
 task packJsTar(type: Tar) {
     dependsOn assemble;
 
@@ -274,6 +301,9 @@ task packJsTar(type: Tar) {
     doLast {
         println archiveName;
     }
+}
+
+task packTypingsTar(type: Tar) {
 }
 
 publishing {
