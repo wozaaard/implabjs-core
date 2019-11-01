@@ -1,5 +1,6 @@
 plugins {
   id "org.implab.gradle-typescript" version "1.0.1-rc3"
+  id "org.implab.gradle-hg"
   id "ivy-publish"
 }
 
@@ -11,33 +12,6 @@ def tagDistance = 0;
 ext {
     packageName = "@$npmScope/$name"
     lint = project.hasProperty('lint') ? lint : false
-}
-
-if (!version) {
-    
-    def rev = ["hg", "log", "-r", ".", "--template", "{latesttag('re:^v') % '{tag}-{distance}'}"].execute().text.trim();
-
-    def tagVersion;
-
-    def match = (rev =~ /^v(\d+\.\d+\.\d+).*-(\d+)$/);
-    
-    if (match.size()) {
-        tagVersion = match[0][1];
-        tagDistance = match[0][2].toInteger();
-    } else {
-        throw new Exception("A version must be specied");
-    }
-
-    version = tagVersion;
-
-    if (tagDistance > 0)
-        version++;
-} else {
-    println "explicit version: $version";
-}
-
-if (hasProperty('versionSuffix') && versionSuffix) {
-    version += "-$versionSuffix"
 }
 
 configurations {
@@ -104,7 +78,6 @@ task printVersion {
     
     doLast {
         println "version: ${-> version}";
-        println "tagDistance: ${-> tagDistance}";
         println "packageName: ${-> packageName}";
         println "target: ${-> typescript.compilerOptions.target}";
         println "module: ${-> typescript.compilerOptions.module}";
@@ -144,73 +117,25 @@ test {
     commandLine "node", "tests/index.js"
 }
 
-task assembleAmd {
-    dependsOn sources.amd.output
-    assemble.mustRunAfter it
-
-    doLast {
-        assemble {
-            from(sources.amd.output.compiledDir)
-        }
-    }
+assemble {
+    from sources.amd.output.compiledDir
+    from sources.cjs.output.compiledDir
 }
 
-task assembleCjs {
-    dependsOn sources.cjs.output
-    assemble.mustRunAfter it
-
-    doLast {
-        assemble {
-            from(sources.cjs.output.compiledDir)
-        }
-    }
+assembleTest {
+    from sources.amd.output.compiledDir
+    from sources.cjs.output.compiledDir
+    from sources.testAmd.output.compiledDir
+    from sources.testCjs.output.compiledDir
 }
 
-task assembleTestAmd {
-    dependsOn sources.amd.output
-    dependsOn sources.testAmd.output
-    assembleTest.mustRunAfter it
-
-    doLast {
-        assembleTest {
-            from(sources.amd.output.compiledDir)
-            from(sources.testAmd.output.compiledDir)
-        }
-    }
-}
-
-task assembleTestCjs {
-    dependsOn sources.cjs.output
-    dependsOn sources.testCjs.output
-    assembleTest.mustRunAfter it
-
-    doLast {
-        assembleTest {
-            from(sources.cjs.output.compiledDir)
-            from(sources.testCjs.output.compiledDir)
-        }
-    }
-}
-
-task prepareTargetEs5 {
+task prepareNode {
     prepare.mustRunAfter it
 
     doLast {
         typescript {
             compilerOptions {
-                target = "es5"
-                lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable"]
-            }
-        }
-    }
-}
-
-task prepareTargetEsNext {
-    prepare.mustRunAfter it
-
-    doLast {
-        typescript {
-            compilerOptions {
+                module = "commonjs"
                 target = "es2017"
                 lib = ["es2017", "dom", "scripthost"]
             }
@@ -218,21 +143,7 @@ task prepareTargetEsNext {
     }
 }
 
-task prepareNode {
-    dependsOn prepareTargetEsNext
-    prepare.mustRunAfter it
-
-    doLast {
-        typescript {
-            compilerOptions {
-                module = "commonjs"
-            }
-        }
-    }
-}
-
 task prepareBrowser {
-    dependsOn prepareTargetEs5
     prepare.mustRunAfter it
 
     doLast {
@@ -241,6 +152,8 @@ task prepareBrowser {
         typescript {
             compilerOptions {
                 module = "amd"
+                target = "es5"
+                lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable"]
             }
         }
     }
@@ -267,19 +180,19 @@ task npmPackSourcesAmd(type: Copy) {
 }
 
 task assembleBrowser {
-    dependsOn prepareBrowser, assembleAmd, assemble
+    dependsOn prepareBrowser, assemble, sources.amd.output
 }
 
 task assembleNode {
-    dependsOn prepareNode, assembleCjs, assemble
+    dependsOn prepareNode, assemble, sources.cjs.output
 }
 
 task testBrowser {
-    dependsOn prepareBrowser, assembleTestAmd, test
+    dependsOn prepareBrowser, test, sources.amd.output, sources.testAmd.output
 }
 
 task testNode {
-    dependsOn prepareNode, assembleTestCjs, test
+    dependsOn prepareNode, test, sources.cjs.output, sources.testCjs.output
 }
 
 task npmPackBrowser {
