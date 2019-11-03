@@ -53,7 +53,7 @@ typescript {
         types = []
         declaration = true
         sourceMap = true
-        sourceRoot = "."
+        sourceRoot = "_src"
     }
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
@@ -118,15 +118,35 @@ test {
 }
 
 assemble {
+    mustRunAfter sources.amd.output,
+        sources.cjs.output
+        
     from sources.amd.output.compiledDir
     from sources.cjs.output.compiledDir
 }
 
 assembleTest {
+    mustRunAfter sources.amd.output,
+        sources.cjs.output,
+        sources.testAmd.output,
+        sources.testCjs.output
+
     from sources.amd.output.compiledDir
     from sources.cjs.output.compiledDir
     from sources.testAmd.output.compiledDir
     from sources.testCjs.output.compiledDir
+}
+
+task prepareLocalDebug {
+    prepare.mustRunAfter it
+
+    doLast {
+        tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
+            compilerOptions {
+                sourceRoot = "file://" + it.rootDir
+            }
+        }
+    }
 }
 
 task prepareNode {
@@ -176,7 +196,7 @@ task npmPackSourcesAmd(type: Copy) {
 
     npmPack.mustRunAfter it
 
-    into "${->buildDir}/npm/pack"
+    into "${->buildDir}/npm/pack/_src"
 }
 
 task assembleBrowser {
@@ -185,6 +205,10 @@ task assembleBrowser {
 
 task assembleNode {
     dependsOn prepareNode, assemble, sources.cjs.output
+}
+
+task assembleTestBrowser {
+    dependsOn prepareBrowser, prepareLocalDebug, assembleTest, sources.amd.output, sources.testAmd.output
 }
 
 task testBrowser {
