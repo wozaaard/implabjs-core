@@ -4,18 +4,15 @@ plugins {
   id "ivy-publish"
 }
 
-// если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
-// результатом будет версия '{num}.{distance}' где distance - расстояние от
-// текущей ревизии до ревизии с тэгом
-def tagDistance = 0;
+if (!symbols in ['local', 'pack', 'none'])
+    throw new Exception("The symbols property value is invalid: $symbols");
+
+if (!flavour in ['browser', 'node'])
+    throw new Exception("The flavour property value is invalid: $flavour");
 
 ext {
-    packageName = "@$npmScope/$name"
-    lint = project.hasProperty('lint') ? lint : false
-}
-
-configurations {
-    
+    packageName = flavour == 'browser' ? "@$npmScope/$name-amd" : "@$npmScope/$name"
+    lint = project.hasProperty('lint') ? project.lint : false
 }
 
 sources {
@@ -52,8 +49,21 @@ typescript {
     compilerOptions {
         types = []
         declaration = true
-        sourceMap = true
-        sourceRoot = "_src"
+        
+        if(symbols != 'none') {
+            sourceMap = true
+            sourceRoot = "_src"
+        }
+
+        if (flavour == 'node') {
+            module = "commonjs"
+            target = "es2017"
+            lib = ["es2017", "dom", "scripthost"]
+        } else if (flavour == 'browser') {
+            module = "amd"
+            target = "es5"
+            lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable" ]
+        }
     }
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
@@ -61,32 +71,31 @@ typescript {
 	npmCmd = "npm"
 }
 
-tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
-    dependsOn "prepare"
-}
-
 tasks.matching{ it.name =~ /^lint/ }.configureEach {
     onlyIf { lint }
 }
 
-task prepare {
-    
+if (symbols == 'local') {
+    tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
+        compilerOptions {
+            sourceRoot = "file://" + it.rootDir
+        }
+    }
 }
 
 task printVersion {
-    dependsOn prepare
-    
     doLast {
-        println "version: ${-> version}";
         println "packageName: ${-> packageName}";
+        println "version: ${-> version}";
+        println "flavour: ${-> flavour}";
         println "target: ${-> typescript.compilerOptions.target}";
         println "module: ${-> typescript.compilerOptions.module}";
+        println "lint: ${-> lint}";
+        println "symbols: ${-> symbols}";
     }
 }
 
 task clean {
-    prepare.mustRunAfter it
-
     doLast {
         delete buildDir
     }
@@ -118,111 +127,67 @@ test {
 }
 
 assemble {
-    mustRunAfter sources.amd.output,
-        sources.cjs.output
-        
-    from sources.amd.output.compiledDir
-    from sources.cjs.output.compiledDir
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.compiledDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.compiledDir
+    }
 }
 
 assembleTest {
-    mustRunAfter sources.amd.output,
-        sources.cjs.output,
-        sources.testAmd.output,
-        sources.testCjs.output
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output, sources.testAmd.output
 
-    from sources.amd.output.compiledDir
-    from sources.cjs.output.compiledDir
-    from sources.testAmd.output.compiledDir
-    from sources.testCjs.output.compiledDir
-}
+        from sources.amd.output.compiledDir
+        from sources.testAmd.output.compiledDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output, sources.testCjs.output
 
-task prepareLocalDebug {
-    prepare.mustRunAfter it
-
-    doLast {
-        tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
-            compilerOptions {
-                sourceRoot = "file://" + it.rootDir
-            }
-        }
+        from sources.cjs.output.compiledDir
+        from sources.testCjs.output.compiledDir
     }
 }
 
-task prepareNode {
-    prepare.mustRunAfter it
-
-    doLast {
-        typescript {
-            compilerOptions {
-                module = "commonjs"
-                target = "es2017"
-                lib = ["es2017", "dom", "scripthost"]
-            }
-        }
-    }
-}
-
-task prepareBrowser {
-    prepare.mustRunAfter it
-
-    doLast {
-        packageName = "@$npmScope/$project.name-amd"
-
-        typescript {
-            compilerOptions {
-                module = "amd"
-                target = "es5"
-                lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable"]
-            }
-        }
-    }
-}
-
-task npmPackTypingsAmd(type: Copy) {
+task npmPackTypings(type: Copy) {
+    npmPack.dependsOn it
     dependsOn sources.main.output
-    dependsOn sources.amd.output
-    npmPack.mustRunAfter it
-
+    
     from sources.main.output.typingsDir
-    from sources.amd.output.typingsDir
+
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.typingsDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.typingsDir
+    }
 
     into "${->buildDir}/npm/pack"
 }
 
-task npmPackSourcesAmd(type: Copy) {
+task npmPackSources(type: Copy) {
     from sources.main.ts
-    from sources.amd.ts
-
-    npmPack.mustRunAfter it
+    
+    if (flavour == 'browser') {
+        from sources.amd.ts
+    }
+    if (flavour == 'node') {
+        from sources.cjs.ts
+    }
 
     into "${->buildDir}/npm/pack/_src"
 }
 
-task assembleBrowser {
-    dependsOn prepareBrowser, assemble, sources.amd.output
+if (symbols == 'pack') {
+    npmPack {
+        dependsOn npmPackSources
+    }
 }
-
-task assembleNode {
-    dependsOn prepareNode, assemble, sources.cjs.output
-}
-
-task assembleTestBrowser {
-    dependsOn prepareBrowser, prepareLocalDebug, assembleTest, sources.amd.output, sources.testAmd.output
-}
-
-task testBrowser {
-    dependsOn prepareBrowser, test, sources.amd.output, sources.testAmd.output
-}
-
-task testNode {
-    dependsOn prepareNode, test, sources.cjs.output, sources.testCjs.output
-}
-
-task npmPackBrowser {
-    dependsOn assembleBrowser, npmPack, npmPackSourcesAmd, npmPackTypingsAmd
-}
-
 
 task packJsTar(type: Tar) {
     dependsOn assemble;
