@@ -4,7 +4,7 @@ import { TraceSource } from "../log/TraceSource";
 import m = require("module");
 
 const sandboxId = Uuid();
-define(sandboxId, ["require"], r => r);
+define(sandboxId, ["require"], (r: any) => r);
 
 const globalRequire = getGlobal().require as Require || requirejs;
 
