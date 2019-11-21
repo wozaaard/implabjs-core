@@ -1,5 +1,5 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.0.1-rc3"
+  id "org.implab.gradle-typescript" version "1.1.0"
   id "org.implab.gradle-hg"
   id "ivy-publish"
 }
@@ -12,7 +12,7 @@ if (!flavour in ['browser', 'node'])
 
 ext {
     packageName = flavour == 'browser' ? "@$npmScope/$name-amd" : "@$npmScope/$name"
-    lint = project.hasProperty('lint') ? project.lint : false
+    lint = project.hasProperty('lint') ? project.lint ?: true : false
 }
 
 sources {
@@ -68,7 +68,10 @@ typescript {
     tscCmd = "$projectDir/node_modules/.bin/tsc"
     tsLintCmd = "$projectDir/node_modules/.bin/tslint"
 	esLintCmd = "$projectDir/node_modules/.bin/eslint"
-	npmCmd = "npm"
+}
+
+npm {
+    npmCmd = "npm"
 }
 
 tasks.matching{ it.name =~ /^lint/ }.configureEach {
@@ -85,13 +88,13 @@ if (symbols == 'local') {
 
 task printVersion {
     doLast {
-        println "packageName: ${-> packageName}";
-        println "version: ${-> version}";
-        println "flavour: ${-> flavour}";
-        println "target: ${-> typescript.compilerOptions.target}";
-        println "module: ${-> typescript.compilerOptions.module}";
-        println "lint: ${-> lint}";
-        println "symbols: ${-> symbols}";
+        println "packageName: $packageName";
+        println "version: $version";
+        println "flavour: $flavour";
+        println "target: $typescript.compilerOptions.target";
+        println "module: $typescript.compilerOptions.module";
+        println "lint: $lint";
+        println "symbols: $symbols";
     }
 }
 
@@ -130,10 +133,12 @@ assemble {
     if (flavour == 'browser') {
         dependsOn sources.amd.output
         from sources.amd.output.compiledDir
+        from sources.amd.resources
     }
     if (flavour == 'node') {
         dependsOn sources.cjs.output
         from sources.cjs.output.compiledDir
+        from sources.cjs.resources
     }
 }
 
@@ -143,17 +148,32 @@ assembleTest {
 
         from sources.amd.output.compiledDir
         from sources.testAmd.output.compiledDir
+        from sources.amd.resources
+        from sources.testAmd.resources
     }
     if (flavour == 'node') {
         dependsOn sources.cjs.output, sources.testCjs.output
 
         from sources.cjs.output.compiledDir
         from sources.testCjs.output.compiledDir
+        from sources.cjs.resources
+        from sources.testCjs.resources
+    }
+}
+
+typings {
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.typingsDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.typingsDir
     }
 }
 
 task npmPackTypings(type: Copy) {
-    npmPack.dependsOn it
+    npmPackContents.dependsOn it
     dependsOn sources.main.output
     
     from sources.main.output.typingsDir
@@ -167,11 +187,14 @@ task npmPackTypings(type: Copy) {
         from sources.cjs.output.typingsDir
     }
 
-    into "${->buildDir}/npm/pack"
+    into npm.packageDir
 }
 
 task npmPackSources(type: Copy) {
     from sources.main.ts
+    if (symbols == 'pack') {
+       npmPackContents.dependsOn npmPackSources
+}
     
     if (flavour == 'browser') {
         from sources.amd.ts
@@ -180,14 +203,10 @@ task npmPackSources(type: Copy) {
         from sources.cjs.ts
     }
 
-    into "${->buildDir}/npm/pack/_src"
+    into npm.packageDir.dir("_src")
 }
 
-if (symbols == 'pack') {
-    npmPack {
-        dependsOn npmPackSources
-    }
-}
+
 
 task packJsTar(type: Tar) {
     dependsOn assemble;
