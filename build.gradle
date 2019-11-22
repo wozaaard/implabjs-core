@@ -1,5 +1,5 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.1.0"
+  id "org.implab.gradle-typescript" version "1.1.1"
   id "org.implab.gradle-hg"
   id "ivy-publish"
 }
@@ -194,7 +194,7 @@ task npmPackSources(type: Copy) {
     from sources.main.ts
     if (symbols == 'pack') {
        npmPackContents.dependsOn npmPackSources
-}
+    }
     
     if (flavour == 'browser') {
         from sources.amd.ts
