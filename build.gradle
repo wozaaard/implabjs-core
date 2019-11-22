@@ -1,278 +1,244 @@
-// если версия явно не заданы вычисляем ее из тэга ревизии v.{num}***
-// результатом будет версия '{num}.{distance}' где distance - расстояние от
-// текущей ревизии до ревизии с тэгом
-def tagDistance = 0;
-def isRelease = false;
-
-if (!version) {
-    
-    def rev = ["hg", "log", "-r", ".", "--template", "{latesttag('re:^v') % '{tag}-{distance}'}"].execute().text.trim();
-
-    def tagVersion;
-
-    def match = (rev =~ /^v(\d+\.\d+\.\d+).*-(\d+)$/);
-    
-    if (match.size()) {
-        tagVersion = match[0][1];
-        tagDistance = match[0][2].toInteger();
-    } else {
-        throw new Exception("A version must be specied");
-    }
-
-    version = tagVersion;
-
-    if (tagDistance > 0)
-        version++;
-} else {
-    println "explicit version: $version";
+plugins {
+  id "org.implab.gradle-typescript" version "1.1.1"
+  id "org.implab.gradle-hg"
+  id "ivy-publish"
 }
 
-if (hasProperty('versionSuffix') && versionSuffix) {
-    version += "-$versionSuffix"
+if (!symbols in ['local', 'pack', 'none'])
+    throw new Exception("The symbols property value is invalid: $symbols");
+
+if (!flavour in ['browser', 'node'])
+    throw new Exception("The flavour property value is invalid: $flavour");
+
+ext {
+    packageName = flavour == 'browser' ? "@$npmScope/$name-amd" : "@$npmScope/$name"
+    lint = project.hasProperty('lint') ? project.lint ?: true : false
 }
 
-if(!npmName)
-    npmName = name;
+sources {
+    amd {
+        typings {
+            srcDir main.output.typingsDir
+        }
+    }
 
-if (hasProperty('release')) {
-    isRelease = (release != 'false')
-} else {
-    isRelease = (tagDistance == 0);
+    cjs {
+        typings {
+            srcDir main.output.typingsDir
+        }
+    }
+
+    testAmd {
+        typings {
+            srcDir main.output.typingsDir
+            srcDir amd.output.typingsDir
+            srcDir test.output.typingsDir
+        }
+    }
+
+    testCjs {
+        typings {
+            srcDir main.output.typingsDir
+            srcDir cjs.output.typingsDir
+            srcDir test.output.typingsDir
+        }
+    }
 }
 
-if(!["amd", "commonjs", "system", "umd", "es6", "esnext"].contains(jsmodule))
-    throw new Exception("Invalid jsmodule specified: $jsmodule");
-if(!["es3", "es5", "es6", "es2016", "es2017", "esnext"].contains(target))
-    throw new Exception("Invalid target specified: $target")
+typescript {
+    compilerOptions {
+        types = []
+        declaration = true
+        
+        if(symbols != 'none') {
+            sourceMap = true
+            sourceRoot = "_src"
+        }
 
-def targetLibs = [
-    "es3" : "es5,es2015.promise,es2015.symbol,dom,scripthost",
-    "es5" : "es5,es2015.promise,es2015.symbol,dom,scripthost"
-];
-
-ext.packageName="@$npmScope/$npmName";
-
-def srcDir = "$projectDir/src"
-def typingsDir = "$srcDir/typings"
-def distDir = "$buildDir/dist"
-def testDir = "$buildDir/test"
-def lib = targetLibs[target] ?: "${target},dom";
-
-println "lib: $lib";
-
-def sourceSets = ["main", "amd", "cjs"];
-def testSets = ["test", "testAmd", "testCjs"];
-
-task beforeBuild {
+        if (flavour == 'node') {
+            module = "commonjs"
+            target = "es2017"
+            lib = ["es2017", "dom", "scripthost"]
+        } else if (flavour == 'browser') {
+            module = "amd"
+            target = "es5"
+            lib = ["es5", "dom", "scripthost", "es2015.promise", "es2015.symbol", "es2015.iterable" ]
+        }
+    }
+    tscCmd = "$projectDir/node_modules/.bin/tsc"
+    tsLintCmd = "$projectDir/node_modules/.bin/tslint"
+	esLintCmd = "$projectDir/node_modules/.bin/eslint"
 }
 
-def createSoursetTasks = { String name, String outDir ->
-    def setName = name.capitalize();
+npm {
+    npmCmd = "npm"
+}
 
-    def compileDir = "$buildDir/compile/$name"
-    def declDir = "$typingsDir/$name"
-    def setDir = "$projectDir/src/$name"
-    def jsDir = outDir;
+tasks.matching{ it.name =~ /^lint/ }.configureEach {
+    onlyIf { lint }
+}
 
-    def beforeBuildTask = task "beforeBuild$setName"(dependsOn: beforeBuild) {
-    }
-
-    def copyJsTask = task "copyJs$setName"(dependsOn: beforeBuildTask, type: Copy) {
-        from "$setDir/js"
-        into jsDir
-    }
-
-    def lintJsTask = task "lintJs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/js/").skipWhenEmpty();
-        commandLine "eslint", '--format', 'stylish', "$setDir/js/"
-    }
-
-    def compileTsTask = task "compileTs$setName"(dependsOn: beforeBuildTask, type: Exec) {
-        inputs.dir("$setDir/ts").skipWhenEmpty()
-        inputs.file("$srcDir/tsconfig.json")
-        inputs.file("$setDir/tsconfig.json")
-        outputs.dir(compileDir)
-        outputs.dir(declDir)
-
-        commandLine 'node_modules/.bin/tsc',
-            '-p', "$setDir/tsconfig.json",
-            '-t', target,
-            '-m', jsmodule,
-            '-d',
-            '--sourceMap',
-            '--sourceRoot', "file://$setDir/ts",
-            '--outDir', compileDir,
-            '--declarationDir', declDir
-
-        if (lib)
-            args '--lib', lib
-    }
-
-    def copyTsOutputTask = task "copyTsOutput$setName"(dependsOn: compileTsTask, type: Copy) {
-        from compileDir
-        into jsDir
-    }
-
-    def copyTypingsTask = task "copyTypings$setName"(dependsOn: compileTsTask, type: Copy) {
-        from declDir
-        into jsDir
-    }
-
-    def copyResourcesTask = task "copyResources$setName"(dependsOn: beforeBuildTask, type: Copy) {
-        from "$setDir/resources"
-        into outDir
-    }
-
-    task "build$setName" {
-        dependsOn copyTypingsTask,
-            copyTsOutputTask,
-            copyJsTask,
-            copyResourcesTask,
-            lintJsTask
+if (symbols == 'local') {
+    tasks.matching{ it.name =~ /^configureTs/ }.configureEach {
+        compilerOptions {
+            sourceRoot = "file://" + it.rootDir
+        }
     }
 }
 
 task printVersion {
     doLast {
-        println "version: $version";
-        println "isRelease: $isRelease, tagDistance: $tagDistance";
         println "packageName: $packageName";
-        println "bundle: ${pack.outputs.files.join(',')}";
-        println "target: $target";
-        println "module: $jsmodule";
+        println "version: $version";
+        println "flavour: $flavour";
+        println "target: $typescript.compilerOptions.target";
+        println "module: $typescript.compilerOptions.module";
+        println "lint: $lint";
+        println "symbols: $symbols";
     }
 }
 
 task clean {
     doLast {
         delete buildDir
-        delete typingsDir
     }
 }
 
-task _initBuild {
-    mustRunAfter clean
-
-    def buildInfoFile = "$buildDir/platform";
-    inputs.property('target',target);
-    inputs.property('jsmodule',jsmodule);
-    outputs.file(buildInfoFile);
-
-    doLast {
-        delete buildDir
-        mkdir buildDir
-
-        def f = new File(buildInfoFile);
-        f << "$target-$jsmodule";
+npmPackMeta {
+    meta {
+        name = packageName
     }
 }
 
-task cleanNpm {
-    doLast {
-        delete 'node_modules'
+configureTsCjs {
+    dependsOn sources.main.output
+    compilerOptions {
+        types += [ "node" ]
     }
 }
 
-task _npmInstall() {
-    inputs.file("package.json")
-    outputs.dir("node_modules")
+configureTsAmd {
+    dependsOn sources.main.output
+    compilerOptions {
+        types += [ "requirejs", "dojo-typings" ]
+    }
+}
+
+test {
+    workingDir layout.buildDirectory.dir("test");
+    commandLine "node", "tests/index.js"
+}
+
+assemble {
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.compiledDir
+        from sources.amd.resources
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.compiledDir
+        from sources.cjs.resources
+    }
+}
+
+assembleTest {
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output, sources.testAmd.output
+
+        from sources.amd.output.compiledDir
+        from sources.testAmd.output.compiledDir
+        from sources.amd.resources
+        from sources.testAmd.resources
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output, sources.testCjs.output
+
+        from sources.cjs.output.compiledDir
+        from sources.testCjs.output.compiledDir
+        from sources.cjs.resources
+        from sources.testCjs.resources
+    }
+}
+
+typings {
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.typingsDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.typingsDir
+    }
+}
+
+task npmPackTypings(type: Copy) {
+    npmPackContents.dependsOn it
+    dependsOn sources.main.output
+    
+    from sources.main.output.typingsDir
+
+    if (flavour == 'browser') {
+        dependsOn sources.amd.output
+        from sources.amd.output.typingsDir
+    }
+    if (flavour == 'node') {
+        dependsOn sources.cjs.output
+        from sources.cjs.output.typingsDir
+    }
+
+    into npm.packageDir
+}
+
+task npmPackSources(type: Copy) {
+    from sources.main.ts
+    if (symbols == 'pack') {
+       npmPackContents.dependsOn npmPackSources
+    }
+    
+    if (flavour == 'browser') {
+        from sources.amd.ts
+    }
+    if (flavour == 'node') {
+        from sources.cjs.ts
+    }
+
+    into npm.packageDir.dir("_src")
+}
+
+
+
+task packJsTar(type: Tar) {
+    dependsOn assemble;
+
+    archiveBaseName = provider { packageName }
+
+    destinationDirectory = buildDir
+    archiveClassifier = provider { typescript.compilerOptions.module }
+    compression = Compression.GZIP
+
+    from(assemble.outputs)
+
     doLast {
-        exec {
-            commandLine 'npm', 'install'
+        println archiveName;
+    }
+}
+
+task packTypingsTar(type: Tar) {
+}
+
+publishing {
+    publications {
+        local(IvyPublication) {
+            artifact(packJsTar) {
+                type = "js"
+            }
         }
     }
-}
 
-beforeBuild {
-    dependsOn _initBuild
-    dependsOn _npmInstall
-}
-
-sourceSets.each { createSoursetTasks(it, distDir) }
-
-testSets.each { createSoursetTasks(it, testDir) }
-
-compileTsAmd {
-    dependsOn compileTsMain
-}
-
-compileTsCjs {
-    dependsOn compileTsMain
-}
-
-task build(dependsOn: buildMain) {
-    if (jsmodule == "amd")
-        dependsOn buildAmd
-    if (jsmodule == "commonjs")
-        dependsOn buildCjs
-}
-
-compileTsTest {
-    dependsOn build
-}
-
-compileTsTestAmd {
-    dependsOn compileTsTest
-}
-
-compileTsTestCjs {
-    dependsOn compileTsTest
-}
-
-task _installLocalCjsDependency(dependsOn: [buildTestCjs, "_packageMeta"], type: Exec) {
-    inputs.file("$distDir/package.json")
-    outputs.upToDateWhen {
-        new File("$testDir/$packageName").exists()
+    repositories {
+        ivy {
+            url "ivy-repo"
+        }
     }
-
-    workingDir testDir
-
-    commandLine 'npm', 'install', '--no-save', '--force', distDir
-}
-
-task test(dependsOn: [buildTest], type: Exec) {
-    if (jsmodule == "amd")
-        dependsOn buildTestAmd
-    if (jsmodule == "commonjs") {
-        dependsOn buildTestCjs
-        dependsOn _installLocalCjsDependency
-    }
-
-    commandLine 'node', "$testDir/run-tests.js"
-}
-
-task _packageMeta(type: Copy) {
-    mustRunAfter build
-
-    inputs.property("version", version)
-    from('.') {
-        include '.npmignore', 'readme.md', 'license', 'history.md'
-    }
-    from("$srcDir/package.${jsmodule}.tmpl.json") {
-        expand project.properties
-        rename { "package.json" }
-    }
-    into distDir
-}
-
-task pack(dependsOn: [build, _packageMeta], type: Exec) {
-    workingDir distDir
-    outputs.file("$npmScope-$npmName-${version}.tgz")
-
-    commandLine 'npm', 'pack'
-}
-
-task publish(dependsOn: [build, _packageMeta], type: Exec) {
-    doFirst {
-        if (!isRelease)
-            throw new Exception("Can't publish an unreleased version");
-    }
-    workingDir distDir
-
-    commandLine 'npm', 'publish', '--access', 'public'
-}
-
-task markRelease(type: Exec) {
-    onlyIf { tagDistance > 1 }
-    commandLine "hg", "tag", "v$version";
 }

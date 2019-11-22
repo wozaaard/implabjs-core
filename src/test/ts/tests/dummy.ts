@@ -1,5 +1,5 @@
 import * as tape from "tape";
-import { Uuid } from "@implab/core/Uuid";
+import { Uuid } from "../Uuid";
 
 tape("simple", t => {
     t.pass("sync assert");

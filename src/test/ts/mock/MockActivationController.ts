@@ -1,5 +1,5 @@
-import { IActivatable, ICancellation, IActivationController } from "@implab/core/interfaces";
-import { Cancellation } from "@implab/core/Cancellation";
+import { IActivatable, ICancellation, IActivationController } from "../interfaces";
+import { Cancellation } from "../Cancellation";
 
 export class MockActivationController implements IActivationController {
 

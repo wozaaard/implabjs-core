@@ -1,9 +1,9 @@
-define(["tape"], function(tape) {
+define(["require", "tape"], function(require, tape) {
     "use strict";
     var sourceId = '73a633f3-eab8-49b0-8601-07cae710f234';
     var sourceId2 = '3ba9c7cd-ed77-437b-9a2f-1cbeb1226b5b';
     tape('Load TraceSource for the module', function(t) {
-        require(["@implab/core/log/trace!" + sourceId, "@implab/core/log/TraceSource"], function(trace, TraceSource_1) {
+        require(["../log/trace!" + sourceId, "../log/TraceSource"], function(trace, TraceSource_1) {
             var TraceSource = TraceSource_1.TraceSource;
             t.equal(trace && trace.id, sourceId, "trace should be taken from the loader plugin parameter");
 

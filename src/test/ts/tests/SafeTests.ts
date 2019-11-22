@@ -1,5 +1,5 @@
-import { Cancellation } from "@implab/core/Cancellation";
-import { first, isPromise, firstWhere, delay, nowait } from "@implab/core/safe";
+import { Cancellation } from "../Cancellation";
+import { first, isPromise, firstWhere, delay, nowait } from "../safe";
 import { test } from "./TestTraits";
 
 test("await delay test", async t => {

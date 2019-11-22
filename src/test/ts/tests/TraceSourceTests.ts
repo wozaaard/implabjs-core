@@ -1,9 +1,9 @@
-import { TraceSource, DebugLevel } from "@implab/core/log/TraceSource";
+import { TraceSource, DebugLevel } from "../log/TraceSource";
 import * as tape from "tape";
 import { TapeWriter, test } from "./TestTraits";
-import { MockConsole } from "./mock/MockConsole";
-import { ConsoleLogger } from "@implab/core/log/writers/ConsoleLogger";
-import { ConsoleWriter } from "@implab/core/log/ConsoleWriter";
+import { MockConsole } from "../mock/MockConsole";
+import { ConsoleLogger } from "../log/writers/ConsoleLogger";
+import { ConsoleWriter } from "../log/ConsoleWriter";
 
 const sourceId = "test/TraceSourceTests";
 

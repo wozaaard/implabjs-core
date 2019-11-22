@@ -17,19 +17,18 @@
     "access": "public"
   },
   "peerDependencies": {
-    "dojo": "^1.10.0",
-    "tslib": "latest"
+    "dojo": "^1.10.0"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/requirejs": "latest",
-    "@types/tape": "latest",
-    "dojo": "^1.10.0",
-    "faucet": "latest",
+    "@types/node": "^8.0.0",
+    "@types/requirejs": "~2.1.31",
+    "@types/tape": "~4.2.33",
+    "dojo": "~1.10.0",
+    "dojo-typings": "^1.11.9",
     "requirejs": "latest",
-    "tape": "^4.9.2",
-    "tslib": "latest",
-    "typescript": "latest"
-  },
-  "types": "main.d.ts"
+    "tape": "~4.11.0",
+    "typescript": "~3.6.4",
+    "eslint": "6.1.0",
+    "tslint": "5.18.0"
+  }
 }
