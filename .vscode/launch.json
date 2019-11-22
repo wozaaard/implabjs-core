@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch browser tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/test/tests/index.js",
+            "cwd": "${workspaceFolder}/build/test",
+            "sourceMaps": true,
+            "preLaunchTask": "Build browser test"
+        }
+    ]
+}

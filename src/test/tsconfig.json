@@ -3,11 +3,10 @@
     "compilerOptions": {
         "rootDir": "ts",
         "baseUrl": ".",
-        "paths": {
-            "@implab/core/*": [
-                "../../build/dist/*"
-            ]
-        }
+        "rootDirs": [
+            "ts",
+            "../main/ts"
+        ]
     },
     "include" : [
         "ts/**/*.ts"

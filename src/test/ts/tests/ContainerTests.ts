@@ -1,11 +1,11 @@
 import { test } from "./TestTraits";
-import { Container } from "@implab/core/di/Container";
-import { ReferenceDescriptor } from "@implab/core/di/ReferenceDescriptor";
-import { AggregateDescriptor } from "@implab/core/di/AggregateDescriptor";
-import { ValueDescriptor } from "@implab/core/di/ValueDescriptor";
-import { Foo } from "./mock/Foo";
-import { Bar } from "./mock/Bar";
-import { isNull } from "@implab/core/safe";
+import { Container } from "../di/Container";
+import { ReferenceDescriptor } from "../di/ReferenceDescriptor";
+import { AggregateDescriptor } from "../di/AggregateDescriptor";
+import { ValueDescriptor } from "../di/ValueDescriptor";
+import { Foo } from "../mock/Foo";
+import { Bar } from "../mock/Bar";
+import { isNull } from "../safe";
 
 test("Container register/resolve tests", async t => {
     const container = new Container();
@@ -79,7 +79,7 @@ test("Container configure/resolve tests", async t => {
 test("Load configuration from module", async t => {
     const container = new Container();
 
-    await container.configure("./mock/config1", { contextRequire: require });
+    await container.configure("../mock/config1", { contextRequire: require });
     t.pass("The configuration should load");
 
     const f1 = container.resolve("foo");

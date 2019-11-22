@@ -4,7 +4,6 @@
         "noEmitOnError": true,
         "listFiles": true,
         "types": [],
-        "lib": ["es5", "es2015.promise", "es2015.symbol", "dom", "scripthost"]
-    },
-    "files": []
+        "lib": ["es5", "es2015.promise", "es2015.symbol", "es2015.iterable", "dom", "scripthost"]
+    }
 }

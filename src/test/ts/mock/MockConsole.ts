@@ -1,4 +1,4 @@
-import {NullConsole} from "@implab/core/log/NullConsole";
+import {NullConsole} from "../log/NullConsole";
 
 interface ConsoleLineData {
     level: string;

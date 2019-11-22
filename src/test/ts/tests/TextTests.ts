@@ -1,7 +1,7 @@
-import { StringBuilder } from "@implab/core/text/StringBuilder";
+import { StringBuilder } from "../text/StringBuilder";
 import { test } from "./TestTraits";
-import { MockConsole } from "./mock/MockConsole";
-import { ConsoleWriter } from "@implab/core/log/ConsoleWriter";
+import { MockConsole } from "../mock/MockConsole";
+import { ConsoleWriter } from "../log/ConsoleWriter";
 
 test("String builder", async t => {
     const sb = new StringBuilder();

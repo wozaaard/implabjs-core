@@ -1,5 +1,5 @@
-import { Cancellation } from "@implab/core/Cancellation";
-import { delay } from "@implab/core/safe";
+import { Cancellation } from "../Cancellation";
+import { delay } from "../safe";
 import { test } from "./TestTraits";
 
 test("standalone cancellation", async t => {
