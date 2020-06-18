@@ -113,15 +113,15 @@ export class Container {
         return new Container(this);
     }
 
-    has(id) {
+    has(id: string | number) {
         return id in this._cache;
     }
 
-    get(id) {
+    get(id: string | number) {
         return this._cache[id];
     }
 
-    store(id, value) {
+    store(id: string | number, value: any) {
         return (this._cache[id] = value);
     }
 
