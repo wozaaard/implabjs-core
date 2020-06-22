@@ -49,6 +49,8 @@ typescript {
     compilerOptions {
         types = []
         declaration = true
+        experimentalDecorators = true
+        //strict = true
         
         if(symbols != 'none') {
             sourceMap = true
