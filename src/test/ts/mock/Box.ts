@@ -1,11 +1,8 @@
-import { Builder } from "../di/Annotations";
-import { Bar } from "./Bar";
-import { Foo } from "./Foo";
+import { config } from "./config";
 
-const builder = new Builder<Box<Bar>, { bar: Bar; foo: Foo; obj: object }>();
+const service = config.service("barBox");
 
-@builder.provides()
-@builder.dependencies("bar")
+@service.provides()
 export class Box<T> {
     private _value: T | undefined;
 
@@ -13,13 +10,12 @@ export class Box<T> {
         this._value = value;
     }
 
-    @builder.inject("bar")
+    @service.inject("bar")
     setValue(value: T) {
         this._value = value;
     }
 
-
-    @builder.inject("foo")
+    @service.inject("foo")
     setObj(value: object) {
 
     }
