@@ -1,8 +1,8 @@
 import { config } from "./config";
 
-const service = config.service("barBox");
+const service = config.build("barBox");
 
-@service.provides()
+@service.consume(config.dependency("bar"))
 export class Box<T> {
     private _value: T | undefined;
 
@@ -15,7 +15,6 @@ export class Box<T> {
         this._value = value;
     }
 
-    @service.inject("foo")
     setObj(value: object) {
 
     }

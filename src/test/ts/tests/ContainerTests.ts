@@ -89,5 +89,5 @@ test("Load configuration from module", async t => {
     const b1 = container.resolve("bar") as Bar;
 
     t.assert(!isNull(b1), "bar should not be null");
-    t.assert(!isNull(b1.foo), "bar.foo should not be null");
+    t.assert(!isNull(b1._v), "bar.foo should not be null");
 });
