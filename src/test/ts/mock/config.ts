@@ -61,7 +61,8 @@ const t = {
     timeout: Number
 };
 
+declare const bc: typeof Box;
+
+const x = new bc();
+
 export declare const config: ConfigBuilder<ContainerServices>;
-config
-    .mapTo("bar", )
-    .mapTo("barBox", ;

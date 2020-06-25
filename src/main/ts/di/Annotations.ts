@@ -19,7 +19,7 @@ type VisitDependency<D, S> = D extends {} ? { [K in keyof D]: ExtractDependency<
 export class Builder<T, S> {
     consume<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
-            // return constructor;
+            return constructor as typeof constructor & { service: () => T };
         };
     }
 
@@ -32,6 +32,10 @@ export class Builder<T, S> {
         return <P, M extends keyof (T | P)>(target: P, memberName: M, descriptor: TypedPropertyDescriptor<Compatible<T[M], Setter<S[K]>>>) => {
 
         };
+    }
+
+    cast<T2 extends T>(): Builder<T2, S> {
+        return this as Builder<T2, S>;
     }
 
 }
