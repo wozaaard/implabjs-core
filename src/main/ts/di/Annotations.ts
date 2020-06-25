@@ -6,27 +6,20 @@ export interface InjectOptions {
 
 type Setter<T = any> = (v: T) => void;
 
-type Injector<T> = {
-    [k in keyof T]: Setter;
-};
-
 type Compatible<T1, T2> = T1 extends T2 ? any : never;
 
 type SetterType<T> = T extends (v: infer V) => void ? V : never;
 
-type Tuple<T = any> = Parameters<(...args: T[]) => void>;
+type ExtractService<K, S> = K extends keyof S ? S[K] : K;
 
-interface Newable<A extends Tuple, T> {
-    new (...params: A): T;
-    prototype: T;
-}
+type ExtractDependency<D, S> = D extends { $dependency: infer K } ? D extends { lazy: true } ? () => ExtractService<K, S> : ExtractService<K, S> : VisitDependency<D, S>;
 
-type MapTuple<T, A extends (keyof T)[]> = { [K in keyof A] : K extends number ? T[ A[K] ] : A[K] };
+type VisitDependency<D, S> = D extends {} ? { [K in keyof D]: ExtractDependency<D[K], S> } : D;
 
 export class Builder<T, S> {
-    provides() {
-        return <C extends Constructor<T>>(constructor: C) => {
-            return constructor;
+    consume<P extends any[]>(...args: P) {
+        return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
+            // return constructor;
         };
     }
 
@@ -39,12 +32,6 @@ export class Builder<T, S> {
         return <P, M extends keyof (T | P)>(target: P, memberName: M, descriptor: TypedPropertyDescriptor<Compatible<T[M], Setter<S[K]>>>) => {
 
         };
-    }
-
-    dependencies<D extends (keyof S)[]>(...deps: D) {
-        return <C extends Constructor<T>>(constructor: MapTuple<S, D> extends ConstructorParameters<C> ? C : never) => {
-            return constructor;
-        } ;
     }
 
 }

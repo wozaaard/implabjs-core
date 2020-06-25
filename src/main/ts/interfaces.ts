@@ -55,7 +55,7 @@ export interface IActivatable {
      * can be activated and manages the active state of the
      * component
      */
-    setActivationController(controller: IActivationController);
+    setActivationController(controller: IActivationController): void;
 
     /**
      * Gets the current activation controller for this component
