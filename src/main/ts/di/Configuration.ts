@@ -28,7 +28,7 @@ import { ICancellation } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 
-async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
+async function mapAll(data: any | any[], map?: (v: any, k: keyof any) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
     } else {
@@ -57,9 +57,9 @@ export class Configuration {
 
     _path: Array<_key>;
 
-    _configName: string;
+    _configName: string | undefined;
 
-    _require: ModuleResolver;
+    _require: ModuleResolver | undefined;
 
     constructor(container: Container) {
         argumentNotNull(container, "container");
@@ -78,7 +78,7 @@ export class Configuration {
 
         this._configName = moduleName;
 
-        const r = await makeResolver(null, contextRequire);
+        const r = await makeResolver(undefined, contextRequire);
 
         const config = await r(moduleName, ct);
 
@@ -114,9 +114,9 @@ export class Configuration {
         this._container.register(services);
     }
 
-    _makeError(inner) {
+    _makeError(inner: any) {
         const e = new ConfigError("Failed to load configuration", inner);
-        e.configName = this._configName;
+        e.configName = this._configName || "<inline>";
         e.path = this._makePath();
         return e;
     }
@@ -144,11 +144,13 @@ export class Configuration {
 
     _loadModule(moduleName: string) {
         trace.debug("loadModule {0}", moduleName);
+        if (!this._require)
+            throw new Error("Module loader isn't specified");
 
         return this._require(moduleName);
     }
 
-    async _visitRegistrations(data, name: _key) {
+    async _visitRegistrations(data: any, name: _key) {
         this._enter(name);
 
         if (data.constructor &&
@@ -168,8 +170,8 @@ export class Configuration {
         return services;
     }
 
-    _enter(name: _key) {
-        this._path.push(name);
+    _enter(name: keyof any) {
+        this._path.push(name.toString());
         trace.debug(">{0}", name);
     }
 
@@ -178,7 +180,7 @@ export class Configuration {
         trace.debug("<{0}", name);
     }
 
-    async _visit(data, name: string) {
+    async _visit<T extends object>(data: T, name: keyof T) {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 
@@ -233,7 +235,7 @@ export class Configuration {
         return v;
     }
 
-    _makeServiceParams(data: ServiceRegistration) {
+    _makeServiceParams<T, P, S>(data: ServiceRegistration<T, P, S>) {
         const opts: any = {
             owner: this._container
         };
@@ -289,17 +291,17 @@ export class Configuration {
         return opts;
     }
 
-    async _visitValueRegistration(data: ValueRegistration, name: _key) {
+    async _visitValueRegistration<T>(data: ValueRegistration<T>, name: _key) {
         this._enter(name);
         const d = data.parse ? new AggregateDescriptor(data.$value) : new ValueDescriptor(data.$value);
         this._leave();
         return d;
     }
 
-    async _visitDependencyRegistration(data: DependencyRegistration, name: _key) {
+    async _visitDependencyRegistration<S, K extends keyof S>(data: DependencyRegistration<S, K>, name: keyof S) {
         argumentNotEmptyString(data && data.$dependency, "data.$dependency");
         this._enter(name);
-        const d = new ReferenceDescriptor({
+        const d = new ReferenceDescriptor<S, K>({
             name: data.$dependency,
             lazy: data.lazy,
             optional: data.optional,
@@ -310,7 +312,7 @@ export class Configuration {
         return d;
     }
 
-    async _visitTypeRegistration(data: TypeRegistration, name: _key) {
+    async _visitTypeRegistration<T, P, S>(data: TypeRegistration<T, P, S>, name: _key) {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
@@ -331,7 +333,7 @@ export class Configuration {
         return d;
     }
 
-    async _visitFactoryRegistration(data: FactoryRegistration, name: _key) {
+    async _visitFactoryRegistration<T, P, S>(data: FactoryRegistration<T, P, S>, name: _key) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 
