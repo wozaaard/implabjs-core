@@ -1,9 +1,9 @@
 import { Descriptor } from "./interfaces";
 
-export class ValueDescriptor implements Descriptor {
-    _value;
+export class ValueDescriptor<T> implements Descriptor<T> {
+    _value: T;
 
-    constructor(value) {
+    constructor(value: T) {
         this._value = value;
     }
 

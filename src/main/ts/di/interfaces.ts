@@ -1,18 +1,18 @@
-import { isNull, isPrimitive } from "../safe";
+import { isPrimitive } from "../safe";
 import { ActivationContext } from "./ActivationContext";
 import { Constructor, Factory } from "../interfaces";
 
-export interface Descriptor {
-    activate(context: ActivationContext, name?: string);
+export interface Descriptor<T = any> {
+    activate(context: ActivationContext, name?: string): T;
 }
 
-export function isDescriptor(x): x is Descriptor {
+export function isDescriptor(x: any): x is Descriptor {
     return (!isPrimitive(x)) &&
         (x.activate instanceof Function);
 }
 
-export interface ServiceMap {
-    [s: string]: Descriptor;
+export type ServiceMap<S = any> = {
+    [k in keyof S]: Descriptor<S[k]>;
 }
 
 export enum ActivationType {
@@ -23,53 +23,53 @@ export enum ActivationType {
     Call
 }
 
-export interface RegistrationWithServices {
-    services?: object;
+export interface RegistrationWithServices<S> {
+    services?: ServiceMap<S>;
 }
 
-export interface ServiceRegistration extends RegistrationWithServices {
+export interface ServiceRegistration<T, P, S> extends RegistrationWithServices<S> {
 
     activation?: "singleton" | "container" | "hierarchy" | "context" | "call";
 
-    params?;
+    params?: P;
 
     inject?: object | object[];
 
-    cleanup?: (instance) => void | string;
+    cleanup?: ((instance: T) => void) | string;
 }
 
-export interface TypeRegistration extends ServiceRegistration {
-    $type: string | Constructor;
+export interface TypeRegistration<T, P, S> extends ServiceRegistration<T, P, S> {
+    $type: string | Constructor<T>;
 }
 
-export interface FactoryRegistration extends ServiceRegistration {
-    $factory: string | Factory;
+export interface FactoryRegistration<T, P, S> extends ServiceRegistration<T, P, S> {
+    $factory: string | Factory<T>;
 }
 
-export interface ValueRegistration {
-    $value;
+export interface ValueRegistration<T> {
+    $value: T;
     parse?: boolean;
 }
 
-export interface DependencyRegistration extends RegistrationWithServices {
-    $dependency: string;
+export interface DependencyRegistration<S, K extends keyof S> extends RegistrationWithServices<S> {
+    $dependency: K;
     lazy?: boolean;
     optional?: boolean;
-    default?;
+    default?: S[K];
 }
 
-export function isTypeRegistration(x): x is TypeRegistration {
+export function isTypeRegistration(x: any): x is TypeRegistration<any, any, any> {
     return (!isPrimitive(x)) && ("$type" in x);
 }
 
-export function isFactoryRegistration(x): x is FactoryRegistration {
+export function isFactoryRegistration(x: any): x is FactoryRegistration<any, any, any> {
     return (!isPrimitive(x)) && ("$factory" in x);
 }
 
-export function isValueRegistration(x): x is ValueRegistration {
+export function isValueRegistration(x: any): x is ValueRegistration<any> {
     return (!isPrimitive(x)) && ("$value" in x);
 }
 
-export function isDependencyRegistration(x): x is DependencyRegistration {
+export function isDependencyRegistration(x: any): x is DependencyRegistration<any, string | number | symbol> {
     return (!isPrimitive(x)) && ("$dependency" in x);
 }

@@ -2,10 +2,10 @@ import { Descriptor, isDescriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 import { isPrimitive } from "../safe";
 
-export class AggregateDescriptor implements Descriptor {
-    _value: object;
+export class AggregateDescriptor<T> implements Descriptor<T> {
+    _value: T;
 
-    constructor(value: object) {
+    constructor(value: T) {
         this._value = value;
     }
 
@@ -14,7 +14,7 @@ export class AggregateDescriptor implements Descriptor {
     }
 
     // TODO: make async
-    _parse(value, context: ActivationContext, path: string) {
+    _parse(value: T, context: ActivationContext, path: string) {
         if (isPrimitive(value))
             return value;
 

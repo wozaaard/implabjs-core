@@ -3,16 +3,16 @@ import { ActivationContext } from "./ActivationContext";
 import { ServiceMap, Descriptor } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
-export interface ReferenceDescriptorParams {
-    name: string;
+export interface ReferenceDescriptorParams<S, K extends keyof S> {
+    name: K;
     lazy?: boolean;
     optional?: boolean;
-    default?;
+    default?: S[K];
     services?: ServiceMap;
 }
 
-export class ReferenceDescriptor implements Descriptor {
-    _name: string;
+export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K]> {
+    _name: K;
 
     _lazy = false;
 
@@ -22,13 +22,14 @@ export class ReferenceDescriptor implements Descriptor {
 
     _services: ServiceMap;
 
-    constructor(opts: ReferenceDescriptorParams) {
+    constructor(opts: ReferenceDescriptorParams<S, K>) {
         argumentNotEmptyString(opts && opts.name, "opts.name");
         this._name = opts.name;
         this._lazy = !!opts.lazy;
         this._optional = !!opts.optional;
         this._default = opts.default;
-        this._services = opts.services;
+
+        this._services = opts.services || {};
     }
 
     activate(context: ActivationContext, name: string) {
@@ -54,7 +55,7 @@ export class ReferenceDescriptor implements Descriptor {
                     return this._optional ? ct.resolve(this._name, this._default) : ct
                         .resolve(this._name);
                 } catch (error) {
-                    throw new ActivationError(this._name, ct.getStack(), error);
+                    throw new ActivationError(this._name.toString(), ct.getStack(), error);
                 }
             };
         } else {
@@ -88,7 +89,7 @@ export class ReferenceDescriptor implements Descriptor {
             parts.push("} ");
         }
 
-        parts.push(this._name);
+        parts.push(this._name.toString());
 
         if (!isNull(this._default)) {
             parts.push(" = ");

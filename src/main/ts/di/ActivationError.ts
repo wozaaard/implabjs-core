@@ -9,7 +9,7 @@ export class ActivationError {
 
     message: string;
 
-    constructor(service: string, activationStack: ActivationContextInfo[], innerException) {
+    constructor(service: string, activationStack: ActivationContextInfo[], innerException: any) {
         this.message = "Failed to activate the service";
         this.activationStack = activationStack;
         this.service = service;
