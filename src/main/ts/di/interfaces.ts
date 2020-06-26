@@ -3,7 +3,7 @@ import { ActivationContext } from "./ActivationContext";
 import { Constructor, Factory } from "../interfaces";
 
 export interface Descriptor<T = any> {
-    activate(context: ActivationContext, name?: string): T;
+    activate<S>(context: ActivationContext<S>): T;
 }
 
 export function isDescriptor(x: any): x is Descriptor {
@@ -70,6 +70,6 @@ export function isValueRegistration(x: any): x is ValueRegistration<any> {
     return (!isPrimitive(x)) && ("$value" in x);
 }
 
-export function isDependencyRegistration(x: any): x is DependencyRegistration<any, string | number | symbol> {
+export function isDependencyRegistration<S>(x: any): x is DependencyRegistration<S, keyof S> {
     return (!isPrimitive(x)) && ("$dependency" in x);
 }

@@ -1,4 +1,4 @@
-import { isNull, argumentNotEmptyString, each } from "../safe";
+import { isNull, argumentNotEmptyString, each, keys } from "../safe";
 import { ActivationContext } from "./ActivationContext";
 import { ServiceMap, Descriptor } from "./interfaces";
 import { ActivationError } from "./ActivationError";
@@ -11,6 +11,12 @@ export interface ReferenceDescriptorParams<S, K extends keyof S> {
     services?: ServiceMap;
 }
 
+function def<T>(v: T) {
+    if (v === undefined)
+        throw Error();
+    return v;
+}
+
 export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K]> {
     _name: K;
 
@@ -20,7 +26,7 @@ export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K
 
     _default: any;
 
-    _services: ServiceMap;
+    _services: ServiceMap<S>;
 
     constructor(opts: ReferenceDescriptorParams<S, K>) {
         argumentNotEmptyString(opts && opts.name, "opts.name");
@@ -32,24 +38,22 @@ export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K
         this._services = opts.services || {};
     }
 
-    activate(context: ActivationContext, name: string) {
+    activate(context: ActivationContext<S>) {
         // добавляем сервисы
         if (this._services) {
-            for (const p of Object.keys(this._services))
-                context.register(p, this._services[p]);
+            each(this._services, (v, k) => context.register(k, def(v)));
         }
 
         if (this._lazy) {
             const saved = context.clone();
 
-            return (cfg: ServiceMap) => {
+            return (cfg: Partial<ServiceMap<S>>) => {
                 // защищаем контекст на случай исключения в процессе
                 // активации
                 const ct = saved.clone();
                 try {
                     if (cfg) {
-                        for (const k in cfg)
-                            ct.register(k, cfg[k]);
+                        each(cfg, (v, k) => ct.register(k, v || {}));
                     }
 
                     return this._optional ? ct.resolve(this._name, this._default) : ct
@@ -59,12 +63,6 @@ export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K
                 }
             };
         } else {
-            // добавляем сервисы
-            if (this._services) {
-                for (const p of Object.keys(this._services))
-                    context.register(p, this._services[p]);
-            }
-
             const v = this._optional ?
                 context.resolve(this._name, this._default) :
                 context.resolve(this._name);

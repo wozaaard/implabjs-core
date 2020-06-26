@@ -6,14 +6,18 @@ const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
 
-export function oid(instance: object): string {
+export function oid(instance: any): string | undefined {
     if (isNull(instance))
-        return null;
+        return undefined;
 
     if (_oid in instance)
         return instance[_oid];
     else
         return (instance[_oid] = "oid_" + (++_nextOid));
+}
+
+export function keys<T>(arg: T): (Extract<keyof T, string>)[] {
+    return isObject(arg) && arg ? Object.keys(arg) as (Extract<keyof T, string>)[] : [];
 }
 
 export function argumentNotNull(arg: any, name: string) {
@@ -34,6 +38,10 @@ export function argumentNotEmptyArray(arg: any, name: string) {
 export function argumentOfType(arg: any, type: Constructor<{}>, name: string) {
     if (!(arg instanceof type))
         throw new Error("The argument '" + name + "' type doesn't match");
+}
+
+export function isObject(val: any): val is object {
+    return typeof val === "object";
 }
 
 export function isNull(val: any) {
@@ -65,21 +73,20 @@ export function isCancellable(val: any): val is ICancellable {
     return val && typeof val.cancel === "function";
 }
 
-export function isNullOrEmptyString(val: any): val is string | null | undefined {
-    if (val === null || val === undefined ||
+export function isNullOrEmptyString(val: any): val is (string | null | undefined) {
+    return (val === null || val === undefined ||
         ((typeof (val) === "string" || val instanceof String) && val.length === 0))
-        return true;
 }
 
 export function isNotEmptyArray(arg: any): arg is Array<any> {
     return (arg instanceof Array && arg.length > 0);
 }
 
-function _isStrictMode() {
+function _isStrictMode(this: any) {
     return !this;
 }
 
-function _getNonStrictGlobal() {
+function _getNonStrictGlobal(this: any) {
     return this;
 }
 
@@ -119,7 +126,9 @@ export function get(member: string, context?: object) {
  * @returns Результат вызова функции <c>cb</c>, либо <c>undefined</c>
  *          если достигнут конец массива.
  */
-export function each(obj, cb, thisArg?) {
+export function each<T>(obj: T, cb: (v: T[keyof T], k: keyof T) => void): void;
+export function each(obj: any, cb: any, thisArg?: any): any;
+export function each(obj: any, cb: any, thisArg?: any) {
     argumentNotNull(cb, "cb");
     if (obj instanceof Array) {
         for (let i = 0; i < obj.length; i++) {
@@ -128,8 +137,8 @@ export function each(obj, cb, thisArg?) {
                 return x;
         }
     } else {
-        const keys = Object.keys(obj);
-        for (const k of keys) {
+        const _keys = Object.keys(obj);
+        for (const k of _keys) {
             const x = cb.call(thisArg, obj[k], k);
             if (x !== undefined)
                 return x;
@@ -166,8 +175,8 @@ export function mixin<T extends object, S extends object>(dest: T, source: S, te
                 _res[p] = source[p];
         }
     } else if (template) {
-        const keys = Object.keys(source);
-        for (const p of keys) {
+        const _keys = Object.keys(source);
+        for (const p of _keys) {
             if (p in template)
                 _res[template[p]] = source[p];
         }
@@ -184,7 +193,7 @@ export function mixin<T extends object, S extends object>(dest: T, source: S, te
  * @param{Object} thisArg [Optional] Object which will be passed as 'this' to the function.
  * @param{Function|String} fn [Required] Function wich will be wrapped.
  */
-export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) => PromiseLike<any> {
+export function async(_fn: (...args: any[]) => any, thisArg: any): (...args: any[]) => PromiseLike<any> {
     let fn = _fn;
 
     if (arguments.length === 2 && !(fn instanceof Function))
@@ -284,7 +293,7 @@ export function pmap<T, T2>(
         let i = 0;
         const result = new Array<T2>();
 
-        const next = () => {
+        const next = (): any => {
             while (i < items.length) {
                 const r = cb(items[i], i);
                 const ri = i;
@@ -319,7 +328,7 @@ export function pfor<T>(
 
         let i = 0;
 
-        const next = () => {
+        const next = (): any => {
             while (i < items.length) {
                 const r = cb(items[i], i);
                 i++;

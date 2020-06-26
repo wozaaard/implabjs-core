@@ -2,37 +2,38 @@ import { TraceSource } from "../log/TraceSource";
 import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
 import { Descriptor, ServiceMap } from "./interfaces";
 import { Container } from "./Container";
+import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export interface ActivationContextInfo {
+export interface ActivationContextInfo<S> {
     name: string;
 
     service: string;
 
-    scope: ServiceMap;
+    scope: ServiceMap<S>;
 }
 
-export class ActivationContext {
-    _cache: object;
+export class ActivationContext<S> {
+    _cache: MapOf<any>;
 
-    _services: ServiceMap;
+    _services: ServiceMap<S>;
 
-    _stack: ActivationContextInfo[];
+    _stack: ActivationContextInfo<S>[];
 
-    _visited: object;
+    _visited: MapOf<any>;
 
     _name: string;
 
-    _localized: boolean;
+    _localized: boolean = false;
 
-    container: Container;
+    container: Container<S>;
 
-    constructor(container: Container, services: ServiceMap, name?: string, cache?: object, visited?) {
+    constructor(container: Container<S>, services: ServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
         argumentNotNull(container, "container");
         argumentNotNull(services, "services");
 
-        this._name = name;
+        this._name = name || "<unnamed>";
         this._visited = visited || {};
         this._stack = [];
         this._cache = cache || {};
@@ -44,16 +45,17 @@ export class ActivationContext {
         return this._name;
     }
 
-    resolve(name, def?): any {
+    resolve<K extends keyof S, T extends S[K]>(name: K, def?: T) {
         const d = this._services[name];
 
-        if (!d)
-            if (arguments.length > 1)
+        if (d !== undefined) {
+            return this.activate(d as Descriptor<T>, name.toString());
+        } else {
+            if (def !== undefined && def !== null)
                 return def;
             else
                 throw new Error(`Service ${name} not found`);
-
-        return this.activate(d, name);
+        }
     }
 
     /**
@@ -62,7 +64,7 @@ export class ActivationContext {
      * @name{string} the name of the service
      * @service{string} the service descriptor to register
      */
-    register(name: string, service: Descriptor) {
+    register<K extends keyof S>(name: K, service: Descriptor<S[K]>) {
         argumentNotEmptyString(name, "name");
 
         this._services[name] = service;
@@ -82,20 +84,20 @@ export class ActivationContext {
         return id in this._cache;
     }
 
-    get(id: string) {
+    get<T>(id: string) {
         return this._cache[id];
     }
 
-    store(id: string, value) {
+    store(id: string, value: any) {
         return (this._cache[id] = value);
     }
 
-    activate(d: Descriptor, name: string) {
+    activate<T>(d: Descriptor<T>, name: string) {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);
 
         this.enter(name, d.toString());
-        const v = d.activate(this);
+        const v = d.activate<S>(this);
         this.leave();
 
         if (trace.isLogEnabled())
@@ -126,7 +128,11 @@ export class ActivationContext {
 
     private leave() {
         const ctx = this._stack.pop();
-        this._services = ctx.scope;
-        this._name = ctx.name;
+        if (ctx) {
+            this._services = ctx.scope;
+            this._name = ctx.name;
+        } else {
+            trace.error("Trying to leave the last activation scope");
+        }
     }
 }

@@ -4,11 +4,19 @@ export interface InjectOptions {
     lazy?: boolean;
 }
 
+interface Dependency<K extends keyof any> {
+    $dependency: K;
+
+    lazy?: boolean;
+}
+
+interface Lazy<K extends keyof any> extends Dependency<K> {
+    lazy: true;
+}
+
 type Setter<T = any> = (v: T) => void;
 
 type Compatible<T1, T2> = T1 extends T2 ? any : never;
-
-type SetterType<T> = T extends (v: infer V) => void ? V : never;
 
 type ExtractService<K, S> = K extends keyof S ? S[K] : K;
 
@@ -16,10 +24,20 @@ type ExtractDependency<D, S> = D extends { $dependency: infer K } ? D extends { 
 
 type VisitDependency<D, S> = D extends {} ? { [K in keyof D]: ExtractDependency<D[K], S> } : D;
 
+interface Config<S> {
+    dependency<K extends keyof S>(name: K): Dependency<K>;
+
+    lazy<K extends keyof S>(name: K): Lazy<K>;
+
+    build<T>(): Builder<T, S>;
+}
+
+export declare function services<S extends object>(): Config<S>;
+
 export class Builder<T, S> {
     consume<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
-            return constructor as typeof constructor & { service: () => T };
+            return constructor;
         };
     }
 
@@ -39,3 +57,5 @@ export class Builder<T, S> {
     }
 
 }
+
+

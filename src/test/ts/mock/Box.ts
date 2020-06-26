@@ -1,6 +1,13 @@
-import { config } from "./config";
+import { services } from "../di/Annotations";
+import { Bar } from "./Bar";
 
-const service = config.build("barBox");
+// declare required dependencies
+const config = services<{
+    bar: Bar;
+}>();
+
+// export service descriptor
+export const service = config.build<Box<Bar>>();
 
 @service.consume(config.dependency("bar"))
 export class Box<T> {
