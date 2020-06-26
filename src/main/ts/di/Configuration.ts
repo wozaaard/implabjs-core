@@ -28,7 +28,7 @@ import { ICancellation } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 
-async function mapAll(data: any | any[], map?: (v: any, k: keyof any) => any): Promise<any> {
+async function mapAll(data: any | any[], map?: (v: any, k: number | string) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
     } else {
@@ -47,21 +47,19 @@ async function mapAll(data: any | any[], map?: (v: any, k: keyof any) => any): P
 
 export type ModuleResolver = (moduleName: string, ct?: ICancellation) => any;
 
-type _key = string | number;
-
-export class Configuration {
+export class Configuration<S> {
 
     _hasInnerDescriptors = false;
 
-    _container: Container;
+    _container: Container<S>;
 
-    _path: Array<_key>;
+    _path: Array<string>;
 
     _configName: string | undefined;
 
     _require: ModuleResolver | undefined;
 
-    constructor(container: Container) {
+    constructor(container: Container<S>) {
         argumentNotNull(container, "container");
         this._container = container;
         this._path = [];
@@ -150,7 +148,7 @@ export class Configuration {
         return this._require(moduleName);
     }
 
-    async _visitRegistrations(data: any, name: _key) {
+    async _visitRegistrations(data: any, name: string) {
         this._enter(name);
 
         if (data.constructor &&
@@ -161,7 +159,7 @@ export class Configuration {
         const keys = Object.keys(data);
 
         const services = await mapAll(data, async (v, k) => {
-            const d = await this._visit(v, k);
+            const d = await this._visit(v, k.toString());
             return isDescriptor(d) ? d : new AggregateDescriptor(d);
         }) as ServiceMap;
 
@@ -180,11 +178,11 @@ export class Configuration {
         trace.debug("<{0}", name);
     }
 
-    async _visit<T extends object>(data: T, name: keyof T) {
+    async _visit<T>(data: T, name: string) {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 
-        if (isDependencyRegistration(data)) {
+        if (isDependencyRegistration<S>(data)) {
             return this._visitDependencyRegistration(data, name);
         } else if (isValueRegistration(data)) {
             return this._visitValueRegistration(data, name);
@@ -196,10 +194,10 @@ export class Configuration {
             return this._visitArray(data, name);
         }
 
-        return this._visitObject(data, name);
+        return this._visitObject(data as T & object, name);
     }
 
-    async _visitObject(data: object, name: _key) {
+    async _visitObject<T extends object>(data: T, name: string) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
@@ -222,7 +220,7 @@ export class Configuration {
         return v;
     }
 
-    async _visitArray(data: any[], name: _key) {
+    async _visitArray(data: any[], name: string) {
         if (data.constructor &&
             data.constructor.prototype !== Array.prototype)
             return new ValueDescriptor(data);
@@ -235,7 +233,7 @@ export class Configuration {
         return v;
     }
 
-    _makeServiceParams<T, P, S>(data: ServiceRegistration<T, P, S>) {
+    _makeServiceParams<T, P>(data: ServiceRegistration<T, P, S>) {
         const opts: any = {
             owner: this._container
         };
@@ -291,14 +289,14 @@ export class Configuration {
         return opts;
     }
 
-    async _visitValueRegistration<T>(data: ValueRegistration<T>, name: _key) {
+    async _visitValueRegistration<T>(data: ValueRegistration<T>, name: string) {
         this._enter(name);
         const d = data.parse ? new AggregateDescriptor(data.$value) : new ValueDescriptor(data.$value);
         this._leave();
         return d;
     }
 
-    async _visitDependencyRegistration<S, K extends keyof S>(data: DependencyRegistration<S, K>, name: keyof S) {
+    async _visitDependencyRegistration<K extends keyof S>(data: DependencyRegistration<S, K>, name: string) {
         argumentNotEmptyString(data && data.$dependency, "data.$dependency");
         this._enter(name);
         const d = new ReferenceDescriptor<S, K>({
@@ -312,7 +310,7 @@ export class Configuration {
         return d;
     }
 
-    async _visitTypeRegistration<T, P, S>(data: TypeRegistration<T, P, S>, name: _key) {
+    async _visitTypeRegistration<T, P>(data: TypeRegistration<T, P, S>, name: string) {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
@@ -333,7 +331,7 @@ export class Configuration {
         return d;
     }
 
-    async _visitFactoryRegistration<T, P, S>(data: FactoryRegistration<T, P, S>, name: _key) {
+    async _visitFactoryRegistration<T, P>(data: FactoryRegistration<T, P, S>, name: string) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 

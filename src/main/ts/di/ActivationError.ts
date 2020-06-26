@@ -1,7 +1,10 @@
-import { ActivationContextInfo } from "./ActivationContext";
+export interface ActivationItem {
+    name: string;
+    service: string;
+}
 
 export class ActivationError {
-    activationStack: ActivationContextInfo[];
+    activationStack: ActivationItem[];
 
     service: string;
 
@@ -9,7 +12,7 @@ export class ActivationError {
 
     message: string;
 
-    constructor(service: string, activationStack: ActivationContextInfo[], innerException: any) {
+    constructor(service: string, activationStack: ActivationItem[], innerException: any) {
         this.message = "Failed to activate the service";
         this.activationStack = activationStack;
         this.service = service;

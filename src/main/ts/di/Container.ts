@@ -1,31 +1,35 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ServiceMap } from "./interfaces";
+import { isDescriptor, ServiceMap, Descriptor } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration } from "./Configuration";
 import { Cancellation } from "../Cancellation";
+import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container {
-    _services: ServiceMap;
+export class Container<S extends { container?: Container<S> }> {
+    readonly _services: ServiceMap<S>;
 
-    _cache: object;
+    readonly _cache: MapOf<any>;
 
-    _cleanup: (() => void)[];
+    readonly _cleanup: (() => void)[];
 
-    _root: Container;
+    readonly _root: Container<S>;
 
-    _parent: Container;
+    readonly _parent?: Container<S>;
 
-    constructor(parent?: Container) {
+    _disposed: boolean;
+
+    constructor(parent?: Container<S>) {
         this._parent = parent;
         this._services = parent ? Object.create(parent._services) : {};
         this._cache = {};
         this._cleanup = [];
         this._root = parent ? parent.getRootContainer() : this;
         this._services.container = new ValueDescriptor(this);
+        this._disposed = false;
     }
 
     getRootContainer() {
@@ -36,57 +40,63 @@ export class Container {
         return this._parent;
     }
 
-    resolve(name: string, def?) {
+    resolve<K extends keyof S, T extends S[K] = S[K]>(name: K, def?: T) {
         trace.debug("resolve {0}", name);
         const d = this._services[name];
         if (d === undefined) {
-            if (arguments.length > 1)
+            if (def !== undefined)
                 return def;
             else
                 throw new Error("Service '" + name + "' isn't found");
-        }
+        } else {
 
-        const context = new ActivationContext(this, this._services);
-        try {
-            return context.activate(d, name);
-        } catch (error) {
-            throw new ActivationError(name, context.getStack(), error);
+            const context = new ActivationContext<S>(this, this._services);
+            try {
+                return context.activate(d as Descriptor<T>, name.toString());
+            } catch (error) {
+                throw new ActivationError(name.toString(), context.getStack(), error);
+            }
         }
     }
 
     /**
      * @deprecated use resolve() method
      */
-    getService() {
-        return this.resolve.apply(this, arguments);
+    getService<K extends keyof S>(name: K, def?: S[K]) {
+        return this.resolve(name, def);
     }
 
-    register(nameOrCollection, service?) {
+    register<K extends keyof S>(name: K, service: Descriptor<S[K]>): this;
+    register(services: ServiceMap<S>): this;
+    register<K extends keyof S>(nameOrCollection: K | ServiceMap<S>, service?: Descriptor<S[K]>) {
         if (arguments.length === 1) {
-            const data = nameOrCollection;
-            for (const name in data)
-                this.register(name, data[name]);
+            const data = nameOrCollection as ServiceMap<S>;
+            for (const name in data) {
+                if (Object.prototype.hasOwnProperty.call(data, name)) {
+                    this.register(name, data[name] as Descriptor<S[keyof S]>);
+                }
+            }
         } else {
             if (!isDescriptor(service))
                 throw new Error("The service parameter must be a descriptor");
 
-            this._services[nameOrCollection] = service;
+            this._services[nameOrCollection as K] = service;
         }
         return this;
     }
 
-    onDispose(callback) {
+    onDispose(callback: () => void) {
         if (!(callback instanceof Function))
             throw new Error("The callback must be a function");
         this._cleanup.push(callback);
     }
 
     dispose() {
-        if (this._cleanup) {
-            for (const f of this._cleanup)
-                f();
-            this._cleanup = null;
-        }
+        if (this._disposed)
+            return;
+        this._disposed = true;
+        for (const f of this._cleanup)
+            f();
     }
 
     /**
@@ -109,8 +119,8 @@ export class Container {
         }
     }
 
-    createChildContainer() {
-        return new Container(this);
+    createChildContainer<S2 extends { container?: Container<S & S2> } = S>(): Container<S & S2> {
+        return new Container<S & S2>(this as any);
     }
 
     has(id: string | number) {
