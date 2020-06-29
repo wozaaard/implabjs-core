@@ -1,8 +1,8 @@
-import { isPrimitive, isNull, each } from "../safe";
+import { isPrimitive, isNull, each, isKeyof, get } from "../safe";
 import { MapOf } from "../interfaces";
 
 type SubstFn = (name: string, format?: string) => string;
-type TemplateFn = (subst: SubstFn) => string;
+type TemplateFn = (subst: SubstFn) => string | undefined;
 type ConvertFn = (value: any, format?: string) => string;
 
 const map = {
@@ -28,19 +28,19 @@ function espaceString(s: string) {
 function encode(s: string) {
     if (!s)
         return s;
-    return s.replace(/\\{|\\}|&|\\:|\n/g, m => map[m] || m);
+    return s.replace(/\\{|\\}|&|\\:|\n/g, m => isKeyof(m, map) ? map[m] : m);
 }
 
 function decode(s: string) {
     if (!s)
         return s;
-    return s.replace(/&(\w+);/g, (m, $1) => rev[$1] || m);
+    return s.replace(/&(\w+);/g, (m, $1) => isKeyof($1, rev) ? rev[$1] : m);
 }
 
 function subst(s: string) {
     const i = s.indexOf(":");
     let name: string;
-    let pattern: string;
+    let pattern: string | undefined;
     if (i >= 0) {
         name = s.substr(0, i);
         pattern = s.substr(i + 1);
@@ -51,7 +51,8 @@ function subst(s: string) {
     if (pattern)
         return [
             espaceString(decode(name)),
-            espaceString(decode(pattern))];
+            espaceString(decode(pattern))
+        ];
     else
         return [espaceString(decode(name))];
 }
@@ -103,9 +104,9 @@ export function compile(template: string) {
     return compiled;
 }
 
-function defaultConverter(value: any, pattern: string) {
+function defaultConverter(value: any, pattern?: string) {
     if (pattern && pattern.toLocaleLowerCase() === "json") {
-        const seen = [];
+        const seen: any = [];
         return JSON.stringify(value, (k, v) => {
             if (!isPrimitive(v)) {
                 const id = seen.indexOf(v);
@@ -113,10 +114,10 @@ function defaultConverter(value: any, pattern: string) {
                     return "@ref-" + id;
                 else {
                     seen.push(v);
-                    return v;
+                    return v.toString() as string;
                 }
             } else {
-                return v;
+                return isNull(v) ? "" : v.toString();
             }
         }, 2);
     } else if (isNull(value)) {
@@ -124,7 +125,7 @@ function defaultConverter(value: any, pattern: string) {
     } else if (value instanceof Date) {
         return value.toISOString();
     } else {
-        return value.toString();
+        return value.toString() as string;
     }
 }
 
@@ -136,7 +137,7 @@ export class Formatter {
         this._converters.push(defaultConverter);
     }
 
-    convert(value: any, pattern: string) {
+    convert(value: any, pattern?: string) {
         for (const c of this._converters) {
             const res = c(value, pattern);
             if (!isNull(res))
@@ -149,7 +150,7 @@ export class Formatter {
         const template = compile(msg);
 
         return template((name, pattern) => {
-            const value = args[name];
+            const value = get(name, args);
             return !isNull(value) ? this.convert(value, pattern) : "";
         });
 
@@ -159,7 +160,7 @@ export class Formatter {
         const template = compile(msg);
         return (...args: any[]) => {
             return template((name, pattern) => {
-                const value = args[name];
+                const value = get(name, args);
                 return !isNull(value) ? this.convert(value, pattern) : "";
             });
         };

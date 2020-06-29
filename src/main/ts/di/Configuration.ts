@@ -10,7 +10,8 @@ import {
     ActivationType,
     isValueRegistration,
     isTypeRegistration,
-    isFactoryRegistration
+    isFactoryRegistration,
+    PartialServiceMap
 } from "./interfaces";
 
 import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get } from "../safe";
@@ -27,8 +28,9 @@ import { makeResolver } from "./ResolverHelper";
 import { ICancellation } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
-
-async function mapAll(data: any | any[], map?: (v: any, k: number | string) => any): Promise<any> {
+async function mapAll(data: any[], map?: (v: any, k: number) => any): Promise<any[]>;
+async function mapAll(data: any, map?: (v: any, k: string) => any): Promise<any>;
+async function mapAll(data: any, map?: (v: any, k: any) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
     } else {
@@ -101,7 +103,7 @@ export class Configuration<S> {
         if (resolver)
             this._require = resolver;
 
-        let services: ServiceMap;
+        let services: PartialServiceMap<S>;
 
         try {
             services = await this._visitRegistrations(data, "$");
@@ -155,20 +157,20 @@ export class Configuration<S> {
             data.constructor.prototype !== Object.prototype)
             throw new Error("Configuration must be a simple object");
 
-        const o: ServiceMap = {};
+        const o: PartialServiceMap<S> = {};
         const keys = Object.keys(data);
 
         const services = await mapAll(data, async (v, k) => {
             const d = await this._visit(v, k.toString());
             return isDescriptor(d) ? d : new AggregateDescriptor(d);
-        }) as ServiceMap;
+        }) as PartialServiceMap<S>;
 
         this._leave();
 
         return services;
     }
 
-    _enter(name: keyof any) {
+    _enter(name: string) {
         this._path.push(name.toString());
         trace.debug(">{0}", name);
     }
@@ -178,7 +180,7 @@ export class Configuration<S> {
         trace.debug("<{0}", name);
     }
 
-    async _visit<T>(data: T, name: string) {
+    async _visit<T>(data: T, name: string): Promise<any> {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 

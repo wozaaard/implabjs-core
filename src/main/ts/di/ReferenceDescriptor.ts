@@ -1,6 +1,6 @@
 import { isNull, argumentNotEmptyString, each, keys } from "../safe";
 import { ActivationContext } from "./ActivationContext";
-import { ServiceMap, Descriptor } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
 export interface ReferenceDescriptorParams<S, K extends keyof S> {
@@ -8,23 +8,23 @@ export interface ReferenceDescriptorParams<S, K extends keyof S> {
     lazy?: boolean;
     optional?: boolean;
     default?: S[K];
-    services?: ServiceMap;
+    services?: PartialServiceMap<S>;
 }
 
-function def<T>(v: T) {
+function defined<T>(v: T | undefined) {
     if (v === undefined)
         throw Error();
     return v;
 }
 
-export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K]> {
+export class ReferenceDescriptor<S = any, K extends keyof S = keyof S> implements Descriptor<S, S[K] | ((args?: PartialServiceMap<S> ) => S[K])> {
     _name: K;
 
     _lazy = false;
 
     _optional = false;
 
-    _default: any;
+    _default: S[K] | undefined;
 
     _services: ServiceMap<S>;
 
@@ -35,25 +35,25 @@ export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K
         this._optional = !!opts.optional;
         this._default = opts.default;
 
-        this._services = opts.services || {};
+        this._services = (opts.services || {}) as ServiceMap<S>;
     }
 
     activate(context: ActivationContext<S>) {
         // добавляем сервисы
         if (this._services) {
-            each(this._services, (v, k) => context.register(k, def(v)));
+            each(this._services, (v, k) => context.register(k, v));
         }
 
         if (this._lazy) {
             const saved = context.clone();
 
-            return (cfg: Partial<ServiceMap<S>>) => {
+            return (cfg?: PartialServiceMap<S>) => {
                 // защищаем контекст на случай исключения в процессе
                 // активации
                 const ct = saved.clone();
                 try {
                     if (cfg) {
-                        each(cfg, (v, k) => ct.register(k, v || {}));
+                        each(cfg as ServiceMap<S>, (v, k) => ct.register(k, v));
                     }
 
                     return this._optional ? ct.resolve(this._name, this._default) : ct
@@ -89,9 +89,9 @@ export class ReferenceDescriptor<S, K extends keyof S> implements Descriptor<S[K
 
         parts.push(this._name.toString());
 
-        if (!isNull(this._default)) {
+        if (this._default !== undefined && this._default !== null) {
             parts.push(" = ");
-            parts.push(this._default);
+            parts.push(String(this._default));
         }
 
         return parts.join("");

@@ -3,9 +3,15 @@ import { Cancellation } from "../Cancellation";
 
 export class MockActivationController implements IActivationController {
 
-    _active: IActivatable = null;
+    _active: IActivatable | null = null;
+
+    hasActive() {
+        return !!this._active;
+    }
 
     getActive(): IActivatable {
+        if (!this._active)
+            throw new Error("No active component is set");
         return this._active;
     }
 

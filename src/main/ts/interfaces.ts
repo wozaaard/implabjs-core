@@ -57,6 +57,9 @@ export interface IActivatable {
      */
     setActivationController(controller: IActivationController): void;
 
+    /** Indicates whether this component has an activation controller */
+    hasActivationController(): boolean;
+
     /**
      * Gets the current activation controller for this component
      */
@@ -75,6 +78,8 @@ export interface IActivationController {
     deactivate(ct?: ICancellation): Promise<void>;
 
     activate(component: IActivatable, ct?: ICancellation): Promise<void>;
+
+    hasActive(): boolean;
 
     getActive(): IActivatable;
 }

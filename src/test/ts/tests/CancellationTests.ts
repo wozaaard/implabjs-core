@@ -1,10 +1,10 @@
 import { Cancellation } from "../Cancellation";
-import { delay } from "../safe";
+import { delay, notImplemented } from "../safe";
 import { test } from "./TestTraits";
 
 test("standalone cancellation", async t => {
 
-    let doCancel: (e) => void;
+    let doCancel: (e: any) => void = notImplemented;
 
     const ct = new Cancellation(cancel => {
         doCancel = cancel;

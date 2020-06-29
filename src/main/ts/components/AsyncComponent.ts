@@ -3,7 +3,7 @@ import { IAsyncComponent, ICancellation, ICancellable, IDestroyable } from "../i
 import { destroy } from "../safe";
 
 export class AsyncComponent implements IAsyncComponent, ICancellable {
-    _cancel: (e: any) => void;
+    _cancel: ((e: any) => void) | undefined;
 
     _completion: Promise<void> = Promise.resolve();
 
@@ -26,7 +26,7 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
                 // after the operation is complete we need to cleanup the
                 // resources
                 destroy(h);
-                this._cancel = null;
+                this._cancel = undefined;
             }
         };
 

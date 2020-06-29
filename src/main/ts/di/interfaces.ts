@@ -1,9 +1,9 @@
-import { isPrimitive } from "../safe";
+import { isPrimitive, primitive } from "../safe";
 import { ActivationContext } from "./ActivationContext";
 import { Constructor, Factory } from "../interfaces";
 
-export interface Descriptor<T = any> {
-    activate<S>(context: ActivationContext<S>): T;
+export interface Descriptor<S = any, T = any> {
+    activate(context: ActivationContext<S>): T;
 }
 
 export function isDescriptor(x: any): x is Descriptor {
@@ -11,9 +11,11 @@ export function isDescriptor(x: any): x is Descriptor {
         (x.activate instanceof Function);
 }
 
-export type ServiceMap<S = any> = {
-    [k in keyof S]: Descriptor<S[k]>;
-}
+export type ServiceMap<S, S2 extends S = S> = {
+    [k in keyof S2]: Descriptor<S, S2[k]>;
+};
+
+export type PartialServiceMap<S, S2 extends S = S> = Partial<ServiceMap<S, S2>>;
 
 export enum ActivationType {
     Singleton = 1,
@@ -57,6 +59,17 @@ export interface DependencyRegistration<S, K extends keyof S> extends Registrati
     optional?: boolean;
     default?: S[K];
 }
+
+export type Parse<T> = T extends primitive ? T:
+        T extends Descriptor<infer V> ? V :
+        { [K in keyof T]: Parse<T[K]> };
+
+export interface Resolver<S> {
+    resolve<K extends keyof ContainerServices<S>, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T): T;
+}
+export type ContainerServices<S> = S & {
+    container: Resolver<S>;
+};
 
 export function isTypeRegistration(x: any): x is TypeRegistration<any, any, any> {
     return (!isPrimitive(x)) && ("$type" in x);

@@ -1,19 +1,19 @@
 import { TraceSource } from "../log/TraceSource";
 import { Observable } from "../Observable";
 import { IObservable } from "../interfaces";
-import { delay } from "../safe";
+import { delay, fork } from "../safe";
 import { test } from "./TestTraits";
 
 const trace = TraceSource.get("ObservableTests");
 
 test("events sequence example", async t => {
 
-    let events: IObservable<number>;
+    let events: IObservable<number> | undefined;
 
     const done = new Promise<void>(resolve => {
         events = new Observable<number>(async (notify, fail, finish) => {
             for (let i = 0; i < 10; i++) {
-                await delay(0);
+                await fork();
                 notify(i);
             }
             finish();
@@ -23,7 +23,9 @@ test("events sequence example", async t => {
 
     let count = 0;
     let complete = false;
-    events.on(x => count = count + x, null, () => complete = true);
+    if (!events)
+        throw new Error("events === undefined");
+    events.on(x => count = count + x, undefined, () => complete = true);
 
     const first = await events.next();
 
@@ -37,11 +39,11 @@ test("events sequence example", async t => {
 });
 
 test("event sequence termination", async t => {
-    let events: IObservable<number>;
+    let events: IObservable<number> | undefined;
 
     const done = new Promise<void>(resolve => {
         events = new Observable<number>(async (notify, fail, complete) => {
-            await delay(0);
+            await fork();
             notify(1);
             complete();
             notify(2);
@@ -50,6 +52,9 @@ test("event sequence termination", async t => {
             resolve();
         });
     });
+
+    if (!events)
+        throw new Error("events === undefined");
 
     let count = 0;
     events.on(() => {}, e => count++, () => count++);

@@ -1,15 +1,15 @@
 import { TraceSource } from "./TraceSource";
 import { argumentNotNull } from "../safe";
-import { IDestroyable } from "../interfaces";
+import { IDestroyable, MapOf } from "../interfaces";
 
 export class Registry {
     static readonly instance = new Registry();
 
-    private _registry: object = new Object();
-    private _listeners: object = new Object();
+    private _registry: MapOf<TraceSource> = {};
+    private _listeners: MapOf<(source: TraceSource) => void> = {};
     private _nextCookie: number = 1;
 
-    get(id: any): TraceSource {
+    get(id: string): TraceSource {
         argumentNotNull(id, "id");
 
         if (this._registry[id])

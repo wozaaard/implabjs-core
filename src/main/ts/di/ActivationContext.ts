@@ -1,6 +1,6 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
-import { Descriptor, ServiceMap } from "./interfaces";
+import { Descriptor, ServiceMap, PartialServiceMap } from "./interfaces";
 import { Container } from "./Container";
 import { MapOf } from "../interfaces";
 
@@ -11,13 +11,13 @@ export interface ActivationContextInfo<S> {
 
     service: string;
 
-    scope: ServiceMap<S>;
+    scope: PartialServiceMap<S>;
 }
 
 export class ActivationContext<S> {
     _cache: MapOf<any>;
 
-    _services: ServiceMap<S>;
+    _services: PartialServiceMap<S>;
 
     _stack: ActivationContextInfo<S>[];
 
@@ -29,7 +29,7 @@ export class ActivationContext<S> {
 
     container: Container<S>;
 
-    constructor(container: Container<S>, services: ServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
+    constructor(container: Container<S>, services: PartialServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
         argumentNotNull(container, "container");
         argumentNotNull(services, "services");
 
@@ -45,11 +45,11 @@ export class ActivationContext<S> {
         return this._name;
     }
 
-    resolve<K extends keyof S, T extends S[K]>(name: K, def?: T) {
+    resolve<K extends keyof S, T extends S[K]>(name: K, def?: T): T {
         const d = this._services[name];
 
         if (d !== undefined) {
-            return this.activate(d as Descriptor<T>, name.toString());
+            return this.activate(d as Descriptor<S, T>, name.toString());
         } else {
             if (def !== undefined && def !== null)
                 return def;
@@ -64,14 +64,14 @@ export class ActivationContext<S> {
      * @name{string} the name of the service
      * @service{string} the service descriptor to register
      */
-    register<K extends keyof S>(name: K, service: Descriptor<S[K]>) {
+    register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>) {
         argumentNotEmptyString(name, "name");
 
         this._services[name] = service;
     }
 
     clone() {
-        return new ActivationContext(
+        return new ActivationContext<S>(
             this.container,
             this._services,
             this._name,
@@ -92,12 +92,12 @@ export class ActivationContext<S> {
         return (this._cache[id] = value);
     }
 
-    activate<T>(d: Descriptor<T>, name: string) {
+    activate<T>(d: Descriptor<S, T>, name: string) {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);
 
         this.enter(name, d.toString());
-        const v = d.activate<S>(this);
+        const v = d.activate(this);
         this.leave();
 
         if (trace.isLogEnabled())
