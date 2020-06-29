@@ -1,7 +1,7 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ServiceMap, Descriptor } from "./interfaces";
+import { isDescriptor, ServiceMap, Descriptor, PartialServiceMap, ContainerServices, Resolver } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration } from "./Configuration";
 import { Cancellation } from "../Cancellation";
@@ -9,8 +9,8 @@ import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S extends { container?: Container<S> }> {
-    readonly _services: ServiceMap<S>;
+export class Container<S = any> implements Resolver<S> {
+    readonly _services: PartialServiceMap<S, ContainerServices<S>>;
 
     readonly _cache: MapOf<any>;
 
@@ -28,7 +28,7 @@ export class Container<S extends { container?: Container<S> }> {
         this._cache = {};
         this._cleanup = [];
         this._root = parent ? parent.getRootContainer() : this;
-        this._services.container = new ValueDescriptor(this);
+        this._services.container = new ValueDescriptor(this) as any;
         this._disposed = false;
     }
 
@@ -40,7 +40,7 @@ export class Container<S extends { container?: Container<S> }> {
         return this._parent;
     }
 
-    resolve<K extends keyof S, T extends S[K] = S[K]>(name: K, def?: T) {
+    resolve<K extends keyof ContainerServices<S>, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T): T {
         trace.debug("resolve {0}", name);
         const d = this._services[name];
         if (d === undefined) {
@@ -52,7 +52,7 @@ export class Container<S extends { container?: Container<S> }> {
 
             const context = new ActivationContext<S>(this, this._services);
             try {
-                return context.activate(d as Descriptor<T>, name.toString());
+                return context.activate(d as Descriptor<S, T>, name.toString());
             } catch (error) {
                 throw new ActivationError(name.toString(), context.getStack(), error);
             }
@@ -62,25 +62,26 @@ export class Container<S extends { container?: Container<S> }> {
     /**
      * @deprecated use resolve() method
      */
-    getService<K extends keyof S>(name: K, def?: S[K]) {
+    getService<K extends keyof S, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T) {
         return this.resolve(name, def);
     }
 
-    register<K extends keyof S>(name: K, service: Descriptor<S[K]>): this;
-    register(services: ServiceMap<S>): this;
-    register<K extends keyof S>(nameOrCollection: K | ServiceMap<S>, service?: Descriptor<S[K]>) {
+    register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>): this;
+    register(services: PartialServiceMap<S>): this;
+    register<K extends keyof S>(nameOrCollection: K | ServiceMap<S>, service?: Descriptor<S, S[K]>) {
         if (arguments.length === 1) {
             const data = nameOrCollection as ServiceMap<S>;
+
             for (const name in data) {
                 if (Object.prototype.hasOwnProperty.call(data, name)) {
-                    this.register(name, data[name] as Descriptor<S[keyof S]>);
+                    this.register(name, data[name] as Descriptor<S, S[keyof S]>);
                 }
             }
         } else {
             if (!isDescriptor(service))
                 throw new Error("The service parameter must be a descriptor");
 
-            this._services[nameOrCollection as K] = service;
+            this._services[nameOrCollection as K] = service as any;
         }
         return this;
     }
@@ -110,7 +111,7 @@ export class Container<S extends { container?: Container<S> }> {
      *
      */
     async configure(config: string | object, opts?: any, ct = Cancellation.none) {
-        const c = new Configuration(this);
+        const c = new Configuration<S>(this);
 
         if (typeof (config) === "string") {
             return c.loadConfiguration(config, opts && opts.contextRequire, ct);

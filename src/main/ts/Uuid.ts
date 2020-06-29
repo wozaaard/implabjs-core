@@ -6,18 +6,25 @@
 //     Copyright (c) 2010-2012 Robert Kieffer
 //     MIT License - http://opensource.org/licenses/mit-license.php
 
+import { MapOf } from "./interfaces";
+
 declare const window: any;
-declare const require;
-declare const Buffer;
+declare const require: any;
+declare const Buffer: any;
 
 const _window: any = "undefined" !== typeof window ? window : null;
+
+interface WritableArrayLike<T> {
+    length: number;
+    [n: number]: T;
+}
 
 // Unique ID creation requires a high quality random # generator. We
 // feature
 // detect to determine the best RNG source, normalizing to a function
 // that
 // returns 128-bits of randomness, since that's what's usually required
-let _rng;
+let _rng: () => WritableArrayLike<number> = () => [];
 
 function setupBrowser() {
     // Allow for MSIE11 msCrypto
@@ -43,9 +50,9 @@ function setupBrowser() {
         // If all else fails, use Math.random(). It's fast, but is of
         // unspecified
         // quality.
-        const _rnds = new Array(16);
+        const _rnds = new Array<number>(16);
         _rng = () => {
-            for (let i = 0, r; i < 16; i++) {
+            for (let i = 0, r = 0; i < 16; i++) {
                 if ((i & 0x03) === 0) {
                     r = Math.random() * 0x100000000;
                 }
@@ -84,22 +91,22 @@ if (_window) {
 const BufferClass = ("function" === typeof Buffer) ? Buffer : Array;
 
 // Maps for number <-> hex string conversion
-const _byteToHex = [];
-const _hexToByte = {};
+const _byteToHex: string[] = [];
+const _hexToByte: MapOf<number> = {};
 for (let i = 0; i < 256; i++) {
     _byteToHex[i] = (i + 0x100).toString(16).substr(1);
     _hexToByte[_byteToHex[i]] = i;
 }
 
 // **`parse()` - Parse a UUID into it's component bytes**
-function _parse(s, buf?, offset?): Array<string> {
+function _parse(s: string, buf: number[] = [], offset?: number): number[] {
     const i = (buf && offset) || 0; let ii = 0;
 
-    buf = buf || [];
     s.toLowerCase().replace(/[0-9a-f]{2}/g, oct => {
         if (ii < 16) { // Don't overflow!
             buf[i + ii++] = _hexToByte[oct];
         }
+        return "";
     });
 
     // Zero out remaining bytes if string was short
@@ -111,7 +118,7 @@ function _parse(s, buf?, offset?): Array<string> {
 }
 
 // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
-function _unparse(buf, offset?): string {
+function _unparse(buf: ArrayLike<number>, offset?: number): string {
     let i = offset || 0; const bth = _byteToHex;
     return bth[buf[i++]] + bth[buf[i++]] + bth[buf[i++]] +
         bth[buf[i++]] + "-" + bth[buf[i++]] + bth[buf[i++]] + "-" +
@@ -145,12 +152,19 @@ let _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
 // Previous uuid creation time
 let _lastMSecs = 0; let _lastNSecs = 0;
 
+interface V1Options {
+    clockseq?: number;
+    msecs?: number;
+    nsecs?: number;
+    node?: number[];
+}
+
 // See https://github.com/broofa/node-uuid for API details
-function _v1(options?, buf?, offset?): string {
+function _v1(options?: V1Options): string;
+function _v1(options: V1Options, buf: number[], offset?: number): number[];
+function _v1(options: V1Options = {}, buf?: number[], offset?: number): string | number[] {
     let i = buf && offset || 0;
     const b = buf || [];
-
-    options = options || {};
 
     let clockseq = (options.clockseq != null) ? options.clockseq : _clockseq;
 
@@ -228,18 +242,20 @@ function _v1(options?, buf?, offset?): string {
     return buf ? buf : _unparse(b);
 }
 
+interface V4Opptions {
+    rng?: () => WritableArrayLike<number>;
+
+    random?: number[];
+}
+
 // **`v4()` - Generate random UUID**
 
 // See https://github.com/broofa/node-uuid for API details
-function _v4(options?, buf?, offset?): string {
+function _v4(options?: V4Opptions): string;
+function _v4(options: V4Opptions, buf: number[], offset?: number): number[];
+function _v4(options: V4Opptions = {}, buf?: number[], offset?: number): string | number[] {
     // Deprecated - 'format' argument, as supported in v1.2
     const i = buf && offset || 0;
-
-    if (typeof (options) === "string") {
-        buf = (options === "binary") ? new BufferClass(16) : null;
-        options = null;
-    }
-    options = options || {};
 
     const rnds = options.random || (options.rng || _rng)();
 

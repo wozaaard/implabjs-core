@@ -1,10 +1,6 @@
-import { Descriptor, isDescriptor } from "./interfaces";
+import { Descriptor, isDescriptor, Parse } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 import { isPrimitive } from "../safe";
-
-type Parse<T> = T extends Descriptor<infer V> ? V :
-        T extends {} ? { [K in keyof T]: Parse<T[K]> } :
-        T;
 
 export class AggregateDescriptor<T> implements Descriptor<Parse<T>> {
     _value: T;

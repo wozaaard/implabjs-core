@@ -6,6 +6,7 @@ import { ValueDescriptor } from "../di/ValueDescriptor";
 import { Foo } from "../mock/Foo";
 import { Bar } from "../mock/Bar";
 import { isNull } from "../safe";
+import { Descriptor } from "../di/interfaces";
 
 test("Container register/resolve tests", async t => {
     const container = new Container();
@@ -13,7 +14,7 @@ test("Container register/resolve tests", async t => {
     const connection1 = "db://localhost";
 
     t.throws(
-        () => container.register("bla-bla", "bla-bla"),
+        () => container.register("bla-bla", "bla-bla" as any),
         "Do not allow to register anything other than descriptors"
     );
 

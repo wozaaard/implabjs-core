@@ -20,8 +20,19 @@ test("controller activation", async t => {
     const c = new MockActivationController();
 
     t.false(a.isActive(), "the component is not active by default");
-    t.assert(c.getActive() == null, "the activation controller doesn't have an active component by default");
-    t.assert(a.getActivationController() == null, "the component doesn't have an activation controller by default");
+    t.false(c.hasActive(), "the activation controller doesn't have an active component by default");
+    try {
+        c.getActive();
+        t.fail("Should fail when no active component is set");
+    } catch (e) {
+    }
+
+    t.false(a.hasActivationController(), "the component doesn't have an activation controller by default");
+    try {
+        a.getActivationController();
+        t.fail("Should fail when no activation controller is set");
+    } catch (e) {
+    }
 
     t.comment("Active the component through the controller");
     await c.activate(a);
@@ -33,7 +44,7 @@ test("controller activation", async t => {
     await c.deactivate();
 
     t.false(a.isActive(), "The component should successfully deactivate");
-    t.equal(c.getActive(), null, "The controller shouldn't point to any component");
+    t.false(c.hasActive(), "The controller shouldn't point to any component");
     t.equal(a.getActivationController(), c, "The componet should point to it's controller");
 });
 

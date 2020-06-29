@@ -17,8 +17,10 @@ export class ObservableValue<T> extends Observable<T> {
     }
 
     setValue(value: T) {
-        this._value = value;
-        this._notifyNext(value);
+        if (this._value !== value) {
+            this._value = value;
+            this._notifyNext(value);
+        }
     }
 
     on(next: Handler<T>, error?: Handler<any>, complete?: () => void): IDestroyable {

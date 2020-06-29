@@ -1,6 +1,6 @@
 import { Descriptor } from "./interfaces";
 
-export class ValueDescriptor<T> implements Descriptor<T> {
+export class ValueDescriptor<T> implements Descriptor<any, T> {
     _value: T;
 
     constructor(value: T) {

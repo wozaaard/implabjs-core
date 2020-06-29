@@ -5,7 +5,7 @@ export class TraceEventData implements TraceEvent {
     source: TraceSource;
     level: number;
     message: any;
-    args?: any[];
+    args: any[];
 
     constructor(source: TraceSource, level: number, message: any, args: any[]) {
         this.source = source;

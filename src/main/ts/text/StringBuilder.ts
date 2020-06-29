@@ -26,6 +26,6 @@ const sb = new StringBuilder();
 export function format(format: string, ...args: any): string;
 export function format() {
     sb.clear();
-    sb.write.apply(sb, arguments);
+    sb.write.apply<StringBuilder, any, void>(sb, arguments);
     return sb.toString();
 }

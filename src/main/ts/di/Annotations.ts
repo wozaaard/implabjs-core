@@ -37,7 +37,6 @@ export declare function services<S extends object>(): Config<S>;
 export class Builder<T, S> {
     consume<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
-            return constructor;
         };
     }
 
@@ -57,5 +56,3 @@ export class Builder<T, S> {
     }
 
 }
-
-

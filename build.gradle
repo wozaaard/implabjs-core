@@ -50,7 +50,9 @@ typescript {
         types = []
         declaration = true
         experimentalDecorators = true
-        //strict = true
+        strict = true
+        // dojo-typings are sick
+        skipLibCheck = true
         
         if(symbols != 'none') {
             sourceMap = true

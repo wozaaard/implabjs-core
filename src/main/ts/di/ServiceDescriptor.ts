@@ -1,16 +1,17 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ActivationType, ServiceMap, isDescriptor } from "./interfaces";
+import { Descriptor, ActivationType, ServiceMap, isDescriptor, Parse, PartialServiceMap } from "./interfaces";
 import { Container } from "./Container";
-import { argumentNotNull, isPrimitive } from "../safe";
+import { argumentNotNull, isPrimitive, each, keys, isNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 
 let cacheId = 0;
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-function injectMethod(target, method, context, args) {
+function injectMethod<T, M extends keyof T, S, A>(target: T, method: M, context: ActivationContext<S>, args: A) {
+
     const m = target[method];
-    if (!m)
+    if (!m || typeof m !== "function")
         throw new Error("Method '" + method + "' not found");
 
     if (args instanceof Array)
@@ -19,7 +20,8 @@ function injectMethod(target, method, context, args) {
         return m.call(target, _parse(args, context, "." + method));
 }
 
-function makeClenupCallback(target, method: ((instance) => void) | string) {
+function makeClenupCallback<T>(target: T, method: Cleaner<T>): () => void;
+function makeClenupCallback(target: any, method: any) {
     if (typeof (method) === "string") {
         return () => {
             target[method]();
@@ -31,10 +33,9 @@ function makeClenupCallback(target, method: ((instance) => void) | string) {
     }
 }
 
-// TODO: make async
-function _parse(value, context: ActivationContext, path: string) {
+function _parse<T, S>(value: T, context: ActivationContext<S>, path: string): Parse<T> {
     if (isPrimitive(value))
-        return value;
+        return value as any;
 
     trace.debug("parse {0}", path);
 
@@ -42,65 +43,69 @@ function _parse(value, context: ActivationContext, path: string) {
         return context.activate(value, path);
 
     if (value instanceof Array)
-        return value.map((x, i) => _parse(x, context, `${path}[${i}]`));
+        return value.map((x, i) => _parse(x, context, `${path}[${i}]`)) as any;
 
-    const t = {};
-    for (const p of Object.keys(value))
-        t[p] = _parse(value[p], context, `${path}.${p}`);
+    const t: any = {};
+
+    keys(value).forEach(p => t[p] = _parse(value[p], context, `${path}.${p}`));
 
     return t;
 }
 
-export interface ServiceDescriptorParams {
+export type Cleaner<T> = ((x: T) => void) | keyof Extract<T, { [M in keyof T]: () => void }>;
+
+export type InjectionSpec<T> = {
+    [m in keyof T]?: any;
+};
+
+export interface ServiceDescriptorParams<S, T, P extends any[]> {
     activation?: ActivationType;
 
-    owner: Container;
+    owner: Container<S>;
 
-    params?;
+    params?: P;
 
-    inject?: object[];
+    inject?: InjectionSpec<T>[];
 
-    services?: ServiceMap;
+    services?: PartialServiceMap<S>;
 
-    cleanup?: ((x) => void) | string;
+    cleanup?: Cleaner<T>;
 }
 
-export class ServiceDescriptor implements Descriptor {
-    _instance;
+export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T> {
+    _instance: T | undefined;
 
     _hasInstance = false;
 
     _activationType = ActivationType.Call;
 
-    _services: ServiceMap;
+    _services: ServiceMap<S>;
 
-    _params;
+    _params: P | undefined;
 
-    _inject: object[];
+    _inject: InjectionSpec<T>[];
 
-    _cleanup: ((x) => void) | string;
+    _cleanup: Cleaner<T> | undefined;
 
     _cacheId: any;
 
-    _owner: Container;
+    _owner: Container<S>;
 
-    constructor(opts: ServiceDescriptorParams) {
+    constructor(opts: ServiceDescriptorParams<S, T, P>) {
         argumentNotNull(opts, "opts");
         argumentNotNull(opts.owner, "owner");
 
         this._owner = opts.owner;
 
-        if ("activation" in opts)
+        if (!isNull(opts.activation))
             this._activationType = opts.activation;
 
-        if ("params" in opts)
+        if (!isNull(opts.params))
             this._params = opts.params;
 
-        if (opts.inject)
-            this._inject = opts.inject;
+        this._inject = opts.inject || [];
 
-        if (opts.services)
-            this._services = opts.services;
+        this._services = (opts.services || {}) as ServiceMap<S>;
 
         if (opts.cleanup) {
             if (!(typeof (opts.cleanup) === "string" || opts.cleanup instanceof Function))
@@ -111,9 +116,9 @@ export class ServiceDescriptor implements Descriptor {
         }
     }
 
-    activate(context: ActivationContext) {
+    activate(context: ActivationContext<S>) {
         // if we have a local service records, register them first
-        let instance;
+        let instance: T;
 
         // ensure we have a cache id
         if (!this._cacheId)
@@ -197,11 +202,11 @@ export class ServiceDescriptor implements Descriptor {
         return this._instance;
     }
 
-    _factory(...params: any[]): any {
+    _factory(...params: any[]): T {
         throw Error("Not implemented");
     }
 
-    _create(context: ActivationContext) {
+    _create(context: ActivationContext<S>) {
         trace.debug(`constructing ${context._name}`);
 
         if (this._activationType !== ActivationType.Call &&
@@ -209,11 +214,10 @@ export class ServiceDescriptor implements Descriptor {
             throw new Error("Recursion detected");
 
         if (this._services) {
-            for (const p in this._services)
-                context.register(p, this._services[p]);
+            keys(this._services).forEach(p => context.register(p, this._services[p]));
         }
 
-        let instance;
+        let instance: T;
 
         if (this._params === undefined) {
             instance = this._factory();
