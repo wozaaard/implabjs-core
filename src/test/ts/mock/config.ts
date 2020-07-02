@@ -1,64 +1,36 @@
 import { Foo } from "./Foo";
 import { Bar } from "./Bar";
-import { ActivationType } from "../di/interfaces";
-import { Builder } from "../di/Annotations";
 import { Box } from "./Box";
+import { primitive } from "../safe";
+import { Constructor } from "../interfaces";
 
-interface RegistrationOptions {
-    activation?: ActivationType;
-}
-
-interface Dependency<K extends keyof any> {
-    $dependency: K;
-
-    lazy?: boolean;
-}
-
-interface Lazy<K extends keyof any> extends Dependency<K> {
-    lazy: true;
-}
-
-type PromiseOrValue<T> = T | PromiseLike<T>;
-
-interface ConfigBuilder<S> {
-    build<K extends keyof S, T = S[K]>(name: K): Builder<T, S>;
-
-    dependency<K extends keyof S>(name: K): Dependency<K>;
-
-    lazy<K extends keyof S>(name: K): Lazy<K>;
-
-    mapTo<K extends keyof S>(name: K, ctor: () => PromiseOrValue<new (...args: any[]) => S[K]>): ConfigBuilder<S>;
-
-}
-
-interface ContainerServices {
-    barBox: Box<Bar>;
-
+interface Services {
     foo: Foo;
 
     bar: Bar;
 
-    password: string;
+    box: Box<Foo>;
 
-    user: string;
+    host: string;
 
-    timeout: number;
 }
 
-declare function load<M, C extends keyof M>(m: PromiseLike<M>, name: C): () => PromiseLike<M[C]>;
+interface TypeDescriptor<T, C extends Constructor<T>> {
+    $type: C;
 
-const t = {
-    barBox: load(import("./Box"), "Box"),
+    params: Wrap<ConstructorParameters<C>>;
+}
 
-    foo: async () => (await import("./Bar")).Bar,
+function typeRegistration<T, C extends Constructor<T>>(target: C, params: Wrap<ConstructorParameters<C>>): TypeDescriptor<T, C> {
+    throw new Error();
+}
 
-    bar: Bar,
+type Wrap<T> = T extends primitive ? T :
+    { [k in keyof T]: Wrap<T[k]> } | TypeDescriptor<T, Constructor<T>>;
 
-    password: String,
-
-    user: String,
-
-    timeout: Number
+const config: Wrap<Services> = {
+    foo: typeRegistration(Foo, []),
+    bar: typeRegistration(Bar, [{ foo: null as any, nested: null as any }]),
+    box: typeRegistration(Box, [{ $type: Bar, params: [] }]),
+    host: ""
 };
-
-export declare const config: ConfigBuilder<ContainerServices>;
