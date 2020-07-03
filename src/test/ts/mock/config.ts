@@ -25,12 +25,14 @@ function typeRegistration<T, C extends Constructor<T>>(target: C, params: Wrap<C
     throw new Error();
 }
 
+declare function register<T>(): { type<C extends Constructor<T>>(target: C, params: Wrap<ConstructorParameters<C>>): TypeDescriptor<T, C>};
+
 type Wrap<T> = T extends primitive ? T :
     { [k in keyof T]: Wrap<T[k]> } | TypeDescriptor<T, Constructor<T>>;
 
 const config: Wrap<Services> = {
     foo: typeRegistration(Foo, []),
     bar: typeRegistration(Bar, [{ foo: null as any, nested: null as any }]),
-    box: typeRegistration(Box, [{ $type: Bar, params: [] }]),
+    box: register<Box<Foo>>().type(Box, [{ $type: Bar, params: [] }]),
     host: ""
 };
