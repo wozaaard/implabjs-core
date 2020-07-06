@@ -1,19 +1,20 @@
-import { Descriptor, isDescriptor, Parse } from "./interfaces";
+import { Descriptor } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 import { isPrimitive } from "../safe";
+import { isDescriptor } from "./traits";
 
-export class AggregateDescriptor<T> implements Descriptor<Parse<T>> {
-    _value: T;
+export class AggregateDescriptor<S, T> implements Descriptor<S, T> {
+    _value: any;
 
-    constructor(value: T) {
+    constructor(value: any) {
         this._value = value;
     }
 
-    activate<S>(context: ActivationContext<S>) {
+    activate(context: ActivationContext<S>): T {
         return this._parse(this._value, context, "$value");
     }
 
-    _parse<S, V>(value: V, context: ActivationContext<S>, path: string): Parse<V> {
+    _parse(value: any, context: ActivationContext<S>, path: string): any {
         if (isPrimitive(value))
             return value as any;
 

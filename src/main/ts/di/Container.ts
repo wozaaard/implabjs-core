@@ -1,16 +1,17 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { isDescriptor, ServiceMap, Descriptor, PartialServiceMap, ContainerServices, Resolver } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ContainerServices, Resolver } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration } from "./Configuration";
 import { Cancellation } from "../Cancellation";
 import { MapOf } from "../interfaces";
+import { isDescriptor } from "./traits";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
 export class Container<S = any> implements Resolver<S> {
-    readonly _services: PartialServiceMap<S, ContainerServices<S>>;
+    readonly _services: PartialServiceMap<ContainerServices<S>>;
 
     readonly _cache: MapOf<any>;
 

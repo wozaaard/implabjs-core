@@ -26,7 +26,7 @@ export class ReferenceDescriptor<S = any, K extends keyof S = keyof S> implement
 
     _default: S[K] | undefined;
 
-    _services: ServiceMap<S>;
+    _services: PartialServiceMap<S>;
 
     constructor(opts: ReferenceDescriptorParams<S, K>) {
         argumentNotEmptyString(opts && opts.name, "opts.name");
@@ -53,7 +53,7 @@ export class ReferenceDescriptor<S = any, K extends keyof S = keyof S> implement
                 const ct = saved.clone();
                 try {
                     if (cfg) {
-                        each(cfg as ServiceMap<S>, (v, k) => ct.register(k, v));
+                        each(cfg, (v, k) => ct.register(k, v));
                     }
 
                     return this._optional ? ct.resolve(this._name, this._default) : ct

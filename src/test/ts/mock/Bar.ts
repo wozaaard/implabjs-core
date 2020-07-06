@@ -1,22 +1,22 @@
 import { Foo } from "./Foo";
-// import { config } from "./config";
+import { build } from "./config";
 
-// const service = config.build("bar");
+const service = build<Bar>();
 
-// @service.consume({
-//     f: config.dependency("foo"),
-//     nested: {
-//         lazy: config.lazy("foo")
-//     }
-// })
+@service.consume({
+    foo: service.get("foo"),
+    nested: {
+        lazy: service.lazy("foo")
+    }
+})
 export class Bar {
     barName = "bar";
 
     _v: Foo | undefined;
 
-    constructor(_opts: {
-        foo: Foo;
-        nested: {
+    constructor(_opts?: {
+        foo?: Foo;
+        nested?: {
             lazy: () => Foo
         }
     }) {

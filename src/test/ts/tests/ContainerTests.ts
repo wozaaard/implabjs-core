@@ -91,4 +91,5 @@ test("Load configuration from module", async t => {
 
     t.assert(!isNull(b1), "bar should not be null");
     t.assert(!isNull(b1._v), "bar.foo should not be null");
+
 });

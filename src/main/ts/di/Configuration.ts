@@ -1,17 +1,6 @@
 import {
-    ServiceRegistration,
-    TypeRegistration,
-    FactoryRegistration,
-    ServiceMap,
-    isDescriptor,
-    isDependencyRegistration,
-    DependencyRegistration,
-    ValueRegistration,
-    ActivationType,
-    isValueRegistration,
-    isTypeRegistration,
-    isFactoryRegistration,
-    PartialServiceMap
+    PartialServiceMap,
+    ActivationType
 } from "./interfaces";
 
 import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get } from "../safe";
@@ -25,7 +14,81 @@ import { TraceSource } from "../log/TraceSource";
 import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";
 import { makeResolver } from "./ResolverHelper";
-import { ICancellation } from "../interfaces";
+import { ICancellation, Constructor, Factory } from "../interfaces";
+import { isDescriptor } from "./traits";
+
+export interface RegistrationScope<S> {
+
+    /** сервисы, которые регистрируются в контексте активации и таким образом
+     * могут переопределять ранее зарегистрированные сервисы. за это свойство
+     * нужно платить, кроме того порядок активации будет влиять на результат
+     * разрешения зависимостей.
+     */
+    services?: PartialServiceMap<S>;
+}
+
+/**
+ * Базовый интефейс конфигурации сервисов
+ */
+export interface ServiceRegistration<T, P, S> extends RegistrationScope<S> {
+
+    activation?: ActivationType;
+
+    params?: P;
+
+    inject?: object | object[];
+
+    cleanup?: ((instance: T) => void) | string;
+}
+
+export interface TypeRegistration<T, P extends any[], S> extends ServiceRegistration<T, P, S> {
+    $type: string | (new (...params: P) => T);
+
+}
+
+export interface FactoryRegistration<T, P extends any[], S> extends ServiceRegistration<T, P, S> {
+    $factory: string | ( (...params: P) => T);
+}
+
+export interface ValueRegistration<T> {
+    $value: T;
+    parse?: boolean;
+}
+
+export interface DependencyRegistration<S, K extends keyof S> extends RegistrationScope<S> {
+    $dependency: K;
+    lazy?: boolean;
+    optional?: boolean;
+    default?: S[K];
+}
+
+const _activationTypes: { [k in ActivationType]: number; } = {
+    singleton: 1,
+    container: 2,
+    hierarchy: 3,
+    context: 4,
+    call: 5
+};
+
+export function isTypeRegistration(x: any): x is TypeRegistration<any, any, any> {
+    return (!isPrimitive(x)) && ("$type" in x);
+}
+
+export function isFactoryRegistration(x: any): x is FactoryRegistration<any, any, any> {
+    return (!isPrimitive(x)) && ("$factory" in x);
+}
+
+export function isValueRegistration(x: any): x is ValueRegistration<any> {
+    return (!isPrimitive(x)) && ("$value" in x);
+}
+
+export function isDependencyRegistration<S>(x: any): x is DependencyRegistration<S, keyof S> {
+    return (!isPrimitive(x)) && ("$dependency" in x);
+}
+
+export function isActivationType(x: string): x is ActivationType {
+    return typeof x === "string" && x in _activationTypes;
+}
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
 async function mapAll(data: any[], map?: (v: any, k: number) => any): Promise<any[]>;
@@ -180,7 +243,7 @@ export class Configuration<S> {
         trace.debug("<{0}", name);
     }
 
-    async _visit<T>(data: T, name: string): Promise<any> {
+    async _visit(data: any, name: string): Promise<any> {
         if (isPrimitive(data) || isDescriptor(data))
             return data;
 
@@ -196,10 +259,10 @@ export class Configuration<S> {
             return this._visitArray(data, name);
         }
 
-        return this._visitObject(data as T & object, name);
+        return this._visitObject(data, name);
     }
 
-    async _visitObject<T extends object>(data: T, name: string) {
+    async _visitObject(data: any, name: string) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
@@ -259,30 +322,7 @@ export class Configuration<S> {
                 this._visit(data.params, "params");
 
         if (data.activation) {
-            if (typeof (data.activation) === "string") {
-                switch (data.activation.toLowerCase()) {
-                    case "singleton":
-                        opts.activation = ActivationType.Singleton;
-                        break;
-                    case "container":
-                        opts.activation = ActivationType.Container;
-                        break;
-                    case "hierarchy":
-                        opts.activation = ActivationType.Hierarchy;
-                        break;
-                    case "context":
-                        opts.activation = ActivationType.Context;
-                        break;
-                    case "call":
-                        opts.activation = ActivationType.Call;
-                        break;
-                    default:
-                        throw new Error("Unknown activation type: " +
-                            data.activation);
-                }
-            } else {
-                opts.activation = Number(data.activation);
-            }
+            opts.activation = data.activation;
         }
 
         if (data.cleanup)
@@ -312,7 +352,7 @@ export class Configuration<S> {
         return d;
     }
 
-    async _visitTypeRegistration<T, P>(data: TypeRegistration<T, P, S>, name: string) {
+    async _visitTypeRegistration(data: TypeRegistration<any, any, S>, name: string) {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
@@ -324,7 +364,7 @@ export class Configuration<S> {
             opts.type = this._resolveType(moduleName, typeName);
         }
 
-        const d = new TypeServiceDescriptor(
+        const d = new TypeServiceDescriptor<S, any, any[]>(
             await mapAll(opts)
         );
 
@@ -333,14 +373,14 @@ export class Configuration<S> {
         return d;
     }
 
-    async _visitFactoryRegistration<T, P>(data: FactoryRegistration<T, P, S>, name: string) {
+    async _visitFactoryRegistration(data: FactoryRegistration<any, any, S>, name: string) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 
         const opts = this._makeServiceParams(data);
         opts.factory = data.$factory;
 
-        const d = new FactoryServiceDescriptor(
+        const d = new FactoryServiceDescriptor<S, any, any[]>(
             await mapAll(opts)
         );
 
