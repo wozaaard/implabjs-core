@@ -1,17 +1,12 @@
-import { services } from "../di/Annotations";
 import { Bar } from "./Bar";
-import { Foo } from "./Foo";
-
-// declare required dependencies
-const config = services<{
-     bar: Bar;
-     foo: Foo;
-}>();
+import { define, dependency } from "./services";
 
 // export service descriptor
-export const service = config.build<Box<Bar>>();
+// через service передается информация о типе зависимости
+// даже если это шаблон.
+export const service = define<Box<Bar>>();
 
-@service.consume(config.get("bar"))
+@service.declare(dependency("bar"))
 export class Box<T> {
     private _value: T | undefined;
 
@@ -19,13 +14,13 @@ export class Box<T> {
         this._value = value;
     }
 
-    @service.inject( config.get("bar"))
-    setValue(value?: T) {
+    @service.inject(dependency("bar"))
+    setValue(value: T) {
         this._value = value;
         return value;
     }
 
-    setObj(value: object) {
+    setObj(value: any) {
 
     }
 
