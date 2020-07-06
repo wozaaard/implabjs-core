@@ -1,8 +1,9 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ActivationType, ServiceMap, isDescriptor, Parse, PartialServiceMap } from "./interfaces";
+import { Descriptor, ServiceMap, PartialServiceMap, ActivationType } from "./interfaces";
 import { Container } from "./Container";
-import { argumentNotNull, isPrimitive, each, keys, isNull } from "../safe";
+import { argumentNotNull, isPrimitive, keys, isNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
+import { isDescriptor } from "./traits";
 
 let cacheId = 0;
 
@@ -33,7 +34,7 @@ function makeClenupCallback(target: any, method: any) {
     }
 }
 
-function _parse<T, S>(value: T, context: ActivationContext<S>, path: string): Parse<T> {
+function _parse(value: any, context: ActivationContext<any>, path: string): any {
     if (isPrimitive(value))
         return value as any;
 
@@ -77,7 +78,7 @@ export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T
 
     _hasInstance = false;
 
-    _activationType = ActivationType.Call;
+    _activationType: ActivationType = "call";
 
     _services: ServiceMap<S>;
 
@@ -125,7 +126,7 @@ export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T
             this._cacheId = ++cacheId;
 
         switch (this._activationType) {
-            case ActivationType.Singleton: // SINGLETON
+            case "singleton": // SINGLETON
                 // if the value is cached return it
                 if (this._hasInstance)
                     return this._instance;
@@ -146,7 +147,7 @@ export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T
                 this._hasInstance = true;
                 return (this._instance = instance);
 
-            case ActivationType.Container: // CONTAINER
+            case "container": // CONTAINER
                 // return a cached value
 
                 if (this._hasInstance)
@@ -163,17 +164,17 @@ export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T
                 // cache and return the instance
                 this._hasInstance = true;
                 return (this._instance = instance);
-            case ActivationType.Context: // CONTEXT
+            case "context": // CONTEXT
                 // return a cached value if one exists
 
                 if (context.has(this._cacheId))
                     return context.get(this._cacheId);
                 // context context activated instances are controlled by callers
                 return context.store(this._cacheId, this._create(context));
-            case ActivationType.Call: // CALL
+            case "call": // CALL
                 // per-call created instances are controlled by callers
                 return this._create(context);
-            case ActivationType.Hierarchy: // HIERARCHY
+            case "hierarchy": // HIERARCHY
                 // hierarchy activated instances are behave much like container activated
                 // except they are created and bound to the child container
 
@@ -209,7 +210,7 @@ export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T
     _create(context: ActivationContext<S>) {
         trace.debug(`constructing ${context._name}`);
 
-        if (this._activationType !== ActivationType.Call &&
+        if (this._activationType !== "call" &&
             context.visit(this._cacheId) > 0)
             throw new Error("Recursion detected");
 
