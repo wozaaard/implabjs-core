@@ -1,12 +1,12 @@
 import { Foo } from "./Foo";
-import { build } from "./config";
+import { define, dependency } from "./services";
 
-const service = build<Bar>();
+export const service = define<Bar>();
 
-@service.consume({
-    foo: service.get("foo"),
+@service.declare({
+    foo: dependency("foo"),
     nested: {
-        lazy: service.lazy("foo")
+        lazy: dependency("foo", {lazy: true})
     }
 })
 export class Bar {

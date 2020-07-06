@@ -1,21 +1,21 @@
-import { Constructor } from "../interfaces";
 import { primitive } from "../safe";
+import { TypeRegistration } from "./Configuration";
 
 export interface InjectOptions {
     lazy?: boolean;
 }
 
-interface Dependency<K extends keyof any> {
+export interface Dependency<K extends keyof any> {
     $dependency: K;
 
     lazy?: boolean;
 }
 
-interface Lazy<K extends keyof any> extends Dependency<K> {
+export interface Lazy<K extends keyof any> extends Dependency<K> {
     lazy: true;
 }
 
-type Compatible<T1, T2> = T1 extends T2 ? any : never;
+type Compatible<T1, T2> = T2 extends T1 ? any : never;
 
 type ExtractService<K, S> = K extends keyof S ? S[K] : K;
 
@@ -26,21 +26,10 @@ type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
 type WalkDependencies<D, S> = D extends primitive ? D :
     { [K in keyof D]: ExtractDependency<D[K], S> };
 
-interface Services<S> {
-    get<K extends keyof S>(name: K): Dependency<K>;
-
-    lazy<K extends keyof S>(name: K): Lazy<K>;
-
-    build<T extends object>(): Builder<T, S>;
-}
-
-export declare function services<S extends object>(): Services<S>;
-
-export declare function build<T = never, S = any>(): Builder<T, S>;
-
 export class Builder<T, S> {
-    consume<P extends any[]>(...args: P) {
+    declare<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
+            return constructor as C & { service: Builder<T, S> };
         };
     }
 
@@ -59,17 +48,28 @@ export class Builder<T, S> {
         };
     }
 
-    cast<T2 extends T>(): Builder<T2, S> {
-        return this as Builder<T2, S>;
-    }
-
-    get<K extends keyof S>(name: K): Dependency<K> {
+    getDescriptor(): TypeRegistration<T, any, S> {
         throw new Error();
     }
-
-    lazy<K extends keyof S>(name: K): Lazy<K> {
-        throw new Error();
-    }
-
 
 }
+
+interface Declaration<S> {
+    define<T>(): Builder<T, S>;
+
+    dependency<K extends keyof S>(name: K, opts: { lazy: true }): Lazy<K>;
+    dependency<K extends keyof S>(name: K, opts?: any): Dependency<K>;
+
+    config(): Config<S>;
+}
+
+interface ServiceModule<T, S> {
+    service: Builder<T, S>;
+}
+
+interface Config<S> {
+    register<K extends keyof S>(name: K, builder: Builder<S[K], S>): Config<Omit<S, K>>;
+    register<K extends keyof S>(name: K, m: Promise<ServiceModule<S[K], S>>): Config<Omit<S, K>>;
+}
+
+export declare function declare<S extends object>(): Declaration<S>;
