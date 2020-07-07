@@ -1,17 +1,17 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { ServiceMap, Descriptor, PartialServiceMap, ContainerServices, Resolver } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, Resolver, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
-import { Configuration } from "./Configuration";
+import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
 import { MapOf } from "../interfaces";
 import { isDescriptor } from "./traits";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S = any> implements Resolver<S> {
-    readonly _services: PartialServiceMap<ContainerServices<S>>;
+export class Container<S extends object = any> implements Resolver<S> {
+    readonly _services: ContainerServiceMap<S>;
 
     readonly _cache: MapOf<any>;
 
@@ -41,7 +41,7 @@ export class Container<S = any> implements Resolver<S> {
         return this._parent;
     }
 
-    resolve<K extends keyof ContainerServices<S>, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T): T {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>): ContainerResolve<S, K> {
         trace.debug("resolve {0}", name);
         const d = this._services[name];
         if (d === undefined) {
@@ -53,7 +53,7 @@ export class Container<S = any> implements Resolver<S> {
 
             const context = new ActivationContext<S>(this, this._services);
             try {
-                return context.activate(d as Descriptor<S, T>, name.toString());
+                return context.activate(d, name.toString());
             } catch (error) {
                 throw new ActivationError(name.toString(), context.getStack(), error);
             }
@@ -63,7 +63,7 @@ export class Container<S = any> implements Resolver<S> {
     /**
      * @deprecated use resolve() method
      */
-    getService<K extends keyof S, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T) {
+    getService<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>) {
         return this.resolve(name, def);
     }
 
@@ -111,7 +111,7 @@ export class Container<S = any> implements Resolver<S> {
      *  The function which will be used to load a configuration or types for services.
      *
      */
-    async configure(config: string | object, opts?: any, ct = Cancellation.none) {
+    async configure(config: string | RegistrationMap<S>, opts?: any, ct = Cancellation.none) {
         const c = new Configuration<S>(this);
 
         if (typeof (config) === "string") {
@@ -121,7 +121,7 @@ export class Container<S = any> implements Resolver<S> {
         }
     }
 
-    createChildContainer<S2 extends { container?: Container<S & S2> } = S>(): Container<S & S2> {
+    createChildContainer<S2 extends object = S>(): Container<S & S2> {
         return new Container<S & S2>(this as any);
     }
 

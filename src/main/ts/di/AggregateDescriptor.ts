@@ -3,7 +3,7 @@ import { ActivationContext } from "./ActivationContext";
 import { isPrimitive } from "../safe";
 import { isDescriptor } from "./traits";
 
-export class AggregateDescriptor<S, T> implements Descriptor<S, T> {
+export class AggregateDescriptor<S extends object, T> implements Descriptor<S, T> {
     _value: any;
 
     constructor(value: any) {

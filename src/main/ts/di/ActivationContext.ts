@@ -1,23 +1,23 @@
 import { TraceSource } from "../log/TraceSource";
-import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
-import { Descriptor, ServiceMap, PartialServiceMap } from "./interfaces";
+import { argumentNotNull, argumentNotEmptyString } from "../safe";
+import { Descriptor, ContainerProvided, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
 import { Container } from "./Container";
 import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export interface ActivationContextInfo<S> {
+export interface ActivationContextInfo<S extends object> {
     name: string;
 
     service: string;
 
-    scope: PartialServiceMap<S>;
+    scope: ContainerServiceMap<S>;
 }
 
-export class ActivationContext<S> {
+export class ActivationContext<S extends object> {
     _cache: MapOf<any>;
 
-    _services: PartialServiceMap<S>;
+    _services: ContainerServiceMap<S>;
 
     _stack: ActivationContextInfo<S>[];
 
@@ -29,7 +29,7 @@ export class ActivationContext<S> {
 
     container: Container<S>;
 
-    constructor(container: Container<S>, services: PartialServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
+    constructor(container: Container<S>, services: ContainerServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
         argumentNotNull(container, "container");
         argumentNotNull(services, "services");
 
@@ -45,11 +45,11 @@ export class ActivationContext<S> {
         return this._name;
     }
 
-    resolve<K extends keyof S, T extends S[K]>(name: K, def?: T): T {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>) {
         const d = this._services[name];
 
         if (d !== undefined) {
-            return this.activate(d as Descriptor<S, T>, name.toString());
+            return this.activate(d, name.toString());
         } else {
             if (def !== undefined && def !== null)
                 return def;
@@ -67,7 +67,7 @@ export class ActivationContext<S> {
     register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>) {
         argumentNotEmptyString(name, "name");
 
-        this._services[name] = service;
+        this._services[name] = service as any;
     }
 
     clone() {

@@ -1,21 +1,38 @@
 import { ActivationContext } from "./ActivationContext";
 
-export interface Descriptor<S = any, T = any> {
+export interface Descriptor<S extends object = any, T = any> {
     activate(context: ActivationContext<S>): T;
 }
 
-export type ServiceMap<S> = {
+export type ServiceMap<S extends object> = {
     [k in keyof S]: Descriptor<S, S[k]>;
 };
 
-export type PartialServiceMap<S> = {
+export type ContainerKeys<S extends object> = keyof S | keyof ContainerProvided<S>;
+
+export type ContainerResolve<S extends object, K> =
+    K extends keyof ContainerProvided<S> ? ContainerProvided<S>[K] :
+    K extends keyof S ? S[K] : never;
+
+export type ContainerServiceMap<S extends object> = {
+    [K in ContainerKeys<S>]: Descriptor<S, ContainerResolve<S, K>>;
+};
+
+export type PartialServiceMap<S extends object> = {
     [k in keyof S]?: Descriptor<S, S[k]>;
 };
 
-export interface Resolver<S> {
-    resolve<K extends keyof ContainerServices<S>, T extends ContainerServices<S>[K] = ContainerServices<S>[K]>(name: K, def?: T): T;
+export interface Resolver<S extends object> {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>): ContainerResolve<S, K>;
 }
-export type ContainerServices<S> = S & {
+
+export interface ContainerProvided<S extends object> {
     container: Resolver<S>;
-};
+}
+
+export type ContainerRegistered<S extends object> = /*{
+    [K in Exclude<keyof S, keyof ContainerProvided<S>>]: S[K];
+};*/
+    Exclude<S, ContainerProvided<S>>;
+
 export type ActivationType = "singleton" | "container" | "hierarchy" | "context" | "call";
