@@ -2,11 +2,11 @@ import { ServiceDescriptor, ServiceDescriptorParams } from "./ServiceDescriptor"
 import { Constructor, Factory } from "../interfaces";
 import { argumentNotNull, isPrimitive } from "../safe";
 
-export interface TypeServiceDescriptorParams<S, T extends object, P extends any[]> extends ServiceDescriptorParams<S, T, P> {
+export interface TypeServiceDescriptorParams<S extends object, T extends object, P extends any[]> extends ServiceDescriptorParams<S, T, P> {
     type: Constructor<T>;
 }
 
-export class TypeServiceDescriptor<S, T extends object, P extends any[]> extends ServiceDescriptor<S, T, P> {
+export class TypeServiceDescriptor<S extends object, T extends object, P extends any[]> extends ServiceDescriptor<S, T, P> {
     _type: Constructor;
 
     constructor(opts: TypeServiceDescriptorParams<S, T, P>) {

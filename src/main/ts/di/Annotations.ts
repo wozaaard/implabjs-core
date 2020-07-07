@@ -26,10 +26,10 @@ type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
 type WalkDependencies<D, S> = D extends primitive ? D :
     { [K in keyof D]: ExtractDependency<D[K], S> };
 
-export class Builder<T, S> {
+export class Builder<T, S extends object> {
     declare<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
-            return constructor as C & { service: Builder<T, S> };
+
         };
     }
 
@@ -54,7 +54,7 @@ export class Builder<T, S> {
 
 }
 
-interface Declaration<S> {
+interface Declaration<S extends object> {
     define<T>(): Builder<T, S>;
 
     dependency<K extends keyof S>(name: K, opts: { lazy: true }): Lazy<K>;
@@ -63,13 +63,15 @@ interface Declaration<S> {
     config(): Config<S>;
 }
 
-interface ServiceModule<T, S> {
-    service: Builder<T, S>;
-}
+type ServiceModule<T, S extends object, M extends string = "service"> = {
+    [m in M]: Builder<T, S>;
+};
 
-interface Config<S> {
-    register<K extends keyof S>(name: K, builder: Builder<S[K], S>): Config<Omit<S, K>>;
-    register<K extends keyof S>(name: K, m: Promise<ServiceModule<S[K], S>>): Config<Omit<S, K>>;
+export interface Config<S extends object, Y extends keyof S = keyof S> {
+    register<K extends Y>(name: K, builder: Builder<S[K], S>): Config<S, Exclude<Y, K>>;
+    register<K extends Y>(name: K, m: Promise<ServiceModule<S[K], S>>): Config<S, Exclude<Y, K>>;
+    register<K extends Y, M extends string>(name: K, m: Promise<ServiceModule<S[K], S, M>>, x: M): Config<S, Exclude<Y, K>>;
+
 }
 
 export declare function declare<S extends object>(): Declaration<S>;

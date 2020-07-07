@@ -1,9 +1,11 @@
 import {
     PartialServiceMap,
-    ActivationType
+    ActivationType,
+    ContainerKeys,
+    ContainerResolve
 } from "./interfaces";
 
-import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get } from "../safe";
+import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { Container } from "./Container";
@@ -14,23 +16,23 @@ import { TraceSource } from "../log/TraceSource";
 import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";
 import { makeResolver } from "./ResolverHelper";
-import { ICancellation, Constructor, Factory } from "../interfaces";
+import { ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 
-export interface RegistrationScope<S> {
+export interface RegistrationScope<S extends object> {
 
     /** сервисы, которые регистрируются в контексте активации и таким образом
      * могут переопределять ранее зарегистрированные сервисы. за это свойство
      * нужно платить, кроме того порядок активации будет влиять на результат
      * разрешения зависимостей.
      */
-    services?: PartialServiceMap<S>;
+    services?: RegistrationMap<S>;
 }
 
 /**
  * Базовый интефейс конфигурации сервисов
  */
-export interface ServiceRegistration<T, P, S> extends RegistrationScope<S> {
+export interface ServiceRegistration<T, P, S extends object> extends RegistrationScope<S> {
 
     activation?: ActivationType;
 
@@ -41,13 +43,13 @@ export interface ServiceRegistration<T, P, S> extends RegistrationScope<S> {
     cleanup?: ((instance: T) => void) | string;
 }
 
-export interface TypeRegistration<T, P extends any[], S> extends ServiceRegistration<T, P, S> {
+export interface TypeRegistration<T, P extends any[], S extends object> extends ServiceRegistration<T, P, S> {
     $type: string | (new (...params: P) => T);
 
 }
 
-export interface FactoryRegistration<T, P extends any[], S> extends ServiceRegistration<T, P, S> {
-    $factory: string | ( (...params: P) => T);
+export interface FactoryRegistration<T, P extends any[], S extends object> extends ServiceRegistration<T, P, S> {
+    $factory: string | ((...params: P) => T);
 }
 
 export interface ValueRegistration<T> {
@@ -55,12 +57,26 @@ export interface ValueRegistration<T> {
     parse?: boolean;
 }
 
-export interface DependencyRegistration<S, K extends keyof S> extends RegistrationScope<S> {
+export interface DependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends RegistrationScope<S> {
     $dependency: K;
     lazy?: boolean;
     optional?: boolean;
-    default?: S[K];
+    default?: ContainerResolve<S, K>;
 }
+
+export type Registration<T, S extends object> = T extends primitive ? T :
+    (
+        T |
+        { [k in keyof T]: Registration<T[k], S> } |
+        TypeRegistration<T, any, S> |
+        FactoryRegistration<T, any, S> |
+        ValueRegistration<any> |
+        DependencyRegistration<S, keyof S>
+    );
+
+export type RegistrationMap<S extends object> = {
+    [k in keyof S]?: Registration<S[k], S>;
+};
 
 const _activationTypes: { [k in ActivationType]: number; } = {
     singleton: 1,
@@ -82,7 +98,7 @@ export function isValueRegistration(x: any): x is ValueRegistration<any> {
     return (!isPrimitive(x)) && ("$value" in x);
 }
 
-export function isDependencyRegistration<S>(x: any): x is DependencyRegistration<S, keyof S> {
+export function isDependencyRegistration<S extends object>(x: any): x is DependencyRegistration<S, keyof S> {
     return (!isPrimitive(x)) && ("$dependency" in x);
 }
 
@@ -112,11 +128,11 @@ async function mapAll(data: any, map?: (v: any, k: any) => any): Promise<any> {
 
 export type ModuleResolver = (moduleName: string, ct?: ICancellation) => any;
 
-export class Configuration<S> {
+export class Configuration<S extends object> {
 
     _hasInnerDescriptors = false;
 
-    _container: Container<S>;
+    readonly _container: Container<S>;
 
     _path: Array<string>;
 
@@ -152,13 +168,13 @@ export class Configuration<S> {
         );
     }
 
-    async applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
+    async applyConfiguration(data: RegistrationMap<S>, contextRequire?: any, ct = Cancellation.none) {
         argumentNotNull(data, "data");
 
         await this._applyConfiguration(data, await makeResolver(void (0), contextRequire), ct);
     }
 
-    async _applyConfiguration(data: object, resolver?: ModuleResolver, ct = Cancellation.none) {
+    async _applyConfiguration(data: RegistrationMap<S>, resolver?: ModuleResolver, ct = Cancellation.none) {
         trace.log("applyConfiguration");
 
         this._configName = "$";
@@ -213,15 +229,12 @@ export class Configuration<S> {
         return this._require(moduleName);
     }
 
-    async _visitRegistrations(data: any, name: string) {
+    async _visitRegistrations(data: RegistrationMap<S>, name: string) {
         this._enter(name);
 
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             throw new Error("Configuration must be a simple object");
-
-        const o: PartialServiceMap<S> = {};
-        const keys = Object.keys(data);
 
         const services = await mapAll(data, async (v, k) => {
             const d = await this._visit(v, k.toString());
@@ -298,7 +311,7 @@ export class Configuration<S> {
         return v;
     }
 
-    _makeServiceParams<T, P>(data: ServiceRegistration<T, P, S>) {
+    _makeServiceParams(data: ServiceRegistration<any, any, S>) {
         const opts: any = {
             owner: this._container
         };

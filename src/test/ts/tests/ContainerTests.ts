@@ -6,10 +6,17 @@ import { ValueDescriptor } from "../di/ValueDescriptor";
 import { Foo } from "../mock/Foo";
 import { Bar } from "../mock/Bar";
 import { isNull } from "../safe";
-import { Descriptor } from "../di/interfaces";
+import { Box } from "ts/mock/Box";
 
 test("Container register/resolve tests", async t => {
-    const container = new Container();
+    const container = new Container<{
+        "bla-bla": string;
+        "connection": string;
+        "dbParams": {
+            timeout: number;
+            connection: string;
+        }
+    }>();
 
     const connection1 = "db://localhost";
 
@@ -42,7 +49,11 @@ test("Container register/resolve tests", async t => {
 
 test("Container configure/resolve tests", async t => {
 
-    const container = new Container();
+    const container = new Container<{
+        foo: Foo;
+        box: Bar;
+        bar: Bar;
+    }>();
 
     await container.configure({
         foo: {

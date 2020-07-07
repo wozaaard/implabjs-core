@@ -1,30 +1,26 @@
-import { isNull, argumentNotEmptyString, each, keys } from "../safe";
+import { argumentNotEmptyString, each } from "../safe";
 import { ActivationContext } from "./ActivationContext";
-import { ServiceMap, Descriptor, PartialServiceMap } from "./interfaces";
+import { Descriptor, PartialServiceMap, ContainerResolve, ContainerKeys } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
-export interface ReferenceDescriptorParams<S, K extends keyof S> {
+export interface ReferenceDescriptorParams<S extends object, K extends ContainerKeys<S>> {
     name: K;
     lazy?: boolean;
     optional?: boolean;
-    default?: S[K];
+    default?: ContainerResolve<S, K>;
     services?: PartialServiceMap<S>;
 }
 
-function defined<T>(v: T | undefined) {
-    if (v === undefined)
-        throw Error();
-    return v;
-}
+export class ReferenceDescriptor<S extends object = any, K extends ContainerKeys<S> = ContainerKeys<S>>
+    implements Descriptor<S, ContainerResolve<S, K> | ((args?: PartialServiceMap<S>) => ContainerResolve<S, K>)> {
 
-export class ReferenceDescriptor<S = any, K extends keyof S = keyof S> implements Descriptor<S, S[K] | ((args?: PartialServiceMap<S> ) => S[K])> {
     _name: K;
 
     _lazy = false;
 
     _optional = false;
 
-    _default: S[K] | undefined;
+    _default: ContainerResolve<S, K> | undefined;
 
     _services: PartialServiceMap<S>;
 
@@ -35,7 +31,7 @@ export class ReferenceDescriptor<S = any, K extends keyof S = keyof S> implement
         this._optional = !!opts.optional;
         this._default = opts.default;
 
-        this._services = (opts.services || {}) as ServiceMap<S>;
+        this._services = (opts.services || {}) as PartialServiceMap<S>;
     }
 
     activate(context: ActivationContext<S>) {

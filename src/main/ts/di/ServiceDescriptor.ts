@@ -9,7 +9,7 @@ let cacheId = 0;
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-function injectMethod<T, M extends keyof T, S, A>(target: T, method: M, context: ActivationContext<S>, args: A) {
+function injectMethod<T, M extends keyof T, S extends object, A>(target: T, method: M, context: ActivationContext<S>, args: A) {
 
     const m = target[method];
     if (!m || typeof m !== "function")
@@ -59,7 +59,7 @@ export type InjectionSpec<T> = {
     [m in keyof T]?: any;
 };
 
-export interface ServiceDescriptorParams<S, T, P extends any[]> {
+export interface ServiceDescriptorParams<S extends object, T, P extends any[]> {
     activation?: ActivationType;
 
     owner: Container<S>;
@@ -73,7 +73,7 @@ export interface ServiceDescriptorParams<S, T, P extends any[]> {
     cleanup?: Cleaner<T>;
 }
 
-export class ServiceDescriptor<S, T, P extends any[]> implements Descriptor<S, T> {
+export class ServiceDescriptor<S extends object, T, P extends any[]> implements Descriptor<S, T> {
     _instance: T | undefined;
 
     _hasInstance = false;
