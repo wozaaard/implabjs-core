@@ -32,24 +32,23 @@ export interface RegistrationScope<S extends object> {
 /**
  * Базовый интефейс конфигурации сервисов
  */
-export interface ServiceRegistration<T, P, S extends object> extends RegistrationScope<S> {
+export interface ServiceRegistration<T, S extends object> extends RegistrationScope<S> {
 
     activation?: ActivationType;
 
-    params?: P;
+    params?: any;
 
     inject?: object | object[];
 
     cleanup?: ((instance: T) => void) | string;
 }
 
-export interface TypeRegistration<T, P extends any[], S extends object> extends ServiceRegistration<T, P, S> {
-    $type: string | (new (...params: P) => T);
-
+export interface TypeRegistration<C extends new () => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
+    $type: string | C;
 }
 
-export interface FactoryRegistration<T, P extends any[], S extends object> extends ServiceRegistration<T, P, S> {
-    $factory: string | ((...params: P) => T);
+export interface FactoryRegistration<F extends () => any, S extends object> extends ServiceRegistration<ReturnType<F>, S> {
+    $factory: string | F;
 }
 
 export interface ValueRegistration<T> {
@@ -64,12 +63,16 @@ export interface DependencyRegistration<S extends object, K extends ContainerKey
     default?: ContainerResolve<S, K>;
 }
 
+export interface LazyDependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends DependencyRegistration<S, K> {
+    lazy: true;
+}
+
 export type Registration<T, S extends object> = T extends primitive ? T :
     (
         T |
         { [k in keyof T]: Registration<T[k], S> } |
-        TypeRegistration<T, any, S> |
-        FactoryRegistration<T, any, S> |
+        TypeRegistration<new () => T, S> |
+        FactoryRegistration<() => T, S> |
         ValueRegistration<any> |
         DependencyRegistration<S, keyof S>
     );
@@ -86,11 +89,11 @@ const _activationTypes: { [k in ActivationType]: number; } = {
     call: 5
 };
 
-export function isTypeRegistration(x: any): x is TypeRegistration<any, any, any> {
+export function isTypeRegistration(x: any): x is TypeRegistration<new () => any, any> {
     return (!isPrimitive(x)) && ("$type" in x);
 }
 
-export function isFactoryRegistration(x: any): x is FactoryRegistration<any, any, any> {
+export function isFactoryRegistration(x: any): x is FactoryRegistration<() => any, any> {
     return (!isPrimitive(x)) && ("$factory" in x);
 }
 
@@ -311,7 +314,7 @@ export class Configuration<S extends object> {
         return v;
     }
 
-    _makeServiceParams(data: ServiceRegistration<any, any, S>) {
+    _makeServiceParams(data: ServiceRegistration<any, S>) {
         const opts: any = {
             owner: this._container
         };
@@ -365,7 +368,7 @@ export class Configuration<S extends object> {
         return d;
     }
 
-    async _visitTypeRegistration(data: TypeRegistration<any, any, S>, name: string) {
+    async _visitTypeRegistration(data: TypeRegistration<new () => any, S>, name: string) {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
@@ -386,7 +389,7 @@ export class Configuration<S extends object> {
         return d;
     }
 
-    async _visitFactoryRegistration(data: FactoryRegistration<any, any, S>, name: string) {
+    async _visitFactoryRegistration(data: FactoryRegistration<() => any, S>, name: string) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 
