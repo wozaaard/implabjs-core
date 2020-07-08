@@ -9,6 +9,7 @@ export interface Dependency<K extends keyof any> {
     $dependency: K;
 
     lazy?: boolean;
+
 }
 
 export interface Lazy<K extends keyof any> extends Dependency<K> {
@@ -34,11 +35,6 @@ export class Builder<T, S extends object> {
     }
 
     inject<P extends any[]>(...args: P) {
-        // K = "bar"
-        // M = "setValue"
-        // S[K] = Bar
-        // T[M] = (value: string) => void
-        // P[m] = (value: V) => void
         return <X extends { [m in M]: (...args: any) => any }, M extends keyof (T | X)>(
             target: X,
             memberName: M,
@@ -48,17 +44,26 @@ export class Builder<T, S extends object> {
         };
     }
 
-    getDescriptor(): TypeRegistration<T, any, S> {
+    getDescriptor(): TypeRegistration<new () => T, S> {
         throw new Error();
     }
 
 }
 
+export interface DependencyOptions<T> {
+    optional?: boolean;
+    default?: T;
+}
+
+export interface LazyDependencyOptions<T> extends DependencyOptions<T> {
+    lazy: true;
+}
+
 interface Declaration<S extends object> {
     define<T>(): Builder<T, S>;
 
-    dependency<K extends keyof S>(name: K, opts: { lazy: true }): Lazy<K>;
-    dependency<K extends keyof S>(name: K, opts?: any): Dependency<K>;
+    dependency<K extends keyof S>(name: K, opts: LazyDependencyOptions<S[K]>): Lazy<K>;
+    dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): Dependency<K>;
 
     config(): Config<S>;
 }

@@ -6,8 +6,9 @@ export const service = define<Bar>();
 @service.declare({
     foo: dependency("foo"),
     nested: {
-        lazy: dependency("foo", {lazy: true})
-    }
+        lazy: dependency("foo", { lazy: true })
+    },
+    host: "value"
 })
 export class Bar {
     barName = "bar";
@@ -18,7 +19,8 @@ export class Bar {
         foo?: Foo;
         nested?: {
             lazy: () => Foo
-        }
+        },
+        host: string
     }) {
 
         if (_opts && _opts.foo)
