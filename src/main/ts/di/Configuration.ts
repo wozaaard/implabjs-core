@@ -18,6 +18,7 @@ import { Cancellation } from "../Cancellation";
 import { makeResolver } from "./ResolverHelper";
 import { ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
+import { LazyReferenceDescriptor } from "./LazyReferenceDescriptor";
 
 export interface RegistrationScope<S extends object> {
 
@@ -357,13 +358,13 @@ export class Configuration<S extends object> {
     async _visitDependencyRegistration<K extends keyof S>(data: DependencyRegistration<S, K>, name: string) {
         argumentNotEmptyString(data && data.$dependency, "data.$dependency");
         this._enter(name);
-        const d = new ReferenceDescriptor<S, K>({
+        const options = {
             name: data.$dependency,
-            lazy: data.lazy,
             optional: data.optional,
             default: data.default,
             services: data.services && await this._visitRegistrations(data.services, "services")
-        });
+        };
+        const d = data.lazy ? new LazyReferenceDescriptor<S, K>(options) : new ReferenceDescriptor<S, K>(options);
         this._leave();
         return d;
     }

@@ -72,6 +72,8 @@ type ServiceModule<T, S extends object, M extends string = "service"> = {
     [m in M]: Builder<T, S>;
 };
 
+type PromiseOrValue<T> = PromiseLike<T> | T;
+
 export interface Config<S extends object, Y extends keyof S = keyof S> {
     register<K extends Y>(name: K, builder: Builder<S[K], S>): Config<S, Exclude<Y, K>>;
     register<K extends Y>(name: K, m: Promise<ServiceModule<S[K], S>>): Config<S, Exclude<Y, K>>;
