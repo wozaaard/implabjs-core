@@ -1,6 +1,7 @@
 import { argumentNotEmptyString, each } from "../safe";
 import { ActivationContext } from "./ActivationContext";
 import { Descriptor, PartialServiceMap, ContainerResolve, ContainerKeys } from "./interfaces";
+import { ActivationError } from "./ActivationError";
 
 export interface ReferenceDescriptorParams<S extends object, K extends ContainerKeys<S>> {
     name: K;
@@ -9,8 +10,8 @@ export interface ReferenceDescriptorParams<S extends object, K extends Container
     services?: PartialServiceMap<S>;
 }
 
-export class ReferenceDescriptor<S extends object = any, K extends ContainerKeys<S> = ContainerKeys<S>>
-    implements Descriptor<S, ContainerResolve<S, K>> {
+export class LazyReferenceDescriptor<S extends object = any, K extends ContainerKeys<S> = ContainerKeys<S>>
+    implements Descriptor<S, ((args?: PartialServiceMap<S>) => ContainerResolve<S, K>)> {
 
     _name: K;
 
@@ -35,17 +36,32 @@ export class ReferenceDescriptor<S extends object = any, K extends ContainerKeys
             each(this._services, (v, k) => context.register(k, v));
         }
 
-        const res = this._optional ?
-            context.resolve(this._name, this._default) :
-            context.resolve(this._name);
+        const saved = context.clone();
 
-        return res;
+        return (cfg?: PartialServiceMap<S>) => {
+            // защищаем контекст на случай исключения в процессе
+            // активации
+            const ct = saved.clone();
+            try {
+                if (cfg) {
+                    each(cfg, (v, k) => ct.register(k, v));
+                }
+
+                return this._optional ? ct.resolve(this._name, this._default) : ct
+                    .resolve(this._name);
+            } catch (error) {
+                throw new ActivationError(this._name.toString(), ct.getStack(), error);
+            }
+        };
+
     }
 
     toString() {
         const opts = [];
         if (this._optional)
             opts.push("optional");
+
+        opts.push("lazy");
 
         const parts = [
             "@ref "
