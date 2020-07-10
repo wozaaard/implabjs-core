@@ -11,6 +11,8 @@ export interface Services {
 
     bar: Bar;
 
+    bar2: Bar;
+
     box: Box<Bar>;
 
     host: string;
@@ -20,4 +22,4 @@ export interface Services {
 /**
  * Экспортируем вспомогательные функции для описания сервисов и кинфогурации
  */
-export const { define, dependency, config } = declare<Services>();
+export const { define, dependency, configure } = declare<Services>();
