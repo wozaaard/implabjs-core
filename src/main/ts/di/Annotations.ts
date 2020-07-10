@@ -65,7 +65,7 @@ interface Declaration<S extends object> {
     dependency<K extends keyof S>(name: K, opts: LazyDependencyOptions<S[K]>): Lazy<K>;
     dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): Dependency<K>;
 
-    config(): Config<S>;
+    configure(): Config<S>;
 }
 
 type ServiceModule<T, S extends object, M extends string = "service"> = {
@@ -74,11 +74,11 @@ type ServiceModule<T, S extends object, M extends string = "service"> = {
 
 type PromiseOrValue<T> = PromiseLike<T> | T;
 
-export interface Config<S extends object, Y extends keyof S = keyof S> {
-    register<K extends Y>(name: K, builder: Builder<S[K], S>): Config<S, Exclude<Y, K>>;
-    register<K extends Y>(name: K, m: Promise<ServiceModule<S[K], S>>): Config<S, Exclude<Y, K>>;
-    register<K extends Y, M extends string>(name: K, m: Promise<ServiceModule<S[K], S, M>>, x: M): Config<S, Exclude<Y, K>>;
 
+export interface Config<S extends object, Y extends keyof S = keyof S> {
+    register<K extends Y>(name: K, m: { $from: Promise<ServiceModule<S[K], S>> } | S[K]): Config<S, Exclude<Y, K>>;
+    register<K extends Y, M extends string>(name: K, m: { $from: Promise<ServiceModule<S[K], S, M>>, service: M }): Config<S, Exclude<Y, K>>;
+    register<K extends Y, C extends new (...args: any) => S[K]>(name: K, d: TypeRegistration<C, S>): Config<S, Exclude<Y, K>>;
 }
 
 export declare function declare<S extends object>(): Declaration<S>;

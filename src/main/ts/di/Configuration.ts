@@ -46,6 +46,7 @@ export interface ServiceRegistration<T, S extends object> extends RegistrationSc
 
 export interface TypeRegistration<C extends new () => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
     $type: string | C;
+    params?: ConstructorParameters<C>;
 }
 
 export interface FactoryRegistration<F extends () => any, S extends object> extends ServiceRegistration<ReturnType<F>, S> {
