@@ -27,6 +27,10 @@ export class Bar {
             this._v = _opts.foo;
     }
 
+    setName(name: string) {
+
+    }
+
     getFoo() {
         if (this._v === undefined)
             throw new Error("The foo isn't set");

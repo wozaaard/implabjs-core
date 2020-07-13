@@ -53,6 +53,7 @@ test("Container configure/resolve tests", async t => {
         foo: Foo;
         box: Bar;
         bar: Bar;
+        db: any;
     }>();
 
     await container.configure({
@@ -69,13 +70,13 @@ test("Container configure/resolve tests", async t => {
 
         bar: {
             $type: Bar,
-            params: {
+            params: [{
                 db: {
                     provider: {
                         $dependency: "db"
                     }
                 }
-            }
+            }]
         }
     });
     t.pass("should configure from js object");
