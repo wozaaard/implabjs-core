@@ -55,7 +55,7 @@ interface Declaration<S extends object> {
     dependency<K extends keyof S>(name: K, opts: LazyDependencyOptions<S[K]>): LazyDependencyRegistration<S, K>;
     dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): DependencyRegistration<S, K>;
 
-    $type<P extends any[], C extends new (...args: ExtractDependency<P, S>) => any>(target: C, ...params: P): StrictTypeRegistration<C, S>;
+    $type<T, P extends any[], C extends new (...args: ExtractDependency<P, S>) => T>(target: C, ...params: P): StrictTypeRegistration<C, S>;
 
     configure(): Config<S>;
 }
