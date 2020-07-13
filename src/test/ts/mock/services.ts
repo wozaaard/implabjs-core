@@ -22,4 +22,4 @@ export interface Services {
 /**
  * Экспортируем вспомогательные функции для описания сервисов и кинфогурации
  */
-export const { define, dependency, configure } = declare<Services>();
+export const { define, dependency, configure, $type } = declare<Services>();

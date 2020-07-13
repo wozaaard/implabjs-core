@@ -44,12 +44,17 @@ export interface ServiceRegistration<T, S extends object> extends RegistrationSc
     cleanup?: ((instance: T) => void) | string;
 }
 
-export interface TypeRegistration<C extends new () => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
+export interface TypeRegistration<C extends new (...args: any[]) => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
     $type: string | C;
-    params?: ConstructorParameters<C>;
+    params?: Registration<ConstructorParameters<C>, S>;
 }
 
-export interface FactoryRegistration<F extends () => any, S extends object> extends ServiceRegistration<ReturnType<F>, S> {
+export interface StrictTypeRegistration<C extends new (...args: any[]) => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
+    $type: C;
+    params?: Registration<ConstructorParameters<C>, S>;
+}
+
+export interface FactoryRegistration<F extends (...args: any[]) => any, S extends object> extends ServiceRegistration<ReturnType<F>, S> {
     $factory: string | F;
 }
 
@@ -69,12 +74,14 @@ export interface LazyDependencyRegistration<S extends object, K extends Containe
     lazy: true;
 }
 
+type OfType<K extends keyof S, S, T> = Extract<{ [k in K]: T}, S>;
+
 export type Registration<T, S extends object> = T extends primitive ? T :
     (
         T |
         { [k in keyof T]: Registration<T[k], S> } |
-        TypeRegistration<new () => T, S> |
-        FactoryRegistration<() => T, S> |
+        TypeRegistration<new (...args: any[]) => T, S> |
+        FactoryRegistration<(...args: any[]) => T, S> |
         ValueRegistration<any> |
         DependencyRegistration<S, keyof S>
     );

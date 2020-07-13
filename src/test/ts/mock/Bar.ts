@@ -8,20 +8,20 @@ export const service = define<Bar>();
     nested: {
         lazy: dependency("foo", { lazy: true })
     },
-    host: "value"
-})
+    host: dependency("host")
+}, "")
 export class Bar {
     barName = "bar";
 
     _v: Foo | undefined;
 
-    constructor(_opts?: {
+    constructor(_opts: {
         foo?: Foo;
         nested?: {
             lazy: () => Foo
         },
         host: string
-    }) {
+    }, s: string) {
 
         if (_opts && _opts.foo)
             this._v = _opts.foo;
