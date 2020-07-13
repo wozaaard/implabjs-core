@@ -1,19 +1,8 @@
 import { primitive } from "../safe";
-import { TypeRegistration } from "./Configuration";
+import { TypeRegistration, DependencyRegistration, LazyDependencyRegistration, Registration, StrictTypeRegistration } from "./Configuration";
 
 export interface InjectOptions {
     lazy?: boolean;
-}
-
-export interface Dependency<K extends keyof any> {
-    $dependency: K;
-
-    lazy?: boolean;
-
-}
-
-export interface Lazy<K extends keyof any> extends Dependency<K> {
-    lazy: true;
 }
 
 type Compatible<T1, T2> = T2 extends T1 ? any : never;
@@ -22,6 +11,7 @@ type ExtractService<K, S> = K extends keyof S ? S[K] : K;
 
 type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
     D extends { lazy: true } ? () => ExtractService<K, S> : ExtractService<K, S> :
+    D extends { $type: new (...args: any[]) => infer I } ? I :
     WalkDependencies<D, S>;
 
 type WalkDependencies<D, S> = D extends primitive ? D :
@@ -62,8 +52,10 @@ export interface LazyDependencyOptions<T> extends DependencyOptions<T> {
 interface Declaration<S extends object> {
     define<T>(): Builder<T, S>;
 
-    dependency<K extends keyof S>(name: K, opts: LazyDependencyOptions<S[K]>): Lazy<K>;
-    dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): Dependency<K>;
+    dependency<K extends keyof S>(name: K, opts: LazyDependencyOptions<S[K]>): LazyDependencyRegistration<S, K>;
+    dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): DependencyRegistration<S, K>;
+
+    $type<P extends any[], C extends new (...args: ExtractDependency<P, S>) => any>(target: C, ...params: P): StrictTypeRegistration<C, S>;
 
     configure(): Config<S>;
 }
@@ -76,9 +68,12 @@ type PromiseOrValue<T> = PromiseLike<T> | T;
 
 
 export interface Config<S extends object, Y extends keyof S = keyof S> {
-    register<K extends Y>(name: K, m: { $from: Promise<ServiceModule<S[K], S>> } | S[K]): Config<S, Exclude<Y, K>>;
+    register<K extends Y>(name: K, m: { $from: Promise<ServiceModule<S[K], S>> }): Config<S, Exclude<Y, K>>;
     register<K extends Y, M extends string>(name: K, m: { $from: Promise<ServiceModule<S[K], S, M>>, service: M }): Config<S, Exclude<Y, K>>;
-    register<K extends Y, C extends new (...args: any) => S[K]>(name: K, d: TypeRegistration<C, S>): Config<S, Exclude<Y, K>>;
+
+    register<K extends Y>(name: K, m: Registration<S[K], S>): Config<S, Exclude<Y, K>>;
+    registerType<K extends Y, P extends any[]>(
+        name: K, $type: new (...args: ExtractDependency<P, S>) => S[K], ...params: P): Config<S, Exclude<Y, K>>;
 }
 
 export declare function declare<S extends object>(): Declaration<S>;
