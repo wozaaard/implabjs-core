@@ -1,5 +1,6 @@
 import { primitive } from "../../safe";
 import { ActivationType } from "../interfaces";
+import { Builder } from "../Annotations";
 
 type ExtractService<K, S> = K extends keyof S ? S[K] : K;
 
@@ -12,11 +13,19 @@ type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
 type WalkDependencies<D, S> = D extends primitive ? D :
     { [K in keyof D]: ExtractDependency<D[K], S> };
 
+type ServiceModule<T, S extends object, M extends keyof any = "service"> = {
+    [m in M]: Builder<T, S>;
+};
+
+type PromiseOrValue<T> = T | PromiseLike<T>;
+
 export interface TypeBuilder<T, S extends object> {
     type<P extends any[], C extends new (...args: ExtractDependency<P, S>) => T>(
         target: C, ...params: P): ConstructorBuilder<C, S>;
     factory<P extends any[], F extends (...args: ExtractDependency<P, S>) => T>(
         target: F, ...params: P): FactoryBuilder<F, S>;
+    wire<M extends keyof any>(module: PromiseOrValue<ServiceModule<T, S, M>>, m: M): ServiceBuilder<T, S>;
+    wire(module: PromiseOrValue<ServiceModule<T, S>>): ServiceBuilder<T, S>;
 }
 
 export interface ServiceBuilder<T, S extends object> {
