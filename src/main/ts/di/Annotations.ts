@@ -56,24 +56,7 @@ interface Declaration<S extends object> {
     dependency<K extends keyof S>(name: K, opts?: DependencyOptions<S[K]>): DependencyRegistration<S, K>;
 
     $type<T, P extends any[], C extends new (...args: ExtractDependency<P, S>) => T>(target: C, ...params: P): StrictTypeRegistration<C, S>;
-
-    configure(): Config<S>;
 }
 
-type ServiceModule<T, S extends object, M extends string = "service"> = {
-    [m in M]: Builder<T, S>;
-};
-
-type PromiseOrValue<T> = PromiseLike<T> | T;
-
-
-export interface Config<S extends object, Y extends keyof S = keyof S> {
-    register<K extends Y>(name: K, m: { $from: Promise<ServiceModule<S[K], S>> }): Config<S, Exclude<Y, K>>;
-    register<K extends Y, M extends string>(name: K, m: { $from: Promise<ServiceModule<S[K], S, M>>, service: M }): Config<S, Exclude<Y, K>>;
-
-    register<K extends Y>(name: K, m: Registration<S[K], S>): Config<S, Exclude<Y, K>>;
-    registerType<K extends Y, P extends any[]>(
-        name: K, $type: new (...args: ExtractDependency<P, S>) => S[K], ...params: P): Config<S, Exclude<Y, K>>;
-}
 
 export declare function declare<S extends object>(): Declaration<S>;
