@@ -3,6 +3,8 @@ export interface Constructor<T = {}> {
     prototype: T;
 }
 
+export type PromiseOrValue<T> = T | PromiseLike<T>;
+
 export type Factory<T = {}> = (...args: any[]) => T;
 
 export type Predicate<T = any> = (x: T) => boolean;
