@@ -1,16 +1,16 @@
 import { Bar } from "./Bar";
-import { define, dependency } from "./services";
+import { annotate, dependency } from "./services";
 
 // export service descriptor
 // через service передается информация о типе зависимости
 // даже если это шаблон.
-export const service = define<Box<Bar>>();
+export const service = annotate<Box<Bar>>();
 
-@service.declare(dependency("bar"))
+@service.wire()
 export class Box<T> {
     private _value: T | undefined;
 
-    constructor(value: T) {
+    constructor(value?: T) {
         this._value = value;
     }
 
@@ -18,10 +18,6 @@ export class Box<T> {
     setValue(value: T) {
         this._value = value;
         return value;
-    }
-
-    setObj(value: any) {
-
     }
 
     getValue() {

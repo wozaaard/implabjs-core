@@ -1,9 +1,9 @@
 import { Foo } from "./Foo";
-import { define, dependency } from "./services";
+import { annotate, dependency } from "./services";
 
-export const service = define<Bar>();
+export const service = annotate<Bar>();
 
-@service.declare({
+@service.wire({
     foo: dependency("foo"),
     nested: {
         lazy: dependency("foo", { lazy: true })
@@ -11,7 +11,7 @@ export const service = define<Bar>();
     host: dependency("host")
 }, "")
 export class Bar {
-    barName = "bar";
+    barName = "Twister";
 
     _v: Foo | undefined;
 
