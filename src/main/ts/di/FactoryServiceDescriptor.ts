@@ -14,8 +14,5 @@ export class FactoryServiceDescriptor<S extends object, T, P extends any[]> exte
         // bind to null
         this._factory = (...args) => opts.factory.apply(null, args as any);
 
-        if (opts.activation === "singleton") {
-            this._cacheId = oid(opts.factory);
-        }
     }
 }

@@ -1,7 +1,10 @@
 import { ActivationContext } from "./ActivationContext";
+import { IDestroyable } from "../interfaces";
 
 export interface Descriptor<S extends object = any, T = any> {
     activate(context: ActivationContext<S>): T;
+
+    clone(): this;
 }
 
 export type ServiceMap<S extends object> = {
@@ -36,3 +39,13 @@ export type ContainerRegistered<S extends object> = /*{
     Exclude<S, ContainerProvided<S>>;
 
 export type ActivationType = "singleton" | "container" | "hierarchy" | "context" | "call";
+
+export interface ILifetimeManager extends IDestroyable {
+    initialize(id: string, context: ActivationContext<any>): ILifetime;
+}
+
+export interface ILifetime {
+    has(): boolean;
+    get(): any;
+    store(item: any, cleanup?: (item: any) => void): void;
+}
