@@ -46,8 +46,6 @@ export interface RegistrationVisitor<S extends object> {
 
     visitFactoryRegistration(): void;
 
-    visitBuilder<T>(builder: (t: ServiceRecordBuilder<T, S>) => void): void;
-
 }
 
 export interface RegistrationBuilder<T, S extends object> {

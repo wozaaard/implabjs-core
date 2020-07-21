@@ -5,12 +5,12 @@ import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, Resolver,
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
-import { MapOf } from "../interfaces";
+import { MapOf, IDestroyable } from "../interfaces";
 import { isDescriptor } from "./traits";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S extends object = any> implements Resolver<S> {
+export class Container<S extends object = any> implements Resolver<S>, IDestroyable {
     readonly _services: ContainerServiceMap<S>;
 
     readonly _cache: MapOf<any>;
@@ -93,6 +93,9 @@ export class Container<S extends object = any> implements Resolver<S> {
         this._cleanup.push(callback);
     }
 
+    destroy() {
+        return this.dispose();
+    }
     dispose() {
         if (this._disposed)
             return;

@@ -33,4 +33,8 @@ export class AggregateDescriptor<S extends object, T> implements Descriptor<S, T
     toString() {
         return "@walk";
     }
+
+    clone() {
+        return this;
+    }
 }

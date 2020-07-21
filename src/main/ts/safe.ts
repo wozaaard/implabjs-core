@@ -1,4 +1,4 @@
-import { ICancellable, Constructor } from "./interfaces";
+import { ICancellable, Constructor, IDestroyable } from "./interfaces";
 import { Cancellation } from "./Cancellation";
 
 let _nextOid = 0;
@@ -475,6 +475,12 @@ export function firstWhere<T>(
         else
             throw new Error("The sequence is required");
     }
+}
+
+export function isDestroyable(d: any): d is IDestroyable {
+    if (d && "destroy" in d && typeof(destroy) === "function")
+        return true;
+    return false;
 }
 
 export function destroy(d: any) {
