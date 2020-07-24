@@ -46,6 +46,10 @@ export interface ILifetimeManager extends IDestroyable {
 
 export interface ILifetime {
     has(): boolean;
+
     get(): any;
+
+    enter(): void;
+
     store(item: any, cleanup?: (item: any) => void): void;
 }
