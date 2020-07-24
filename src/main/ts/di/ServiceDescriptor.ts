@@ -22,14 +22,15 @@ function injectMethod<T, M extends keyof T, S extends object, A>(target: T, meth
         return m.call(target, _parse(args, context, "." + method));
 }
 
-function makeClenupCallback<T>(method: Cleaner<T>) {
+function makeCleanupCallback<T>(method: Cleaner<T>) {
     if (typeof (method) === "function") {
         return (target: T) => {
             method(target);
         };
     } else {
         return (target: T) => {
-            (target[method] as any)();
+            const m = target[method] as any;
+            m.apply(target);
         };
     }
 }
@@ -102,7 +103,7 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
                 throw new Error(
                     "The cleanup parameter must be either a function or a function name");
 
-            this._cleanup = makeClenupCallback(opts.cleanup);
+            this._cleanup = makeCleanupCallback(opts.cleanup);
         }
     }
 
@@ -112,6 +113,7 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
         if (lifetime.has()) {
             return lifetime.get();
         } else {
+            lifetime.enter();
             const instance = this._create(context);
             lifetime.store(this._cacheId, this._cleanup);
             return instance;
