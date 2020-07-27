@@ -7,16 +7,35 @@ function safeCall(item: () => void) {
     try {
         item();
     } catch {
-        // silence
+        // silence!
     }
 }
+
+const emptyLifetime: ILifetime = {
+    has() {
+        return false;
+    },
+
+    enter() {
+
+    },
+
+    get() {
+        throw new Error("The specified item isn't registered with this lifetime manager");
+    },
+
+    store() {
+        // does nothing
+    }
+
+};
 
 export class LifetimeManager implements IDestroyable, ILifetimeManager {
     private _cleanup: (() => void)[] = [];
     private _cache: MapOf<any> = {};
     private _destroyed = false;
 
-    initialize(id: string, context: ActivationContext<any>): ILifetime {
+    initialize(id: string): ILifetime {
         const self = this;
         let pending = false;
         return {
@@ -58,12 +77,6 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
         };
     }
 
-
-
-
-
-
-
     destroy() {
         if (!this._destroyed) {
             this._destroyed = true;
@@ -73,20 +86,56 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
     }
 
     static readonly empty: ILifetimeManager = {
-        has() {
-            return false;
+        initialize(): ILifetime {
+            return emptyLifetime;
         },
+        destroy() {
+            throw new Error("Trying to destroy empty lifetime manager, this is a bug.");
+        }
 
-        get() {
-            throw new Error("The specified item isn't registered with this lifetime manager");
+    };
+
+    static readonly hierarchyLifetime: ILifetimeManager = {
+        initialize(id: string, context: ActivationContext<any>): ILifetime {
+            return context.getContainer().getLifetimeManager().initialize(id, context);
         },
+        destroy() {
+            throw new Error("Trying to destroy hierarchy lifetime manager, this is a bug.");
+        }
+    };
 
-        register() {
-            // does nothing
+    static readonly singletonLifetime: ILifetimeManager = {
+        initialize(id: string): ILifetime {
+            return singletonLifetimeManager.initialize(id);
         },
+        destroy() {
+            throw new Error("Trying to destroy singleton lifetime manager, this is a bug.");
+        }
+    };
 
+    static readonly contextLifetime: ILifetimeManager = {
+        initialize(id: string, context: ActivationContext<any>): ILifetime {
+            return {
+                enter() {
+                    if (context.visit(id))
+                        throw new Error("Cyclic reference detected");
+                },
+                get() {
+                    return context.get(id);
+                },
+                has() {
+                    return context.has(id);
+                },
+                store(item: any) {
+                    context.store(id, item);
+                }
+
+            };
+        },
         destroy() {
             throw new Error("Trying to destroy empty lifetime manager, this is a bug.");
         }
     };
 }
+
+const singletonLifetimeManager = new LifetimeManager();

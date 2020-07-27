@@ -3,8 +3,6 @@ import { IDestroyable } from "../interfaces";
 
 export interface Descriptor<S extends object = any, T = any> {
     activate(context: ActivationContext<S>): T;
-
-    clone(): this;
 }
 
 export type ServiceMap<S extends object> = {
