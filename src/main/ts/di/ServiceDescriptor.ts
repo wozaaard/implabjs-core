@@ -1,10 +1,11 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ServiceMap, PartialServiceMap, ActivationType, ILifetimeManager } from "./interfaces";
+import { Descriptor, ServiceMap, PartialServiceMap, ILifetimeManager } from "./interfaces";
 import { argumentNotNull, isPrimitive, keys, isNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
 import { MatchingMemberKeys } from "../interfaces";
+import { Container } from "./Container";
 
 let cacheId = 0;
 
@@ -61,7 +62,9 @@ export type InjectionSpec<T> = {
 };
 
 export interface ServiceDescriptorParams<S extends object, T, P extends any[]> {
-    lifetime: ILifetimeManager;
+    owner: Container<S>;
+
+    lifetime?: ILifetimeManager;
 
     params?: P;
 
@@ -85,8 +88,12 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
 
     _lifetime = LifetimeManager.empty;
 
+    _owner: Container<S>;
+
     constructor(opts: ServiceDescriptorParams<S, T, P>) {
-        argumentNotNull(opts, "opts");
+        argumentNotNull(opts && opts.owner, "opts.owner");
+
+        this._owner = opts.owner;
 
         if (opts.lifetime)
             this._lifetime = opts.lifetime;

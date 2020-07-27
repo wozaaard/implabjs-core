@@ -1,17 +1,16 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotNull, argumentNotEmptyString } from "../safe";
-import { Descriptor, ContainerProvided, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
+import { Descriptor, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
 import { Container } from "./Container";
 import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export interface ActivationContextInfo<S extends object> {
+export interface ActivationContextInfo {
     name: string;
 
     service: string;
 
-    scope: ContainerServiceMap<S>;
 }
 
 export class ActivationContext<S extends object> {
@@ -19,30 +18,31 @@ export class ActivationContext<S extends object> {
 
     _services: ContainerServiceMap<S>;
 
-    _stack: ActivationContextInfo<S>[];
-
     _visited: MapOf<any>;
 
     _name: string;
 
-    _localized: boolean = false;
+    _service: Descriptor<S, any>;
 
-    container: Container<S>;
+    _container: Container<S>;
 
-    constructor(container: Container<S>, services: ContainerServiceMap<S>, name?: string, cache?: object, visited?: MapOf<any>) {
-        argumentNotNull(container, "container");
-        argumentNotNull(services, "services");
+    _parent: ActivationContext<S> | undefined;
 
-        this._name = name || "<unnamed>";
-        this._visited = visited || {};
-        this._stack = [];
-        this._cache = cache || {};
+    constructor(container: Container<S>, services: ContainerServiceMap<S>, name: string, service: Descriptor<S, any>) {
+        this._name = name;
+        this._service = service;
+        this._visited = {};
+        this._cache = {};
         this._services = services;
-        this.container = container;
+        this._container = container;
     }
 
     getName() {
         return this._name;
+    }
+
+    getContainer() {
+        return this._container;
     }
 
     resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>) {
@@ -70,16 +70,6 @@ export class ActivationContext<S extends object> {
         this._services[name] = service as any;
     }
 
-    clone() {
-        return new ActivationContext<S>(
-            this.container,
-            this._services,
-            this._name,
-            this._cache,
-            this._visited
-        );
-    }
-
     has(id: string) {
         return id in this._cache;
     }
@@ -96,9 +86,8 @@ export class ActivationContext<S extends object> {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);
 
-        this.enter(name, d.toString());
-        const v = d.activate(this);
-        this.leave();
+        const ctx = this.enter(d, name);
+        const v = d.activate(ctx);
 
         if (trace.isLogEnabled())
             trace.log(`leave ${name}`);
@@ -112,27 +101,23 @@ export class ActivationContext<S extends object> {
         return count;
     }
 
-    getStack() {
-        return this._stack.slice().reverse();
+    getStack(): ActivationContextInfo[] {
+        const stack = [{
+            name: this._name,
+            service: this._service.toString()
+        }];
+
+        return this._parent ?
+            stack.concat(this._parent.getStack()) :
+            stack;
     }
 
-    private enter(name: string, service: string) {
-        this._stack.push({
-            name,
-            service,
-            scope: this._services
-        });
-        this._name = name;
-        this._services = Object.create(this._services);
-    }
-
-    private leave() {
-        const ctx = this._stack.pop();
-        if (ctx) {
-            this._services = ctx.scope;
-            this._name = ctx.name;
-        } else {
-            trace.error("Trying to leave the last activation scope");
-        }
+    private enter(service: Descriptor<S, any>, name: string): this {
+        const clone = Object.create(this);
+        clone._name = name;
+        clone._services = Object.create(this._services);
+        clone._parent = this;
+        clone._service = service;
+        return clone;
     }
 }

@@ -1,12 +1,14 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, Resolver, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, Resolver, ContainerServiceMap, ContainerKeys, ContainerResolve, ILifetimeManager } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
 import { MapOf, IDestroyable } from "../interfaces";
 import { isDescriptor } from "./traits";
+import { LifetimeManager } from "./LifetimeManager";
+import { each } from "../safe";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
@@ -14,6 +16,8 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
     readonly _services: ContainerServiceMap<S>;
 
     readonly _cache: MapOf<any>;
+
+    readonly _lifetimeManager: ILifetimeManager;
 
     readonly _cleanup: (() => void)[];
 
@@ -31,6 +35,7 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
         this._root = parent ? parent.getRootContainer() : this;
         this._services.container = new ValueDescriptor(this) as any;
         this._disposed = false;
+        this._lifetimeManager = new LifetimeManager();
     }
 
     getRootContainer() {
@@ -39,6 +44,10 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
 
     getParent() {
         return this._parent;
+    }
+
+    getLifetimeManager() {
+        return this._lifetimeManager;
     }
 
     resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>): ContainerResolve<S, K> {
@@ -51,9 +60,9 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
                 throw new Error("Service '" + name + "' isn't found");
         } else {
 
-            const context = new ActivationContext<S>(this, this._services);
+            const context = new ActivationContext<S>(this, this._services, String(name), d);
             try {
-                return context.activate(d, name.toString());
+                return d.activate(context);
             } catch (error) {
                 throw new ActivationError(name.toString(), context.getStack(), error);
             }
@@ -73,11 +82,7 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
         if (arguments.length === 1) {
             const data = nameOrCollection as ServiceMap<S>;
 
-            for (const name in data) {
-                if (Object.prototype.hasOwnProperty.call(data, name)) {
-                    this.register(name, data[name] as Descriptor<S, S[keyof S]>);
-                }
-            }
+            each(data, (v, k) => this.register(k, v));
         } else {
             if (!isDescriptor(service))
                 throw new Error("The service parameter must be a descriptor");
@@ -127,17 +132,4 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
     createChildContainer<S2 extends object = S>(): Container<S & S2> {
         return new Container<S & S2>(this as any);
     }
-
-    has(id: string | number) {
-        return id in this._cache;
-    }
-
-    get(id: string | number) {
-        return this._cache[id];
-    }
-
-    store(id: string | number, value: any) {
-        return (this._cache[id] = value);
-    }
-
 }
