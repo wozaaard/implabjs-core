@@ -35,9 +35,10 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
     private _cache: MapOf<any> = {};
     private _destroyed = false;
 
+    private _pending: MapOf<boolean> = {};
+
     initialize(id: string): ILifetime {
         const self = this;
-        let pending = false;
         return {
             has() {
                 return (id in self._cache);
@@ -51,9 +52,9 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
             },
 
             enter() {
-                if (pending)
+                if (self._pending[id])
                     throw Error(`Cyclic reference detected: the item with the key ${id} is already activating.`);
-                pending = true;
+                self._pending[id] = true;
             },
 
             store(item: any, cleanup?: (item: any) => void) {
@@ -62,7 +63,7 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
 
                 if (this.has())
                     throw new Error(`The item with with the key ${id} already registered with this lifetime manager`);
-                pending = false;
+                delete self._pending[id];
 
                 self._cache[id] = item;
 

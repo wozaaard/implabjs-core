@@ -41,7 +41,7 @@ export class LazyReferenceDescriptor<S extends object = any, K extends Container
         return (cfg?: PartialServiceMap<S>) => {
             // защищаем контекст на случай исключения в процессе
             // активации
-            const ct = saved.clone();
+            const ct = cfg ? saved.clone() : saved;
             try {
                 if (cfg) {
                     each(cfg, (v, k) => ct.register(k, v));
