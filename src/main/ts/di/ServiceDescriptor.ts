@@ -62,8 +62,6 @@ export type InjectionSpec<T> = {
 };
 
 export interface ServiceDescriptorParams<S extends object, T, P extends any[]> {
-    owner: Container<S>;
-
     lifetime?: ILifetimeManager;
 
     params?: P;
@@ -88,12 +86,7 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
 
     _lifetime = LifetimeManager.empty;
 
-    _owner: Container<S>;
-
     constructor(opts: ServiceDescriptorParams<S, T, P>) {
-        argumentNotNull(opts && opts.owner, "opts.owner");
-
-        this._owner = opts.owner;
 
         if (opts.lifetime)
             this._lifetime = opts.lifetime;

@@ -37,7 +37,7 @@ export interface ServiceRecordBuilder<T, S extends object> {
     wired(module: ServiceModule<T, S>): RegistrationBuilder<T, S>;
 }
 
-export interface RegistrationVisitor<S extends object> {
+export interface RegistrationVisitor {
     visitDependency(): void;
 
     visitObject(): void;
@@ -48,23 +48,8 @@ export interface RegistrationVisitor<S extends object> {
 
 }
 
-export interface RegistrationBuilder<T, S extends object> {
-    override<K extends keyof S>(name: K, builder: S[K], raw: true): this;
-    override<K extends keyof S>(name: K, builder: (t: ServiceRecordBuilder<S[K], S>) => void): this;
-    override<K extends keyof S, V>(name: S[K] extends ExtractDependency<V, S> ? K : never, value: V): this;
-
-    activate(activation: ActivationType): this;
-    inject<M extends keyof T, P extends any[]>(member: T[M] extends (...params: ExtractDependency<P, S>) => any ? M : never, ...params: P): this;
-
-    visit(visitor: RegistrationVisitor<S>): void;
-}
-
-export interface ConstructorBuilder<C extends new (...args: any[]) => any, S extends object> extends RegistrationBuilder<InstanceType<C>, S> {
-    $type: C;
-}
-
-export interface FactoryBuilder<F extends (...args: any[]) => any, S extends object> extends RegistrationBuilder<ReturnType<F>, S> {
-    $factory: F;
+export interface ServiceRegistration {
+    visit(visitor: RegistrationVisitor): void;
 }
 
 export interface ConfigBuilder<S extends object, Y extends keyof S = keyof S> {
@@ -75,7 +60,7 @@ export interface ConfigBuilder<S extends object, Y extends keyof S = keyof S> {
     apply(container: Container<S>): Promise<void>;
 }
 
-interface ServicesDeclaration<S extends object> {
+export interface ServicesDeclaration<S extends object> {
     build<T>(this: void): ServiceRecordBuilder<T, S>;
     annotate<T>(this: void): AnnotaionBuilder<T, S>;
 
@@ -84,5 +69,3 @@ interface ServicesDeclaration<S extends object> {
 
     configure(): ConfigBuilder<S>;
 }
-
-export declare function declare<S extends object>(): ServicesDeclaration<S>;

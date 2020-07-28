@@ -120,4 +120,11 @@ export class ActivationContext<S extends object> {
         clone._service = service;
         return clone;
     }
+
+    /** Creates a clone for the current context, used to protect it from modifications */
+    clone(): this {
+        const clone = Object.create(this);
+        clone._services = Object.create(this._services);
+        return clone;
+    }
 }

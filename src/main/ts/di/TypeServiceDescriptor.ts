@@ -1,13 +1,12 @@
 import { ServiceDescriptor, ServiceDescriptorParams } from "./ServiceDescriptor";
-import { Constructor, Factory } from "../interfaces";
 import { argumentNotNull, isPrimitive } from "../safe";
 
 export interface TypeServiceDescriptorParams<S extends object, T extends object, P extends any[]> extends ServiceDescriptorParams<S, T, P> {
-    type: Constructor<T>;
+    type: new (...args: any[]) => T;
 }
 
 export class TypeServiceDescriptor<S extends object, T extends object, P extends any[]> extends ServiceDescriptor<S, T, P> {
-    _type: Constructor;
+    _type: new (...args: any[]) => T;
 
     constructor(opts: TypeServiceDescriptorParams<S, T, P>) {
         super(opts);
@@ -18,9 +17,10 @@ export class TypeServiceDescriptor<S extends object, T extends object, P extends
         if (this._params) {
             if (this._params.length) {
                 this._factory = (...args) => {
-                    const t = Object.create(ctor.prototype);
+                    /*const t = Object.create(ctor.prototype);
                     const inst = ctor.apply(t, args);
-                    return isPrimitive(inst) ? t : inst;
+                    return isPrimitive(inst) ? t : inst;*/
+                    return new ctor(...args);
                 };
             } else {
                 this._factory = arg => {

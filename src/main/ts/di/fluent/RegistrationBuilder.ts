@@ -1,7 +1,7 @@
-import { ServiceRecordBuilder, ExtractDependency, RegistrationVisitor } from "./interfaces";
+import { ServiceRecordBuilder, ExtractDependency, RegistrationVisitor, ServiceRegistration } from "./interfaces";
 import { ActivationType } from "../interfaces";
 
-export class RegistrationBuilder<T, S extends object> {
+export class RegistrationBuilder<T, S extends object> implements ServiceRegistration {
     private _activationType: ActivationType = "call";
 
     private _overrides: { [m in keyof S]?: (...args: any) => void } | undefined;
@@ -31,7 +31,7 @@ export class RegistrationBuilder<T, S extends object> {
         return this;
     }
 
-    visit(visitor: RegistrationVisitor<S>) {
+    visit(visitor: RegistrationVisitor) {
         
     }
 }

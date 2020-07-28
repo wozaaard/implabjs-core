@@ -19,6 +19,7 @@ import { makeResolver } from "./ResolverHelper";
 import { ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LazyReferenceDescriptor } from "./LazyReferenceDescriptor";
+import { LifetimeManager } from "./LifetimeManager";
 
 export interface RegistrationScope<S extends object> {
 
@@ -73,8 +74,6 @@ export interface DependencyRegistration<S extends object, K extends ContainerKey
 export interface LazyDependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends DependencyRegistration<S, K> {
     lazy: true;
 }
-
-type OfType<K extends keyof S, S, T> = Extract<{ [k in K]: T}, S>;
 
 export type Registration<T, S extends object> = T extends primitive ? T :
     (
@@ -325,7 +324,6 @@ export class Configuration<S extends object> {
 
     _makeServiceParams(data: ServiceRegistration<any, S>) {
         const opts: any = {
-            owner: this._container
         };
         if (data.services)
             opts.services = this._visitRegistrations(data.services, "services");
@@ -347,7 +345,7 @@ export class Configuration<S extends object> {
                 this._visit(data.params, "params");
 
         if (data.activation) {
-            opts.activation = data.activation;
+            opts.activation = this._getLifetimeManager(data.activation);
         }
 
         if (data.cleanup)
@@ -411,5 +409,20 @@ export class Configuration<S extends object> {
 
         this._leave();
         return d;
+    }
+
+    _getLifetimeManager(activation: ActivationType) {
+        switch (activation) {
+            case "container":
+                return this._container.getLifetimeManager();
+            case "hierarchy":
+                return LifetimeManager.hierarchyLifetime;
+            case "context":
+                return LifetimeManager.contextLifetime;
+            case "singleton":
+                return LifetimeManager.singletonLifetime;
+            default:
+                return LifetimeManager.empty;
+        }
     }
 }
