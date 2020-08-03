@@ -1,23 +1,23 @@
 import { argumentNotEmptyString, each } from "../safe";
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, PartialServiceMap, ContainerResolve, ContainerKeys } from "./interfaces";
+import { Descriptor, PartialServiceMap, TypeOfService, ContainerKeys } from "./interfaces";
 import { ActivationError } from "./ActivationError";
 
 export interface ReferenceDescriptorParams<S extends object, K extends ContainerKeys<S>> {
     name: K;
     optional?: boolean;
-    default?: ContainerResolve<S, K>;
+    default?: TypeOfService<S, K>;
     services?: PartialServiceMap<S>;
 }
 
 export class LazyReferenceDescriptor<S extends object = any, K extends ContainerKeys<S> = ContainerKeys<S>>
-    implements Descriptor<S, ((args?: PartialServiceMap<S>) => ContainerResolve<S, K>)> {
+    implements Descriptor<S, ((args?: PartialServiceMap<S>) => TypeOfService<S, K>)> {
 
     _name: K;
 
     _optional = false;
 
-    _default: ContainerResolve<S, K> | undefined;
+    _default: TypeOfService<S, K> | undefined;
 
     _services: PartialServiceMap<S>;
 
@@ -53,7 +53,6 @@ export class LazyReferenceDescriptor<S extends object = any, K extends Container
                 throw new ActivationError(this._name.toString(), ct.getStack(), error);
             }
         };
-
     }
 
     toString() {

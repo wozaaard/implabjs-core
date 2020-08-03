@@ -2,7 +2,8 @@ import {
     PartialServiceMap,
     ActivationType,
     ContainerKeys,
-    ContainerResolve
+    TypeOfService,
+    ILifetimeManager
 } from "./interfaces";
 
 import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
@@ -32,13 +33,18 @@ export interface RegistrationScope<S extends object> {
 }
 
 /**
- * Базовый интефейс конфигурации сервисов
+ * Базовый интерфейс конфигурации сервисов
  */
 export interface ServiceRegistration<T, S extends object> extends RegistrationScope<S> {
 
     activation?: ActivationType;
 
     params?: any;
+
+    /** Специальный идентификатор используется при активации singleton, если
+     * не указан для TypeRegistration вычисляется как oid($type)
+     */
+    typeId?: string;
 
     inject?: object | object[];
 
@@ -68,7 +74,7 @@ export interface DependencyRegistration<S extends object, K extends ContainerKey
     $dependency: K;
     lazy?: boolean;
     optional?: boolean;
-    default?: ContainerResolve<S, K>;
+    default?: TypeOfService<S, K>;
 }
 
 export interface LazyDependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends DependencyRegistration<S, K> {
@@ -225,7 +231,15 @@ export class Configuration<S extends object> {
         trace.log("resolveType moduleName={0}, localName={1}", moduleName, localName);
         try {
             const m = await this._loadModule(moduleName);
-            return localName ? get(localName, m) : m;
+            if (localName) {
+                return get(localName, m);
+            } else {
+                if (m instanceof Function)
+                    return m;
+                if ("default" in m)
+                    return m.default;
+                return m;
+            }
         } catch (e) {
             trace.error("Failed to resolve type moduleName={0}, localName={1}", moduleName, localName);
             throw e;
@@ -345,7 +359,7 @@ export class Configuration<S extends object> {
                 this._visit(data.params, "params");
 
         if (data.activation) {
-            opts.activation = this._getLifetimeManager(data.activation);
+            opts.activation = this._getLifetimeManager(data.activation, data.typeId);
         }
 
         if (data.cleanup)
@@ -384,7 +398,9 @@ export class Configuration<S extends object> {
             opts.type = data.$type;
         } else {
             const [moduleName, typeName] = data.$type.split(":", 2);
-            opts.type = this._resolveType(moduleName, typeName);
+            const t = opts.type = this._resolveType(moduleName, typeName);
+            if (!(t instanceof Function))
+                throw Error("$type (" + data.$type + ") is not a constructable");
         }
 
         const d = new TypeServiceDescriptor<S, any, any[]>(
@@ -411,7 +427,7 @@ export class Configuration<S extends object> {
         return d;
     }
 
-    _getLifetimeManager(activation: ActivationType) {
+    _getLifetimeManager(activation: ActivationType, typeId: string | undefined): ILifetimeManager {
         switch (activation) {
             case "container":
                 return this._container.getLifetimeManager();
@@ -420,7 +436,9 @@ export class Configuration<S extends object> {
             case "context":
                 return LifetimeManager.contextLifetime;
             case "singleton":
-                return LifetimeManager.singletonLifetime;
+                if (typeId === undefined)
+                    throw Error("The singleton activation requires a typeId");
+                return LifetimeManager.singletonLifetime(typeId);
             default:
                 return LifetimeManager.empty;
         }

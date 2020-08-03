@@ -1,17 +1,20 @@
-import { configure, dependency, build } from "./services";
+import { configure } from "./services";
 
 export const config = configure()
-    .register("bar", async s => s.wired(await import("./Bar"), "service"))
-    .register("box", s => import("./Box").then(m => s.wired(m)))
-    .register("host", "example.com")
-    // .registerType("bar2", Bar, [{ foo: dependency("foo"), host: "" }]);
-    .register("bar2", async s => s.type((await import("./Bar")).Bar,
-        {
-            foo: build().type((await import("./Foo")).Foo)
-                .activate("context"),
-            nested: { lazy: dependency("foo", { lazy: true }) },
-            host: dependency("host")
-        },
-        "")
-        .inject("setName", dependency("host"))
+    .register("host", s => s.value("example.com"))
+    .register("bar2", bar2 => Promise.all([import("./Foo"), import("./Bar")])
+        .then(([{ Foo }, { Bar }]) => {
+            const lifetime: any = undefined; // new HierarchyLifetime()
+            bar2.factory((resolve, activate) => {
+                const bar = new Bar({
+                    foo: activate(lifetime, () => new Foo()),
+                    nested: {
+                        lazy: resolve("foo", { lazy: true })
+                    },
+                    host: resolve("host")
+                }, "some text");
+                bar.setName(resolve("host"));
+                return bar;
+            });
+        })
     );

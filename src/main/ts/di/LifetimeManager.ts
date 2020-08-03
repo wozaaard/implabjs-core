@@ -30,6 +30,8 @@ const emptyLifetime: ILifetime = {
 
 };
 
+let nextId = 0;
+
 export class LifetimeManager implements IDestroyable, ILifetimeManager {
     private _cleanup: (() => void)[] = [];
     private _cache: MapOf<any> = {};
@@ -37,8 +39,9 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
 
     private _pending: MapOf<boolean> = {};
 
-    initialize(id: string): ILifetime {
+    initialize(): ILifetime {
         const self = this;
+        const id = ++nextId;
         return {
             has() {
                 return (id in self._cache);
@@ -89,33 +92,18 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
     static readonly empty: ILifetimeManager = {
         initialize(): ILifetime {
             return emptyLifetime;
-        },
-        destroy() {
-            throw new Error("Trying to destroy empty lifetime manager, this is a bug.");
         }
-
     };
 
     static readonly hierarchyLifetime: ILifetimeManager = {
-        initialize(id: string, context: ActivationContext<any>): ILifetime {
-            return context.getContainer().getLifetimeManager().initialize(id, context);
-        },
-        destroy() {
-            throw new Error("Trying to destroy hierarchy lifetime manager, this is a bug.");
-        }
-    };
-
-    static readonly singletonLifetime: ILifetimeManager = {
-        initialize(id: string): ILifetime {
-            return singletonLifetimeManager.initialize(id);
-        },
-        destroy() {
-            throw new Error("Trying to destroy singleton lifetime manager, this is a bug.");
+        initialize(context: ActivationContext<any>): ILifetime {
+            return context.getContainer().getLifetimeManager().initialize(context);
         }
     };
 
     static readonly contextLifetime: ILifetimeManager = {
-        initialize(id: string, context: ActivationContext<any>): ILifetime {
+        initialize(context: ActivationContext<any>): ILifetime {
+            const id = String(++nextId);
             return {
                 enter() {
                     if (context.visit(id))
@@ -130,13 +118,15 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
                 store(item: any) {
                     context.store(id, item);
                 }
-
             };
-        },
-        destroy() {
-            throw new Error("Trying to destroy empty lifetime manager, this is a bug.");
         }
     };
-}
 
-const singletonLifetimeManager = new LifetimeManager();
+    static singletonLifetime(typeId: string): ILifetimeManager {
+        return {
+            initialize() {
+                return emptyLifetime;
+            }
+        };
+    }
+}

@@ -1,7 +1,7 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, Resolver, ContainerServiceMap, ContainerKeys, ContainerResolve, ILifetimeManager } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, ServiceLocator, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetimeManager } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
@@ -12,10 +12,8 @@ import { each } from "../safe";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S extends object = any> implements Resolver<S>, IDestroyable {
+export class Container<S extends object = any> implements ServiceLocator<S>, IDestroyable {
     readonly _services: ContainerServiceMap<S>;
-
-    readonly _cache: MapOf<any>;
 
     readonly _lifetimeManager: ILifetimeManager;
 
@@ -30,7 +28,6 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
     constructor(parent?: Container<S>) {
         this._parent = parent;
         this._services = parent ? Object.create(parent._services) : {};
-        this._cache = {};
         this._cleanup = [];
         this._root = parent ? parent.getRootContainer() : this;
         this._services.container = new ValueDescriptor(this) as any;
@@ -50,7 +47,7 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
         return this._lifetimeManager;
     }
 
-    resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>): ContainerResolve<S, K> {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K> {
         trace.debug("resolve {0}", name);
         const d = this._services[name];
         if (d === undefined) {
@@ -72,7 +69,7 @@ export class Container<S extends object = any> implements Resolver<S>, IDestroya
     /**
      * @deprecated use resolve() method
      */
-    getService<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>) {
+    getService<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>) {
         return this.resolve(name, def);
     }
 

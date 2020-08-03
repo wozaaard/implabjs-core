@@ -1,8 +1,7 @@
 import { TypeRegistration } from "./Configuration";
 import { ExtractDependency } from "./fluent/interfaces";
-import { RegistrationBuilder } from "./fluent/RegistrationBuilder";
 
-export class AnnotaionBuilder<T, S extends object> {
+export class AnnotationBuilder<T, S extends object> {
     wire<P extends any[]>(...args: P) {
         return <C extends new (...args: ExtractDependency<P, S>) => T>(constructor: C) => {
 
@@ -20,10 +19,6 @@ export class AnnotaionBuilder<T, S extends object> {
     }
 
     getDescriptor(): TypeRegistration<new () => T, S> {
-        throw new Error();
-    }
-
-    getRegistrationBuilder(): RegistrationBuilder<T, S> {
         throw new Error();
     }
 
