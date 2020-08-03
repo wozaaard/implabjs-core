@@ -1,13 +1,10 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ServiceMap, PartialServiceMap, ILifetimeManager } from "./interfaces";
-import { argumentNotNull, isPrimitive, keys, isNull } from "../safe";
+import { Descriptor, ServiceMap, PartialServiceMap, ILifetimeManager, ILifetime } from "./interfaces";
+import { isPrimitive, keys, isNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
 import { MatchingMemberKeys } from "../interfaces";
-import { Container } from "./Container";
-
-let cacheId = 0;
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
@@ -82,14 +79,14 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
 
     _cleanup: ((item: T) => void) | undefined;
 
-    _cacheId = String(++cacheId);
+    _lifetimeManager = LifetimeManager.empty;
 
-    _lifetime = LifetimeManager.empty;
+    _objectLifetime: ILifetime | undefined;
 
     constructor(opts: ServiceDescriptorParams<S, T, P>) {
 
         if (opts.lifetime)
-            this._lifetime = opts.lifetime;
+            this._lifetimeManager = opts.lifetime;
 
         if (!isNull(opts.params))
             this._params = opts.params;
@@ -108,14 +105,17 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
     }
 
     activate(context: ActivationContext<S>) {
-        const lifetime = this._lifetime.initialize(this._cacheId, context);
+        if (!this._objectLifetime)
+            this._objectLifetime = this._lifetimeManager.initialize(context);
+
+        const lifetime = this._objectLifetime;
 
         if (lifetime.has()) {
             return lifetime.get();
         } else {
             lifetime.enter();
             const instance = this._create(context);
-            lifetime.store(this._cacheId, this._cleanup);
+            lifetime.store(instance, this._cleanup);
             return instance;
         }
     }

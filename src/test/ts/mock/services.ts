@@ -1,7 +1,7 @@
 import { Foo } from "./Foo";
 import { Bar } from "./Bar";
 import { Box } from "./Box";
-import { declare } from "../di/fluent/interfaces";
+import { declare } from "../di/traits";
 
 /**
  * Сервисы доступные внутри контейнера
@@ -22,4 +22,4 @@ export interface Services {
 /**
  * Экспортируем вспомогательные функции для описания сервисов и кинфогурации
  */
-export const { dependency, build, annotate, configure } = declare<Services>();
+export const { dependency, annotate, configure } = declare<Services>();

@@ -1,6 +1,6 @@
 import { TraceSource } from "../log/TraceSource";
-import { argumentNotNull, argumentNotEmptyString } from "../safe";
-import { Descriptor, ContainerServiceMap, ContainerKeys, ContainerResolve } from "./interfaces";
+import { argumentNotEmptyString } from "../safe";
+import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService } from "./interfaces";
 import { Container } from "./Container";
 import { MapOf } from "../interfaces";
 
@@ -45,13 +45,16 @@ export class ActivationContext<S extends object> {
         return this._container;
     }
 
-    resolve<K extends ContainerKeys<S>>(name: K, def?: ContainerResolve<S, K>) {
+    resolve<K extends ContainerKeys<S>>(name: K): TypeOfService<S, K>;
+    resolve<K extends ContainerKeys<S>, T>(name: K, def: T): TypeOfService<S, K> | T;
+    resolve<K extends ContainerKeys<S>>(name: K, def: undefined): TypeOfService<S, K> | undefined;
+    resolve<K extends ContainerKeys<S>, T>(name: K, def?: T): TypeOfService<S, K> | T | undefined {
         const d = this._services[name];
 
         if (d !== undefined) {
             return this.activate(d, name.toString());
         } else {
-            if (def !== undefined && def !== null)
+            if (arguments.length > 1)
                 return def;
             else
                 throw new Error(`Service ${name} not found`);

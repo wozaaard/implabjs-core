@@ -1,18 +1,12 @@
 import { IObservable, IDestroyable, ICancellation, IObserver } from "./interfaces";
 import { Cancellation } from "./Cancellation";
-import { argumentNotNull, destroyed } from "./safe";
+import { argumentNotNull } from "./safe";
 
 type Handler<T> = (x: T) => void;
 
 type Initializer<T> = (notify: Handler<T>, error: (e: any) => void, complete: () => void) => void;
 
 const noop = () => { };
-
-const nulObserver: IObserver<any> = Object.freeze({
-    next: noop,
-    error: noop,
-    complete: noop
-});
 
 function isObserver(val: any): val is IObserver<any> {
     return val && (typeof val.next === "function");

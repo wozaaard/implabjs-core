@@ -1,19 +1,17 @@
 import { primitive } from "../../safe";
-import { ActivationType } from "../interfaces";
-import { AnnotaionBuilder } from "../Annotations";
-import { LazyDependencyRegistration, DependencyRegistration } from "../Configuration";
-import { Container } from "../Container";
+import { AnnotationBuilder } from "../Annotations";
+import { ILifetime, TypeOfService, ContainerKeys } from "../interfaces";
 
-export interface DependencyOptions<T> {
+export interface DependencyOptions {
     optional?: boolean;
-    default?: T;
+    default?: any;
 }
 
-export interface LazyDependencyOptions<T> extends DependencyOptions<T> {
+export interface LazyDependencyOptions extends DependencyOptions {
     lazy: true;
 }
 
-export type ExtractService<K, S> = K extends keyof S ? S[K] : K;
+export type ExtractService<K, S> = K extends keyof S ? S[K] : never;
 
 export type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
     D extends { lazy: true } ? () => ExtractService<K, S> : ExtractService<K, S> :
@@ -25,47 +23,26 @@ export type WalkDependencies<D, S> = D extends primitive ? D :
     { [K in keyof D]: ExtractDependency<D[K], S> };
 
 export type ServiceModule<T, S extends object, M extends keyof any = "service"> = {
-    [m in M]: AnnotaionBuilder<T, S>;
+    [m in M]: AnnotationBuilder<T, S>;
 };
 
-export interface ServiceRecordBuilder<T, S extends object> {
-    type<P extends any[], C extends new (...args: ExtractDependency<P, S>) => T>(
-        target: C, ...params: P): ConstructorBuilder<C, S>;
-    factory<P extends any[], F extends (...args: ExtractDependency<P, S>) => T>(
-        target: F, ...params: P): FactoryBuilder<F, S>;
-    wired<M extends keyof any>(module: ServiceModule<T, S, M>, m: M): RegistrationBuilder<T, S>;
-    wired(module: ServiceModule<T, S>): RegistrationBuilder<T, S>;
+export type InferReferenceType<S extends object, K extends keyof ContainerKeys<S>, O> = O extends { default: infer X } ? (TypeOfService<S, K> | X) :
+    O extends { optional: true } ? (TypeOfService<S, K> | undefined) :
+    TypeOfService<S, K>;
+
+export interface Resolver<S extends object> {
+    <K extends keyof ContainerKeys<S>, O extends LazyDependencyOptions>(this: void, name: K, opts: O): () => InferReferenceType<S, K, O>;
+    <K extends keyof ContainerKeys<S>, O extends DependencyOptions>(this: void, name: K, opts?: O): InferReferenceType<S, K, O>;
 }
 
-export interface RegistrationVisitor {
-    visitDependency(): void;
+export interface DescriptorBuilder<T, S extends object> {
+    service(service: AnnotationBuilder<T, S> | ServiceModule<T, S>): void;
 
-    visitObject(): void;
+    factory(f: (resolve: Resolver<S>, activate: <T2>(lifetime: ILifetime, factory: () => T2, cleanup?: (item: T2) => void) => T2) => T): void;
 
-    visitTypeRegistration(): void;
-
-    visitFactoryRegistration(): void;
-
+    value(v: T): void;
 }
 
-export interface ServiceRegistration {
-    visit(visitor: RegistrationVisitor): void;
-}
-
-export interface ConfigBuilder<S extends object, Y extends keyof S = keyof S> {
-    register<K extends Y>(name: K, builder: (t: ServiceRecordBuilder<S[K], S>) => void | Promise<void>): ConfigBuilder<S, Exclude<Y, K>>;
-    register<K extends Y, V>(name: S[K] extends ExtractDependency<V, S> ? K : never, value: V): ConfigBuilder<S, Exclude<Y, K>>;
-    register<K extends Y>(name: K, value: S[K], raw: true): ConfigBuilder<S, Exclude<Y, K>>;
-
-    apply(container: Container<S>): Promise<void>;
-}
-
-export interface ServicesDeclaration<S extends object> {
-    build<T>(this: void): ServiceRecordBuilder<T, S>;
-    annotate<T>(this: void): AnnotaionBuilder<T, S>;
-
-    dependency<K extends keyof S>(this: void, name: K, opts: LazyDependencyOptions<S[K]>): LazyDependencyRegistration<S, K>;
-    dependency<K extends keyof S>(this: void, name: K, opts?: DependencyOptions<S[K]>): DependencyRegistration<S, K>;
-
-    configure(): ConfigBuilder<S>;
+export interface Configuration<S extends object, Y extends keyof S = keyof S> {
+    register<K extends Y>(name: K, builder: (d: DescriptorBuilder<S[K], S>) => void): Configuration<S, Exclude<Y, K>>;
 }
