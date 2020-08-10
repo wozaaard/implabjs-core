@@ -1,12 +1,11 @@
 import { Bar } from "./Bar";
-import { annotate, dependency } from "./services";
 
 // export service descriptor
 // через service передается информация о типе зависимости
 // даже если это шаблон.
-export const service = annotate<Box<Bar>>();
+// export const service = annotate<Box<Bar>>();
 
-@service.wire()
+// @service.wire()
 export class Box<T> {
     private _value: T | undefined;
 
@@ -14,7 +13,7 @@ export class Box<T> {
         this._value = value;
     }
 
-    @service.inject(dependency("bar"))
+    // @service.inject(dependency("bar"))
     setValue(value: T) {
         this._value = value;
         return value;

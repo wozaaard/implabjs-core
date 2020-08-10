@@ -1,4 +1,4 @@
-import { isPrimitive, isNull, each, isKeyof, get } from "../safe";
+import { isPrimitive, isNull, isKeyof, get } from "../safe";
 import { MapOf } from "../interfaces";
 
 type SubstFn = (name: string, format?: string) => string;

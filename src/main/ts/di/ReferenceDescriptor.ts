@@ -3,9 +3,26 @@ import { ActivationContext } from "./ActivationContext";
 import { Descriptor, PartialServiceMap, TypeOfService, ContainerKeys } from "./interfaces";
 
 export interface ReferenceDescriptorParams<S extends object, K extends ContainerKeys<S>> {
+    /**
+     * The name of the descriptor
+     */
     name: K;
+
+    /**
+     * The flag that indicates that the referenced service isn't required to exist.
+     * If the reference is optional and the referenced service doesn't exist,
+     * the undefined or a default value will be returned.
+     */
     optional?: boolean;
+
+    /**
+     * a default value for the reference when the referenced service doesn't exist.
+     */
     default?: TypeOfService<S, K>;
+
+    /**
+     * The service overrides
+     */
     services?: PartialServiceMap<S>;
 }
 
@@ -29,7 +46,10 @@ export class ReferenceDescriptor<S extends object = any, K extends ContainerKeys
         this._services = (opts.services || {}) as PartialServiceMap<S>;
     }
 
-    activate(context: ActivationContext<S>) {
+    /** This method activates the referenced service if one exists
+     * @param context activation context which is used during current activation
+     */
+    activate(context: ActivationContext<S>): any {
         // добавляем сервисы
         if (this._services) {
             each(this._services, (v, k) => context.register(k, v));

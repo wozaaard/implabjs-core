@@ -1,7 +1,6 @@
 import { Foo } from "./Foo";
 import { Bar } from "./Bar";
 import { Box } from "./Box";
-import { declare } from "../di/traits";
 
 /**
  * Сервисы доступные внутри контейнера
@@ -18,8 +17,3 @@ export interface Services {
     host: string;
 
 }
-
-/**
- * Экспортируем вспомогательные функции для описания сервисов и кинфогурации
- */
-export const { dependency, annotate, configure } = declare<Services>();

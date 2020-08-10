@@ -1,10 +1,13 @@
-import { configure } from "./services";
+import { Services } from "./services";
+import { configure } from "../di/traits";
+import { LifetimeManager } from "../di/LifetimeManager";
 
-export const config = configure()
+export const config = configure<Services>()
     .register("host", s => s.value("example.com"))
     .register("bar2", bar2 => Promise.all([import("./Foo"), import("./Bar")])
         .then(([{ Foo }, { Bar }]) => {
-            const lifetime: any = undefined; // new HierarchyLifetime()
+            const lifetime = LifetimeManager.hierarchyLifetime();
+
             bar2.factory((resolve, activate) => {
                 const bar = new Bar({
                     foo: activate(lifetime, () => new Foo()),

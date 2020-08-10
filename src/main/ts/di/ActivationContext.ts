@@ -1,6 +1,6 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotEmptyString } from "../safe";
-import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService } from "./interfaces";
+import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetime } from "./interfaces";
 import { Container } from "./Container";
 import { MapOf } from "../interfaces";
 
@@ -12,6 +12,8 @@ export interface ActivationContextInfo {
     service: string;
 
 }
+
+let nextId = 1;
 
 export class ActivationContext<S extends object> {
     _cache: MapOf<any>;
@@ -73,18 +75,23 @@ export class ActivationContext<S extends object> {
         this._services[name] = service as any;
     }
 
-    has(id: string) {
-        return id in this._cache;
+    createLifetime(): ILifetime {
+        const id = nextId++;
+        const me = this;
+        return {
+            initialize() {
+            },
+            has() {
+                return id in me._cache;
+            },
+            get() {
+                return me._cache[id];
+            },
+            store(item: any) {
+                me._cache[id] = item;
+            }
+        };
     }
-
-    get<T>(id: string) {
-        return this._cache[id];
-    }
-
-    store(id: string, value: any) {
-        return (this._cache[id] = value);
-    }
-
     activate<T>(d: Descriptor<S, T>, name: string) {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);
