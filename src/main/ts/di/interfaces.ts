@@ -38,7 +38,7 @@ export type ContainerRegistered<S extends object> = /*{
 export type ActivationType = "singleton" | "container" | "hierarchy" | "context" | "call";
 
 export interface ILifetimeManager {
-    initialize(context: ActivationContext<any>): ILifetime;
+    create(context: ActivationContext<any>): ILifetime;
 }
 
 /**
@@ -51,7 +51,7 @@ export interface ILifetime {
 
     get(): any;
 
-    enter(): void;
+    initialize(context: ActivationContext<any>): void;
 
     store(item: any, cleanup?: (item: any) => void): void;
 }

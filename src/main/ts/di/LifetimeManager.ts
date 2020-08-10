@@ -2,6 +2,7 @@ import { IDestroyable, MapOf } from "../interfaces";
 import { argumentNotNull, isDestroyable } from "../safe";
 import { ILifetimeManager, ILifetime } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
+import { Container } from "./Container";
 
 function safeCall(item: () => void) {
     try {
@@ -16,7 +17,7 @@ const emptyLifetime: ILifetime = {
         return false;
     },
 
-    enter() {
+    initialize() {
 
     },
 
@@ -30,6 +31,21 @@ const emptyLifetime: ILifetime = {
 
 };
 
+const unknownLifetime: ILifetime = {
+    has() {
+        throw new Error("The lifetime is unknown");
+    },
+    initialize() {
+        throw new Error("Can't call initialize on the unknown lifetime object");
+    },
+    get() {
+        throw new Error("The lifetime object isn't initialized");
+    },
+    store() {
+        throw new Error("Can't store a value in the unknown lifetime object");
+    }
+}
+
 let nextId = 0;
 
 export class LifetimeManager implements IDestroyable, ILifetimeManager {
@@ -39,7 +55,7 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
 
     private _pending: MapOf<boolean> = {};
 
-    initialize(): ILifetime {
+    create(): ILifetime {
         const self = this;
         const id = ++nextId;
         return {
@@ -54,7 +70,7 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
                 return t;
             },
 
-            enter() {
+            initialize() {
                 if (self._pending[id])
                     throw Error(`Cyclic reference detected: the item with the key ${id} is already activating.`);
                 self._pending[id] = true;
@@ -89,43 +105,71 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
         }
     }
 
-    static readonly empty: ILifetimeManager = {
-        initialize(): ILifetime {
-            return emptyLifetime;
-        }
-    };
+    static empty(): ILifetime {
+        return emptyLifetime;
+    }
 
-    static readonly hierarchyLifetime: ILifetimeManager = {
-        initialize(context: ActivationContext<any>): ILifetime {
-            return context.getContainer().getLifetimeManager().initialize(context);
-        }
-    };
-
-    static readonly contextLifetime: ILifetimeManager = {
-        initialize(context: ActivationContext<any>): ILifetime {
-            const id = String(++nextId);
-            return {
-                enter() {
-                    if (context.visit(id))
-                        throw new Error("Cyclic reference detected");
-                },
-                get() {
-                    return context.get(id);
-                },
-                has() {
-                    return context.has(id);
-                },
-                store(item: any) {
-                    context.store(id, item);
-                }
-            };
-        }
-    };
-
-    static singletonLifetime(typeId: string): ILifetimeManager {
+    static hierarchyLifetime(): ILifetime {
+        let _lifetime = unknownLifetime;
         return {
-            initialize() {
-                return emptyLifetime;
+            initialize(context: ActivationContext<any>) {
+                if (_lifetime !== unknownLifetime)
+                    throw new Error("Cyclic reference activation detected");
+
+                _lifetime = context.getContainer().getLifetimeManager().create(context);
+            },
+            get() {
+                return _lifetime.get();
+            },
+            has() {
+                return _lifetime.has();
+            },
+            store(item: any, cleanup?: (item: any) => void) {
+                return _lifetime.store(item, cleanup);
+            }
+        };
+    }
+
+    static contextLifetime(): ILifetime {
+        let _lifetime = unknownLifetime;
+        return {
+            initialize(context: ActivationContext<any>) {
+                if (_lifetime !== unknownLifetime)
+                    throw new Error("Cyclic reference detected");
+                _lifetime = context.createLifetime();
+            },
+            get() {
+                return _lifetime.get();
+            },
+            has() {
+                return _lifetime.has();
+            },
+            store(item: any) {
+                _lifetime.store(item);
+            }
+        };
+    }
+
+    static singletonLifetime(typeId: string): ILifetime {
+        return emptyLifetime;
+    }
+
+    static containerLifetime(container: Container<any>) {
+        let _lifetime = unknownLifetime;
+        return {
+            initialize(context: ActivationContext<any>) {
+                if (_lifetime !== unknownLifetime)
+                    throw new Error("Cyclic reference detected");
+                _lifetime = container.getLifetimeManager().create(context);
+            },
+            get() {
+                return _lifetime.get();
+            },
+            has() {
+                return _lifetime.has();
+            },
+            store(item: any) {
+                _lifetime.store(item);
             }
         };
     }

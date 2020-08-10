@@ -59,7 +59,7 @@ export type InjectionSpec<T> = {
 };
 
 export interface ServiceDescriptorParams<S extends object, T, P extends any[]> {
-    lifetime?: ILifetimeManager;
+    lifetime?: ILifetime;
 
     params?: P;
 
@@ -79,14 +79,14 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
 
     _cleanup: ((item: T) => void) | undefined;
 
-    _lifetimeManager = LifetimeManager.empty;
+    _lifetime = LifetimeManager.empty();
 
     _objectLifetime: ILifetime | undefined;
 
     constructor(opts: ServiceDescriptorParams<S, T, P>) {
 
         if (opts.lifetime)
-            this._lifetimeManager = opts.lifetime;
+            this._lifetime = opts.lifetime;
 
         if (!isNull(opts.params))
             this._params = opts.params;
@@ -105,15 +105,12 @@ export class ServiceDescriptor<S extends object, T, P extends any[]> implements 
     }
 
     activate(context: ActivationContext<S>) {
-        if (!this._objectLifetime)
-            this._objectLifetime = this._lifetimeManager.initialize(context);
-
-        const lifetime = this._objectLifetime;
+        const lifetime = this._lifetime;
 
         if (lifetime.has()) {
             return lifetime.get();
         } else {
-            lifetime.enter();
+            lifetime.initialize(context);
             const instance = this._create(context);
             lifetime.store(instance, this._cleanup);
             return instance;

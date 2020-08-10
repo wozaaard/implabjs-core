@@ -26,13 +26,13 @@ export type ServiceModule<T, S extends object, M extends keyof any = "service"> 
     [m in M]: AnnotationBuilder<T, S>;
 };
 
-export type InferReferenceType<S extends object, K extends keyof ContainerKeys<S>, O> = O extends { default: infer X } ? (TypeOfService<S, K> | X) :
+export type InferReferenceType<S extends object, K extends ContainerKeys<S>, O> = O extends { default: infer X } ? (TypeOfService<S, K> | X) :
     O extends { optional: true } ? (TypeOfService<S, K> | undefined) :
     TypeOfService<S, K>;
 
 export interface Resolver<S extends object> {
-    <K extends keyof ContainerKeys<S>, O extends LazyDependencyOptions>(this: void, name: K, opts: O): () => InferReferenceType<S, K, O>;
-    <K extends keyof ContainerKeys<S>, O extends DependencyOptions>(this: void, name: K, opts?: O): InferReferenceType<S, K, O>;
+    <K extends ContainerKeys<S>, O extends LazyDependencyOptions>(this: void, name: K, opts: O): () => InferReferenceType<S, K, O>;
+    <K extends ContainerKeys<S>, O extends DependencyOptions>(this: void, name: K, opts?: O): InferReferenceType<S, K, O>;
 }
 
 export interface DescriptorBuilder<T, S extends object> {

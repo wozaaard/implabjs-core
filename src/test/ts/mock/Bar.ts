@@ -1,7 +1,6 @@
 import { Foo } from "./Foo";
-import { annotate, dependency } from "./services";
 
-export const service = annotate<Bar>();
+/* export const service = annotate<Bar>();
 
 @service.wire({
     foo: dependency("foo"),
@@ -9,22 +8,27 @@ export const service = annotate<Bar>();
         lazy: dependency("foo", { lazy: true })
     },
     host: dependency("host")
-}, "")
+}, "") */
 export class Bar {
     barName = "Twister";
 
     _v: Foo | undefined;
 
-    constructor(_opts: {
-        foo?: Foo;
-        nested?: {
-            lazy: () => Foo
+    constructor(
+        _opts: {
+            foo?: Foo;
+            nested?: {
+                lazy: () => Foo
+            },
+            host: string
         },
-        host: string
-    }, s: string) {
+        s: string
+    ) {
 
         if (_opts && _opts.foo)
             this._v = _opts.foo;
+        if (s)
+            this.barName = s;
     }
 
     setName(name: string) {

@@ -1,5 +1,4 @@
-import { Resolver, ServiceModule, LazyDependencyOptions, DependencyOptions } from "./interfaces";
-import { AnnotationBuilder } from "../Annotations";
+import { Resolver, LazyDependencyOptions, DependencyOptions } from "./interfaces";
 import { Container } from "../Container";
 import { Descriptor, ILifetime, ContainerKeys } from "../interfaces";
 import { ActivationContext } from "../ActivationContext";
@@ -11,9 +10,6 @@ export class DescriptorBuilder<T, S extends object> {
     constructor(container: Container<S>, cb: (d: Descriptor<S, T>) => void) {
         this._container = container;
         this._cb = cb;
-    }
-    service(service: AnnotationBuilder<T, S> | ServiceModule<T, S>) {
-
     }
 
     factory(f: (resolve: Resolver<S>, activate: (lifetime: ILifetime, factory: () => any, cleanup?: (item: any) => void) => any) => T): void {
@@ -34,7 +30,7 @@ export class DescriptorBuilder<T, S extends object> {
                     if (lifetime.has()) {
                         return lifetime.get();
                     } else {
-                        lifetime.enter();
+                        lifetime.initialize(context);
                         const instance = factory();
                         lifetime.store(instance, cleanup);
                         return instance;

@@ -3,7 +3,7 @@ import {
     ActivationType,
     ContainerKeys,
     TypeOfService,
-    ILifetimeManager
+    ILifetime
 } from "./interfaces";
 
 import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
@@ -281,9 +281,11 @@ export class Configuration<S extends object> {
         trace.debug("<{0}", name);
     }
 
-    async _visit(data: any, name: string): Promise<any> {
-        if (isPrimitive(data) || isDescriptor(data))
-            return data;
+    _visit(data: any, name: string): Promise<any> {
+        if (isPrimitive(data))
+            return Promise.resolve(new ValueDescriptor(data));
+        if (isDescriptor(data))
+            return Promise.resolve(data);
 
         if (isDependencyRegistration<S>(data)) {
             return this._visitDependencyRegistration(data, name);
@@ -398,9 +400,11 @@ export class Configuration<S extends object> {
             opts.type = data.$type;
         } else {
             const [moduleName, typeName] = data.$type.split(":", 2);
-            const t = opts.type = this._resolveType(moduleName, typeName);
-            if (!(t instanceof Function))
-                throw Error("$type (" + data.$type + ") is not a constructable");
+            opts.type = this._resolveType(moduleName, typeName).then(t => {
+                if (!(t instanceof Function))
+                    throw Error("$type (" + data.$type + ") is not a constructable");
+                return t;
+            });
         }
 
         const d = new TypeServiceDescriptor<S, any, any[]>(
@@ -427,20 +431,20 @@ export class Configuration<S extends object> {
         return d;
     }
 
-    _getLifetimeManager(activation: ActivationType, typeId: string | undefined): ILifetimeManager {
+    _getLifetimeManager(activation: ActivationType, typeId: string | undefined): ILifetime {
         switch (activation) {
             case "container":
-                return this._container.getLifetimeManager();
+                return LifetimeManager.containerLifetime(this._container);
             case "hierarchy":
-                return LifetimeManager.hierarchyLifetime;
+                return LifetimeManager.hierarchyLifetime();
             case "context":
-                return LifetimeManager.contextLifetime;
+                return LifetimeManager.contextLifetime();
             case "singleton":
                 if (typeId === undefined)
                     throw Error("The singleton activation requires a typeId");
                 return LifetimeManager.singletonLifetime(typeId);
             default:
-                return LifetimeManager.empty;
+                return LifetimeManager.empty();
         }
     }
 }

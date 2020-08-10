@@ -129,8 +129,7 @@ export function get(member: string, context?: object) {
  * @param {Function} cb функция, вызываемая для каждого элемента
  * @param {Object} thisArg значение, которое будет передано в качестве
  *                <c>this</c> в <c>cb</c>.
- * @returns Результат вызова функции <c>cb</c>, либо <c>undefined</c>
- *          если достигнут конец массива.
+ * @returns {void}
  */
 export function each<T>(obj: T, cb: <X extends keyof T>(v: NonNullable<T[X]>, k: X) => void): void;
 export function each<T>(array: T[], cb: (v: T, i: number) => void): void;
@@ -138,18 +137,14 @@ export function each(obj: any, cb: any, thisArg?: any): any;
 export function each(obj: any, cb: any, thisArg?: any) {
     argumentNotNull(cb, "cb");
     if (obj instanceof Array) {
+        let v: any;
         for (let i = 0; i < obj.length; i++) {
-            const x = cb.call(thisArg, obj[i], i);
-            if (x !== undefined)
-                return x;
+            v = obj[i];
+            if (v !== undefined)
+                cb.call(thisArg, v, i);
         }
     } else {
-        const _keys = Object.keys(obj);
-        for (const k of _keys) {
-            const x = cb.call(thisArg, obj[k], k);
-            if (x !== undefined)
-                return x;
-        }
+        Object.keys(obj).forEach(k => obj[k] !== undefined && cb.call(thisArg, obj[k], k));
     }
 }
 
@@ -478,7 +473,7 @@ export function firstWhere<T>(
 }
 
 export function isDestroyable(d: any): d is IDestroyable {
-    if (d && "destroy" in d && typeof(destroy) === "function")
+    if (d && "destroy" in d && typeof (destroy) === "function")
         return true;
     return false;
 }
