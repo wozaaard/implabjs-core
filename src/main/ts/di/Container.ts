@@ -110,22 +110,32 @@ export class Container<S extends object = any> implements ServiceLocator<S>, IDe
 
     /**
      * @param{String|Object} config
-     *  The configuration of the contaier. Can be either a string or an object,
+     *  The configuration of the container. Can be either a string or an object,
      *  if the configuration is an object it's treated as a collection of
-     *  services which will be registed in the contaier.
+     *  services which will be registered in the container.
      *
      * @param{Function} opts.contextRequire
      *  The function which will be used to load a configuration or types for services.
      *
      */
-    async configure(config: string | RegistrationMap<S>, opts?: any, ct = Cancellation.none) {
-        const c = new Configuration<S>(this);
+    async configure(config: string | RegistrationMap<S>, opts?: { contextRequire: any; baseModule?: string }, ct = Cancellation.none) {
+        const _opts = Object.create(opts || null);
 
         if (typeof (config) === "string") {
-            return c.loadConfiguration(config, opts && opts.contextRequire, ct);
+            _opts.baseModule = config;
+
+            const module = await import(config);
+            if (module && module.default && typeof (module.default.apply) === "function")
+                return module.default.apply(this);
+            else
+                return this._applyLegacyConfig(module, _opts, ct);
         } else {
-            return c.applyConfiguration(config, opts && opts.contextRequire, ct);
+            return this._applyLegacyConfig(config, _opts, ct);
         }
+    }
+
+    async _applyLegacyConfig(config: RegistrationMap<S>, opts: { contextRequire: any; baseModule?: string }, ct = Cancellation.none) {
+        return new Configuration<S>(this).applyConfiguration(config, opts);
     }
 
     async fluent<K extends keyof S>(config: FluentRegistrations<K, S>, ct = Cancellation.none): Promise<this> {

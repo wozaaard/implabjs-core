@@ -8,11 +8,7 @@ import { Box } from "./Box";
 export interface Services {
     foo: Foo;
 
-    bar: Bar;
-
-    bar2: Bar;
-
-    box: Box<Bar>;
+    box: Box<Foo>;
 
     host: string;
 
