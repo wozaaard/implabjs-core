@@ -15,6 +15,10 @@ export interface ActivationContextInfo {
 
 let nextId = 1;
 
+/** This class is created once per `Container.resolve` method call and used to
+ * cache dependencies and to track created instances. The activation context
+ * tracks services with `context` activation type.
+ */
 export class ActivationContext<S extends object> {
     _cache: MapOf<any>;
 
@@ -30,6 +34,14 @@ export class ActivationContext<S extends object> {
 
     _parent: ActivationContext<S> | undefined;
 
+    /** Creates a new activation context with the specified parameters.
+     * @param container the container which starts the activation process
+     * @param services the initial service registrations
+     * @param name the name of the service being activated, this parameter is
+     *  used for the debug purpose.
+     * @param service the service to activate, this parameter is used for the
+     *  debug purpose.
+     */
     constructor(container: Container<S>, services: ContainerServiceMap<S>, name: string, service: Descriptor<S, any>) {
         this._name = name;
         this._service = service;
@@ -39,16 +51,33 @@ export class ActivationContext<S extends object> {
         this._container = container;
     }
 
+    /** the name of the current resolving dependency */
     getName() {
         return this._name;
     }
 
+    /** Returns the container for which 'resolve' method was called */
     getContainer() {
         return this._container;
     }
 
+    /** Resolves the specified dependency in the current context
+     * @param name The name of the dependency being resolved
+     */
     resolve<K extends ContainerKeys<S>>(name: K): TypeOfService<S, K>;
+    /** Resolves the specified dependency with the specified default value if
+     * the dependency is missing.
+     *
+     * @param name The name of the dependency being resolved
+     * @param def A default value to return in case of the specified dependency
+     *   is missing.
+     */
     resolve<K extends ContainerKeys<S>, T>(name: K, def: T): TypeOfService<S, K> | T;
+    /** Resolves the specified dependency and returns undefined in case if the
+     * dependency is missing.
+     *
+     * @param name The name of the dependency being resolved
+     */
     resolve<K extends ContainerKeys<S>>(name: K, def: undefined): TypeOfService<S, K> | undefined;
     resolve<K extends ContainerKeys<S>, T>(name: K, def?: T): TypeOfService<S, K> | T | undefined {
         const d = this._services[name];
@@ -92,6 +121,7 @@ export class ActivationContext<S extends object> {
             }
         };
     }
+
     activate<T>(d: Descriptor<S, T>, name: string) {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);

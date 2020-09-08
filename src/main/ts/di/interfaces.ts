@@ -37,10 +37,6 @@ export type ContainerRegistered<S extends object> = /*{
 
 export type ActivationType = "singleton" | "container" | "hierarchy" | "context" | "call";
 
-export interface ILifetimeManager {
-    create(context: ActivationContext<any>): ILifetime;
-}
-
 /**
  * Интерфейс для управления жизнью экземпляра объекта. Каждая регистрация имеет
  * свой собственный объект `ILifetime`, который создается при первой активации

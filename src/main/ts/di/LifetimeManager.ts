@@ -1,6 +1,6 @@
 import { IDestroyable, MapOf } from "../interfaces";
-import { argumentNotNull, isDestroyable } from "../safe";
-import { ILifetimeManager, ILifetime } from "./interfaces";
+import { argumentNotNull, isDestroyable, primitive, isNull, argumentNotEmptyString } from "../safe";
+import { ILifetime } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
 import { Container } from "./Container";
 
@@ -12,7 +12,7 @@ function safeCall(item: () => void) {
     }
 }
 
-const emptyLifetime: ILifetime = {
+const emptyLifetime: ILifetime = Object.freeze({
     has() {
         return false;
     },
@@ -29,11 +29,11 @@ const emptyLifetime: ILifetime = {
         // does nothing
     }
 
-};
+});
 
-const unknownLifetime: ILifetime = {
+const unknownLifetime: ILifetime = Object.freeze({
     has() {
-        throw new Error("The lifetime is unknown");
+        return false;
     },
     initialize() {
         throw new Error("Can't call initialize on the unknown lifetime object");
@@ -44,11 +44,13 @@ const unknownLifetime: ILifetime = {
     store() {
         throw new Error("Can't store a value in the unknown lifetime object");
     }
-}
+});
 
 let nextId = 0;
 
-export class LifetimeManager implements IDestroyable, ILifetimeManager {
+const singletons: { [k in keyof any]: any; } = {};
+
+export class LifetimeManager implements IDestroyable {
     private _cleanup: (() => void)[] = [];
     private _cache: MapOf<any> = {};
     private _destroyed = false;
@@ -116,7 +118,7 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
                 if (_lifetime !== unknownLifetime)
                     throw new Error("Cyclic reference activation detected");
 
-                _lifetime = context.getContainer().getLifetimeManager().create(context);
+                _lifetime = context.getContainer().getLifetimeManager().create();
             },
             get() {
                 return _lifetime.get();
@@ -151,7 +153,27 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
     }
 
     static singletonLifetime(typeId: string): ILifetime {
-        return emptyLifetime;
+        argumentNotEmptyString(typeId, "typeId");
+        let pending = false;
+        return {
+            has() {
+                return typeId in singletons;
+            },
+            get() {
+                if (!this.has())
+                    throw new Error(`The instance ${typeId} doesn't exists`);
+                return singletons[typeId];
+            },
+            initialize() {
+                if (pending)
+                    throw new Error("Cyclic reference detected");
+                pending = true;
+            },
+            store(item: any) {
+                singletons[typeId] = item;
+                pending = false;
+            }
+        };
     }
 
     static containerLifetime(container: Container<any>) {
@@ -160,7 +182,7 @@ export class LifetimeManager implements IDestroyable, ILifetimeManager {
             initialize(context: ActivationContext<any>) {
                 if (_lifetime !== unknownLifetime)
                     throw new Error("Cyclic reference detected");
-                _lifetime = container.getLifetimeManager().create(context);
+                _lifetime = container.getLifetimeManager().create();
             },
             get() {
                 return _lifetime.get();

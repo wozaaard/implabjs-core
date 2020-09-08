@@ -1,4 +1,4 @@
-import { ICancellable, Constructor, IDestroyable } from "./interfaces";
+import { ICancellable, Constructor, IDestroyable, PromiseOrValue } from "./interfaces";
 import { Cancellation } from "./Cancellation";
 
 let _nextOid = 0;
@@ -6,6 +6,8 @@ const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
 
+export function oid(instance: null | undefined): undefined;
+export function oid(instance: NonNullable<any>): string;
 export function oid(instance: any): string | undefined {
     if (isNull(instance))
         return undefined;

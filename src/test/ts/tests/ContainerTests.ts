@@ -6,7 +6,6 @@ import { ValueDescriptor } from "../di/ValueDescriptor";
 import { Foo } from "../mock/Foo";
 import { Bar } from "../mock/Bar";
 import { isNull } from "../safe";
-import { Box } from "ts/mock/Box";
 
 test("Container register/resolve tests", async t => {
     const container = new Container<{
