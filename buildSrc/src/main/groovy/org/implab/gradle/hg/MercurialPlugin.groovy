@@ -12,7 +12,7 @@ public class MercurialPlugin implements Plugin<Project> {
             def tagVersion;
             def tagDistance;
 
-            def match = (rev =~ /^v(\d+\.\d+\.\d+).*-(\d+)$/);
+            def match = (rev =~ /^v(\d+\.\d+\.\d+(?:-\w+)?).*-(\d+)$/);
             
             if (match.size()) {
                 tagVersion = match[0][1];
