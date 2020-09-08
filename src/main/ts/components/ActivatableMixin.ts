@@ -9,15 +9,21 @@ const log = TraceSource.get("@implab/core/components/ActivatableMixin");
 
 export function ActivatableMixin<TBase extends Constructor<AsyncComponent>>(Base: TBase) {
     return class extends Base implements IActivatable {
-        _controller: IActivationController;
+        _controller: IActivationController | undefined;
 
-        _active: boolean;
+        _active = false;
 
         isActive() {
             return this._active;
         }
 
+        hasActivationController() {
+            return !!this._controller;
+        }
+
         getActivationController() {
+            if (!this._controller)
+                throw Error("Activation controller isn't set");
             return this._controller;
         }
 

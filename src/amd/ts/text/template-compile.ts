@@ -34,7 +34,7 @@ compile.load = (id: string, require: Require, callback: OnLoadFn<TemplateFn>) =>
         callback(cache[url]);
     } else {
         trace.debug("{0} -> {1}: load", id, url);
-        request(url).then(compile).then((tc: TemplateFn) => {
+        request<string>(url).then(compile).then((tc: TemplateFn) => {
             trace.debug("{0}: compiled", url);
             callback(cache[url] = tc);
         }, (err: any) => {

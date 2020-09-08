@@ -1,5 +1,5 @@
 plugins {
-  id "org.implab.gradle-typescript" version "1.3.0"
+  id "org.implab.gradle-typescript" version "1.3.3"
   id "org.implab.gradle-hg"
   id "ivy-publish"
 }
@@ -49,10 +49,14 @@ typescript {
     compilerOptions {
         types = []
         declaration = true
+        experimentalDecorators = true
+        strict = true
+        // dojo-typings are sick
+        skipLibCheck = true
         
         if(symbols != 'none') {
             sourceMap = true
-            sourceRoot = "_src"
+            sourceRoot = packageName
         }
 
         if (flavour == 'node') {

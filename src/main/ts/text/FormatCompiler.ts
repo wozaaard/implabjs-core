@@ -6,29 +6,37 @@ type CompiledPattern = (writer: TextWriter, args: any) => void;
 
 export class FormatCompiler {
     _scanner: FormatScanner;
-    _cache: MapOf<CompiledPattern> = {};
+    static _cache: MapOf<CompiledPattern> = {};
 
-    _parts: Array<string | { name: string; format: string; }>;
+    _parts: Array<string | { name: string; format?: string; }>;
 
-    compile(pattern: string) {
+    constructor(scanner: FormatScanner) {
+        this._scanner = scanner;
+        this._parts = [];
+    }
+
+    compile() {
+        this.visitText();
+        const parts = this._parts;
+
+        return (writer: TextWriter, args: any) => {
+            parts.forEach(x => {
+                if (isPrimitive(x))
+                    writer.writeValue(x);
+                else
+                    writer.writeValue(get(x.name, args), x.format);
+            });
+        };
+    }
+
+    static compile(pattern: string) {
         let compiledPattern = this._cache && this._cache[pattern];
         if (!compiledPattern) {
-            this._scanner = new FormatScanner(pattern);
-            this._parts = [];
+            const compiler = new this(new FormatScanner(pattern));
 
-            this.visitText();
-            const parts = this._parts;
+            compiledPattern = compiler.compile();
 
-            compiledPattern = (writer: TextWriter, args: any) => {
-                parts.forEach(x => {
-                    if (isPrimitive(x))
-                        writer.writeValue(x);
-                    else
-                        writer.writeValue(get(x.name, args), x.format);
-                });
-            };
-            if (this._cache)
-                this._cache[pattern] = compiledPattern;
+            this._cache[pattern] = compiledPattern;
         }
         return compiledPattern;
     }
@@ -73,7 +81,7 @@ export class FormatCompiler {
             this.dieUnexpectedToken("TEXT");
 
         const fieldName = this._scanner.getTokenValue();
-        const filedFormat = this.readColon() ? this.readFieldFormat() : null;
+        const filedFormat = this.readColon() ? this.readFieldFormat() : undefined;
 
         if (this._scanner.getTokenType() !== TokeType.CurlClose)
             this.dieUnexpectedToken("}");
@@ -104,7 +112,7 @@ export class FormatCompiler {
         return true;
     }
 
-    pushSubst(fieldName: string, filedFormat: string) {
+    pushSubst(fieldName: string, filedFormat?: string) {
         // console.log("pushSubst ", fieldName, filedFormat);
         this._parts.push({ name: fieldName, format: filedFormat });
     }
@@ -113,14 +121,14 @@ export class FormatCompiler {
         this._parts.push(text);
     }
 
-    dieUnexpectedToken(expected?: string) {
+    dieUnexpectedToken(expected?: string): never {
         throw new Error(isNullOrEmptyString(expected) ?
             `Unexpected token ${this._scanner.getTokenValue()}` :
             `Unexpected token ${this._scanner.getTokenValue()}, expected ${expected}`
         );
     }
 
-    dieUnexpectedEnd(expected?: string) {
+    dieUnexpectedEnd(expected?: string): never {
         throw new Error(isNullOrEmptyString(expected) ? "Unexpected end of the string" : `Unexpected end of the string, expected ${expected}`);
     }
 }

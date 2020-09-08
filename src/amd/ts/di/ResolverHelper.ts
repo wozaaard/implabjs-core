@@ -12,7 +12,7 @@ const trace = TraceSource.get(m.id);
 trace.debug("globalRequire = {0}", globalRequire);
 
 class ModuleResolver {
-    _base: string;
+    _base: string | undefined;
     _require: Require;
 
     constructor(req: Require, base?: string) {

@@ -2,6 +2,7 @@ import * as format from "./format";
 import { TraceSource, DebugLevel } from "../log/TraceSource";
 import { ITemplateParser, TokenType } from "./TemplateParser";
 import m = require("module");
+import { isKeyof } from "../safe";
 
 const trace = TraceSource.get(m.id);
 
@@ -21,7 +22,7 @@ const htmlEscaper = /[&<>"'\/]/g;
 
 // Escape a string for HTML interpolation.
 function escapeHtml(string: any) {
-    return ("" + string).replace(htmlEscaper, match => htmlEscapes[match]);
+    return ("" + string).replace(htmlEscaper, match => isKeyof(match, htmlEscapes) ? htmlEscapes[match] : "");
 }
 
 export class TemplateCompiler {

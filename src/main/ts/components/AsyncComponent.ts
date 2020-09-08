@@ -2,8 +2,10 @@ import { Cancellation } from "../Cancellation";
 import { IAsyncComponent, ICancellation, ICancellable, IDestroyable } from "../interfaces";
 import { destroy } from "../safe";
 
+const noop = () => void (0);
+
 export class AsyncComponent implements IAsyncComponent, ICancellable {
-    _cancel: (e: any) => void;
+    _cancel: ((e: any) => void) = noop;
 
     _completion: Promise<void> = Promise.resolve();
 
@@ -26,7 +28,7 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
                 // after the operation is complete we need to cleanup the
                 // resources
                 destroy(h);
-                this._cancel = null;
+                this._cancel = noop;
             }
         };
 
@@ -34,7 +36,6 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
     }
 
     cancel(reason: any) {
-        if (this._cancel)
-            this._cancel(reason);
+        this._cancel(reason);
     }
 }

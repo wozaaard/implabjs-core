@@ -3,8 +3,6 @@ import { FormatCompiler } from "./FormatCompiler";
 import { isString, argumentNotNull } from "../safe";
 import { Converter } from "./Converter";
 
-const compiler = new FormatCompiler();
-
 export abstract class TextWriterBase implements TextWriter {
     private _converter: Converter;
 
@@ -21,7 +19,7 @@ export abstract class TextWriterBase implements TextWriter {
     write(format: string, ...args: any[]): void;
     write(format: any, ...args: any[]): void {
         if (args.length) {
-            const compiled = compiler.compile(format);
+            const compiled = FormatCompiler.compile(format);
             compiled(this, args);
         } else {
             this.writeValue(format);
@@ -32,11 +30,11 @@ export abstract class TextWriterBase implements TextWriter {
     writeLine(format: string, ...args: any[]): void;
     writeLine(): void {
         if (arguments.length)
-            this.write.apply(this, arguments);
+            this.write.apply<this, any, void>(this, arguments);
         this.writeNewLine();
     }
 
-    writeValue(value: any, spec?: string): void {
+    writeValue(value: any, spec?: string) {
         this.writeText(
             isString(value) ?
                 value :
@@ -44,5 +42,5 @@ export abstract class TextWriterBase implements TextWriter {
         );
     }
 
-    abstract writeText(text: string);
+    abstract writeText(text: string): void;
 }

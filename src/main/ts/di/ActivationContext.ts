@@ -1,7 +1,8 @@
 import { TraceSource } from "../log/TraceSource";
-import { argumentNotNull, argumentNotEmptyString, isPrimitive, each, isNull } from "../safe";
-import { Descriptor, ServiceMap } from "./interfaces";
+import { argumentNotEmptyString } from "../safe";
+import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetime } from "./interfaces";
 import { Container } from "./Container";
+import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
@@ -10,50 +11,85 @@ export interface ActivationContextInfo {
 
     service: string;
 
-    scope: ServiceMap;
 }
 
-export class ActivationContext {
-    _cache: object;
+let nextId = 1;
 
-    _services: ServiceMap;
+/** This class is created once per `Container.resolve` method call and used to
+ * cache dependencies and to track created instances. The activation context
+ * tracks services with `context` activation type.
+ */
+export class ActivationContext<S extends object> {
+    _cache: MapOf<any>;
 
-    _stack: ActivationContextInfo[];
+    _services: ContainerServiceMap<S>;
 
-    _visited: object;
+    _visited: MapOf<any>;
 
     _name: string;
 
-    _localized: boolean;
+    _service: Descriptor<S, any>;
 
-    container: Container;
+    _container: Container<S>;
 
-    constructor(container: Container, services: ServiceMap, name?: string, cache?: object, visited?) {
-        argumentNotNull(container, "container");
-        argumentNotNull(services, "services");
+    _parent: ActivationContext<S> | undefined;
 
+    /** Creates a new activation context with the specified parameters.
+     * @param container the container which starts the activation process
+     * @param services the initial service registrations
+     * @param name the name of the service being activated, this parameter is
+     *  used for the debug purpose.
+     * @param service the service to activate, this parameter is used for the
+     *  debug purpose.
+     */
+    constructor(container: Container<S>, services: ContainerServiceMap<S>, name: string, service: Descriptor<S, any>) {
         this._name = name;
-        this._visited = visited || {};
-        this._stack = [];
-        this._cache = cache || {};
+        this._service = service;
+        this._visited = {};
+        this._cache = {};
         this._services = services;
-        this.container = container;
+        this._container = container;
     }
 
+    /** the name of the current resolving dependency */
     getName() {
         return this._name;
     }
 
-    resolve(name, def?): any {
+    /** Returns the container for which 'resolve' method was called */
+    getContainer() {
+        return this._container;
+    }
+
+    /** Resolves the specified dependency in the current context
+     * @param name The name of the dependency being resolved
+     */
+    resolve<K extends ContainerKeys<S>>(name: K): TypeOfService<S, K>;
+    /** Resolves the specified dependency with the specified default value if
+     * the dependency is missing.
+     *
+     * @param name The name of the dependency being resolved
+     * @param def A default value to return in case of the specified dependency
+     *   is missing.
+     */
+    resolve<K extends ContainerKeys<S>, T>(name: K, def: T): TypeOfService<S, K> | T;
+    /** Resolves the specified dependency and returns undefined in case if the
+     * dependency is missing.
+     *
+     * @param name The name of the dependency being resolved
+     */
+    resolve<K extends ContainerKeys<S>>(name: K, def: undefined): TypeOfService<S, K> | undefined;
+    resolve<K extends ContainerKeys<S>, T>(name: K, def?: T): TypeOfService<S, K> | T | undefined {
         const d = this._services[name];
 
-        if (!d)
+        if (d !== undefined) {
+            return this.activate(d, name.toString());
+        } else {
             if (arguments.length > 1)
                 return def;
             else
                 throw new Error(`Service ${name} not found`);
-
-        return this.activate(d, name);
+        }
     }
 
     /**
@@ -62,41 +98,36 @@ export class ActivationContext {
      * @name{string} the name of the service
      * @service{string} the service descriptor to register
      */
-    register(name: string, service: Descriptor) {
+    register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>) {
         argumentNotEmptyString(name, "name");
 
-        this._services[name] = service;
+        this._services[name] = service as any;
     }
 
-    clone() {
-        return new ActivationContext(
-            this.container,
-            this._services,
-            this._name,
-            this._cache,
-            this._visited
-        );
+    createLifetime(): ILifetime {
+        const id = nextId++;
+        const me = this;
+        return {
+            initialize() {
+            },
+            has() {
+                return id in me._cache;
+            },
+            get() {
+                return me._cache[id];
+            },
+            store(item: any) {
+                me._cache[id] = item;
+            }
+        };
     }
 
-    has(id: string) {
-        return id in this._cache;
-    }
-
-    get(id: string) {
-        return this._cache[id];
-    }
-
-    store(id: string, value) {
-        return (this._cache[id] = value);
-    }
-
-    activate(d: Descriptor, name: string) {
+    activate<T>(d: Descriptor<S, T>, name: string) {
         if (trace.isLogEnabled())
             trace.log(`enter ${name} ${d}`);
 
-        this.enter(name, d.toString());
-        const v = d.activate(this);
-        this.leave();
+        const ctx = this.enter(d, name);
+        const v = d.activate(ctx);
 
         if (trace.isLogEnabled())
             trace.log(`leave ${name}`);
@@ -110,23 +141,30 @@ export class ActivationContext {
         return count;
     }
 
-    getStack() {
-        return this._stack.slice().reverse();
+    getStack(): ActivationContextInfo[] {
+        const stack = [{
+            name: this._name,
+            service: this._service.toString()
+        }];
+
+        return this._parent ?
+            stack.concat(this._parent.getStack()) :
+            stack;
     }
 
-    private enter(name: string, service: string) {
-        this._stack.push({
-            name,
-            service,
-            scope: this._services
-        });
-        this._name = name;
-        this._services = Object.create(this._services);
+    private enter(service: Descriptor<S, any>, name: string): this {
+        const clone = Object.create(this);
+        clone._name = name;
+        clone._services = Object.create(this._services);
+        clone._parent = this;
+        clone._service = service;
+        return clone;
     }
 
-    private leave() {
-        const ctx = this._stack.pop();
-        this._services = ctx.scope;
-        this._name = ctx.name;
+    /** Creates a clone for the current context, used to protect it from modifications */
+    clone(): this {
+        const clone = Object.create(this);
+        clone._services = Object.create(this._services);
+        return clone;
     }
 }

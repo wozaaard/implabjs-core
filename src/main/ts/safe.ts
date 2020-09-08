@@ -1,4 +1,4 @@
-import { ICancellable, Constructor } from "./interfaces";
+import { ICancellable, Constructor, IDestroyable, PromiseOrValue } from "./interfaces";
 import { Cancellation } from "./Cancellation";
 
 let _nextOid = 0;
@@ -6,14 +6,24 @@ const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
 
-export function oid(instance: object): string {
+export function oid(instance: null | undefined): undefined;
+export function oid(instance: NonNullable<any>): string;
+export function oid(instance: any): string | undefined {
     if (isNull(instance))
-        return null;
+        return undefined;
 
     if (_oid in instance)
         return instance[_oid];
     else
         return (instance[_oid] = "oid_" + (++_nextOid));
+}
+
+export function keys<T>(arg: T): (Extract<keyof T, string>)[] {
+    return isObject(arg) && arg ? Object.keys(arg) as (Extract<keyof T, string>)[] : [];
+}
+
+export function isKeyof<T>(k: string, target: T): k is Extract<keyof T, string> {
+    return target && typeof target === "object" && k in target;
 }
 
 export function argumentNotNull(arg: any, name: string) {
@@ -36,11 +46,17 @@ export function argumentOfType(arg: any, type: Constructor<{}>, name: string) {
         throw new Error("The argument '" + name + "' type doesn't match");
 }
 
-export function isNull(val: any) {
+export function isObject(val: any): val is object {
+    return typeof val === "object";
+}
+
+export function isNull(val: any): val is null | undefined {
     return (val === null || val === undefined);
 }
 
-export function isPrimitive(val: any): val is string | number | boolean | undefined | null {
+export type primitive = symbol | string | number | boolean | undefined | null;
+
+export function isPrimitive(val: any): val is primitive {
     return (val === null || val === undefined || typeof (val) === "string" ||
         typeof (val) === "number" || typeof (val) === "boolean");
 }
@@ -57,7 +73,7 @@ export function isString(val: any): val is string {
     return typeof (val) === "string" || val instanceof String;
 }
 
-export function isPromise(val: any): val is PromiseLike<any> {
+export function isPromise<T = any>(val: any): val is PromiseLike<T> {
     return val && typeof val.then === "function";
 }
 
@@ -65,21 +81,20 @@ export function isCancellable(val: any): val is ICancellable {
     return val && typeof val.cancel === "function";
 }
 
-export function isNullOrEmptyString(val: any): val is string | null | undefined {
-    if (val === null || val === undefined ||
-        ((typeof (val) === "string" || val instanceof String) && val.length === 0))
-        return true;
+export function isNullOrEmptyString(val: any): val is ("" | null | undefined) {
+    return (val === null || val === undefined ||
+        ((typeof (val) === "string" || val instanceof String) && val.length === 0));
 }
 
-export function isNotEmptyArray(arg: any): arg is Array<any> {
+export function isNotEmptyArray<T = any>(arg: any): arg is T[] {
     return (arg instanceof Array && arg.length > 0);
 }
 
-function _isStrictMode() {
+function _isStrictMode(this: any) {
     return !this;
 }
 
-function _getNonStrictGlobal() {
+function _getNonStrictGlobal(this: any) {
     return this;
 }
 
@@ -116,24 +131,22 @@ export function get(member: string, context?: object) {
  * @param {Function} cb функция, вызываемая для каждого элемента
  * @param {Object} thisArg значение, которое будет передано в качестве
  *                <c>this</c> в <c>cb</c>.
- * @returns Результат вызова функции <c>cb</c>, либо <c>undefined</c>
- *          если достигнут конец массива.
+ * @returns {void}
  */
-export function each(obj, cb, thisArg?) {
+export function each<T>(obj: T, cb: <X extends keyof T>(v: NonNullable<T[X]>, k: X) => void): void;
+export function each<T>(array: T[], cb: (v: T, i: number) => void): void;
+export function each(obj: any, cb: any, thisArg?: any): any;
+export function each(obj: any, cb: any, thisArg?: any) {
     argumentNotNull(cb, "cb");
     if (obj instanceof Array) {
+        let v: any;
         for (let i = 0; i < obj.length; i++) {
-            const x = cb.call(thisArg, obj[i], i);
-            if (x !== undefined)
-                return x;
+            v = obj[i];
+            if (v !== undefined)
+                cb.call(thisArg, v, i);
         }
     } else {
-        const keys = Object.keys(obj);
-        for (const k of keys) {
-            const x = cb.call(thisArg, obj[k], k);
-            if (x !== undefined)
-                return x;
-        }
+        Object.keys(obj).forEach(k => obj[k] !== undefined && cb.call(thisArg, obj[k], k));
     }
 }
 
@@ -153,28 +166,27 @@ export function each(obj, cb, thisArg?) {
  *  own properties of the source are entirely copied to the destination.
  *
  */
-export function mixin<T extends object, S extends object>(dest: T, source: S, template?: string[] | object): T & S {
-    argumentNotNull(dest, "to");
-    const _res = dest as T & S;
+export function mixin<T extends object, S extends object>(dest: T, source: S, template?: keyof S[]): T & S;
+export function mixin<T extends object, S extends object, R extends object = T>(dest: T, source: S, template: { [p in keyof S]?: keyof R; }): T & R;
+export function mixin<T extends object, S extends object>(dest: T, source: S, template?: any): any {
+    argumentNotNull(dest, "dest");
+    const _res: any = dest as any;
 
     if (isPrimitive(source))
         return _res;
 
     if (template instanceof Array) {
-        for (const p of template) {
-            if (p in source)
+        template.forEach(p => {
+            if (isKeyof(p, source))
                 _res[p] = source[p];
-        }
+        });
     } else if (template) {
-        const keys = Object.keys(source);
-        for (const p of keys) {
-            if (p in template)
+        keys(source).forEach(p => {
+            if (isKeyof(p, template))
                 _res[template[p]] = source[p];
-        }
+        });
     } else {
-        const keys = Object.keys(source);
-        for (const p of keys)
-            _res[p] = source[p];
+        keys(source).forEach(p => _res[p] = source[p]);
     }
 
     return _res;
@@ -184,7 +196,15 @@ export function mixin<T extends object, S extends object>(dest: T, source: S, te
  * @param{Object} thisArg [Optional] Object which will be passed as 'this' to the function.
  * @param{Function|String} fn [Required] Function wich will be wrapped.
  */
-export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) => PromiseLike<any> {
+export function async<T, F extends (...args: any[]) => T | PromiseLike<T>>(
+    fn: F,
+    thisArg?: ThisParameterType<F>
+): (...args: Parameters<F>) => PromiseLike<T>;
+export function async<T, M extends string, O extends { [m in M]?: (...args: any[]) => T | PromiseLike<T> }>(
+    fn: M,
+    thisArg: O
+): (...args: Parameters<NonNullable<O[M]>>) => PromiseLike<T>;
+export function async(_fn: any, thisArg: any): (...args: any[]) => PromiseLike<any> {
     let fn = _fn;
 
     if (arguments.length === 2 && !(fn instanceof Function))
@@ -193,7 +213,7 @@ export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) =
     if (fn == null)
         throw new Error("The function must be specified");
 
-    function wrapresult(x, e?): PromiseLike<any> {
+    function wrapresult(x: any, e?: any): PromiseLike<any> {
         if (e) {
             return {
                 then(cb, eb) {
@@ -228,10 +248,16 @@ export function async(_fn: (...args: any[]) => any, thisArg): (...args: any[]) =
     };
 }
 
-type _AnyFn = (...args) => any;
-
-export function delegate<T, K extends keyof T>(target: T, _method: (K | _AnyFn)) {
-    let method;
+export function delegate<T extends object, F extends (this: T, ...args: any[]) => any>(
+    target: T,
+    method: F
+): OmitThisParameter<F>;
+export function delegate<M extends string, T extends { [m in M]?: (...args: any[]) => any; }>(
+    target: T,
+    method: M
+): OmitThisParameter<T[M]>;
+export function delegate(target: any, _method: any): (...args: any[]) => any {
+    let method: any;
     if (!(_method instanceof Function)) {
         argumentNotNull(target, "target");
         method = target[_method];
@@ -262,6 +288,19 @@ export function delay(timeMs: number, ct = Cancellation.none) {
     });
 }
 
+/** Returns resolved promise, awaiting this method will cause the asynchronous
+ * completion of the rest of the code.
+ */
+export function fork() {
+    return Promise.resolve();
+}
+
+/** Always throws Error, can be used as a stub for the methods which should be
+ * assigned later and are required to be not null.
+ */
+export function notImplemented(): never {
+    throw new Error("Not implemeted");
+}
 /**
  * Iterates over the specified array of items and calls the callback `cb`, if
  * the result of the callback is a promise the next item from the array will be
@@ -284,7 +323,7 @@ export function pmap<T, T2>(
         let i = 0;
         const result = new Array<T2>();
 
-        const next = () => {
+        const next = (): any => {
             while (i < items.length) {
                 const r = cb(items[i], i);
                 const ri = i;
@@ -319,7 +358,7 @@ export function pfor<T>(
 
         let i = 0;
 
-        const next = () => {
+        const next = (): any => {
             while (i < items.length) {
                 const r = cb(items[i], i);
                 i++;
@@ -336,7 +375,7 @@ export function first<T>(sequence: ArrayLike<T>): T;
 export function first<T>(sequence: PromiseLike<ArrayLike<T>>): PromiseLike<T>;
 export function first<T>(
     sequence: ArrayLike<T> | PromiseLike<ArrayLike<T>>,
-    cb: (x: T) => void,
+    cb?: (x: T) => void,
     err?: (x: Error) => void
 ): void;
 /**
@@ -358,7 +397,7 @@ export function first<T>(
     err?: (x: Error) => void
 ) {
     if (isPromise(sequence)) {
-        return sequence.then(res => first(res, cb, err));
+        return sequence.then(res => first(res, cb as any /* force to pass undefined cb */, err));
     } else if (sequence && "length" in sequence) {
         if (sequence.length === 0) {
             if (err)
@@ -400,7 +439,12 @@ export function firstWhere<T>(
     err?: (x: Error) => any
 ) {
     if (isPromise(sequence)) {
-        return sequence.then(res => firstWhere(res, predicate, cb, err));
+        return sequence.then(res => firstWhere(
+            res,
+            predicate as any /* force to pass undefined predicate */,
+            cb as any /* force to pass undefined cb */,
+            err)
+        );
     } else if (sequence && "length" in sequence) {
         if (sequence.length === 0) {
             if (err)
@@ -428,6 +472,12 @@ export function firstWhere<T>(
         else
             throw new Error("The sequence is required");
     }
+}
+
+export function isDestroyable(d: any): d is IDestroyable {
+    if (d && "destroy" in d && typeof (destroy) === "function")
+        return true;
+    return false;
 }
 
 export function destroy(d: any) {

@@ -1,19 +1,12 @@
 import {
-    ServiceRegistration,
-    TypeRegistration,
-    FactoryRegistration,
-    ServiceMap,
-    isDescriptor,
-    isDependencyRegistration,
-    DependencyRegistration,
-    ValueRegistration,
+    PartialServiceMap,
     ActivationType,
-    isValueRegistration,
-    isTypeRegistration,
-    isFactoryRegistration
+    ContainerKeys,
+    TypeOfService,
+    ILifetime
 } from "./interfaces";
 
-import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get } from "../safe";
+import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { Container } from "./Container";
@@ -25,10 +18,115 @@ import { ConfigError } from "./ConfigError";
 import { Cancellation } from "../Cancellation";
 import { makeResolver } from "./ResolverHelper";
 import { ICancellation } from "../interfaces";
+import { isDescriptor } from "./traits";
+import { LazyReferenceDescriptor } from "./LazyReferenceDescriptor";
+import { LifetimeManager } from "./LifetimeManager";
+
+export interface RegistrationScope<S extends object> {
+
+    /** сервисы, которые регистрируются в контексте активации и таким образом
+     * могут переопределять ранее зарегистрированные сервисы. за это свойство
+     * нужно платить, кроме того порядок активации будет влиять на результат
+     * разрешения зависимостей.
+     */
+    services?: RegistrationMap<S>;
+}
+
+/**
+ * Базовый интерфейс конфигурации сервисов
+ */
+export interface ServiceRegistration<T, S extends object> extends RegistrationScope<S> {
+
+    activation?: ActivationType;
+
+    params?: any;
+
+    /** Специальный идентификатор используется при активации singleton, если
+     * не указан для TypeRegistration вычисляется как oid($type)
+     */
+    typeId?: string;
+
+    inject?: object | object[];
+
+    cleanup?: ((instance: T) => void) | string;
+}
+
+export interface TypeRegistration<C extends new (...args: any[]) => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
+    $type: string | C;
+    params?: Registration<ConstructorParameters<C>, S>;
+}
+
+export interface StrictTypeRegistration<C extends new (...args: any[]) => any, S extends object> extends ServiceRegistration<InstanceType<C>, S> {
+    $type: C;
+    params?: Registration<ConstructorParameters<C>, S>;
+}
+
+export interface FactoryRegistration<F extends (...args: any[]) => any, S extends object> extends ServiceRegistration<ReturnType<F>, S> {
+    $factory: string | F;
+}
+
+export interface ValueRegistration<T> {
+    $value: T;
+    parse?: boolean;
+}
+
+export interface DependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends RegistrationScope<S> {
+    $dependency: K;
+    lazy?: boolean;
+    optional?: boolean;
+    default?: TypeOfService<S, K>;
+}
+
+export interface LazyDependencyRegistration<S extends object, K extends ContainerKeys<S> = ContainerKeys<S>> extends DependencyRegistration<S, K> {
+    lazy: true;
+}
+
+export type Registration<T, S extends object> = T extends primitive ? T :
+    (
+        T |
+        { [k in keyof T]: Registration<T[k], S> } |
+        TypeRegistration<new (...args: any[]) => T, S> |
+        FactoryRegistration<(...args: any[]) => T, S> |
+        ValueRegistration<any> |
+        DependencyRegistration<S, keyof S>
+    );
+
+export type RegistrationMap<S extends object> = {
+    [k in keyof S]?: Registration<S[k], S>;
+};
+
+const _activationTypes: { [k in ActivationType]: number; } = {
+    singleton: 1,
+    container: 2,
+    hierarchy: 3,
+    context: 4,
+    call: 5
+};
+
+export function isTypeRegistration(x: any): x is TypeRegistration<new () => any, any> {
+    return (!isPrimitive(x)) && ("$type" in x);
+}
+
+export function isFactoryRegistration(x: any): x is FactoryRegistration<() => any, any> {
+    return (!isPrimitive(x)) && ("$factory" in x);
+}
+
+export function isValueRegistration(x: any): x is ValueRegistration<any> {
+    return (!isPrimitive(x)) && ("$value" in x);
+}
+
+export function isDependencyRegistration<S extends object>(x: any): x is DependencyRegistration<S, keyof S> {
+    return (!isPrimitive(x)) && ("$dependency" in x);
+}
+
+export function isActivationType(x: string): x is ActivationType {
+    return typeof x === "string" && x in _activationTypes;
+}
 
 const trace = TraceSource.get("@implab/core/di/Configuration");
-
-async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
+async function mapAll(data: any[], map?: (v: any, k: number) => any): Promise<any[]>;
+async function mapAll(data: any, map?: (v: any, k: string) => any): Promise<any>;
+async function mapAll(data: any, map?: (v: any, k: any) => any): Promise<any> {
     if (data instanceof Array) {
         return Promise.all(map ? data.map(map) : data);
     } else {
@@ -47,21 +145,19 @@ async function mapAll(data: object | any[], map?: (v, k) => any): Promise<any> {
 
 export type ModuleResolver = (moduleName: string, ct?: ICancellation) => any;
 
-type _key = string | number;
-
-export class Configuration {
+export class Configuration<S extends object> {
 
     _hasInnerDescriptors = false;
 
-    _container: Container;
+    readonly _container: Container<S>;
 
-    _path: Array<_key>;
+    _path: Array<string>;
 
-    _configName: string;
+    _configName: string | undefined;
 
-    _require: ModuleResolver;
+    _require: ModuleResolver | undefined;
 
-    constructor(container: Container) {
+    constructor(container: Container<S>) {
         argumentNotNull(container, "container");
         this._container = container;
         this._path = [];
@@ -78,7 +174,7 @@ export class Configuration {
 
         this._configName = moduleName;
 
-        const r = await makeResolver(null, contextRequire);
+        const r = await makeResolver(undefined, contextRequire);
 
         const config = await r(moduleName, ct);
 
@@ -89,13 +185,14 @@ export class Configuration {
         );
     }
 
-    async applyConfiguration(data: object, contextRequire?: any, ct = Cancellation.none) {
+    async applyConfiguration(data: RegistrationMap<S>, opts: { contextRequire?: any; baseModule?: string }, ct = Cancellation.none) {
         argumentNotNull(data, "data");
+        const _opts = opts || {};
 
-        await this._applyConfiguration(data, await makeResolver(void (0), contextRequire), ct);
+        await this._applyConfiguration(data, await makeResolver(_opts.baseModule, _opts.contextRequire), ct);
     }
 
-    async _applyConfiguration(data: object, resolver?: ModuleResolver, ct = Cancellation.none) {
+    async _applyConfiguration(data: RegistrationMap<S>, resolver?: ModuleResolver, ct = Cancellation.none) {
         trace.log("applyConfiguration");
 
         this._configName = "$";
@@ -103,7 +200,7 @@ export class Configuration {
         if (resolver)
             this._require = resolver;
 
-        let services: ServiceMap;
+        let services: PartialServiceMap<S>;
 
         try {
             services = await this._visitRegistrations(data, "$");
@@ -114,9 +211,9 @@ export class Configuration {
         this._container.register(services);
     }
 
-    _makeError(inner) {
+    _makeError(inner: any) {
         const e = new ConfigError("Failed to load configuration", inner);
-        e.configName = this._configName;
+        e.configName = this._configName || "<inline>";
         e.path = this._makePath();
         return e;
     }
@@ -135,7 +232,15 @@ export class Configuration {
         trace.log("resolveType moduleName={0}, localName={1}", moduleName, localName);
         try {
             const m = await this._loadModule(moduleName);
-            return localName ? get(localName, m) : m;
+            if (localName) {
+                return get(localName, m);
+            } else {
+                if (m instanceof Function)
+                    return m;
+                if ("default" in m)
+                    return m.default;
+                return m;
+            }
         } catch (e) {
             trace.error("Failed to resolve type moduleName={0}, localName={1}", moduleName, localName);
             throw e;
@@ -144,32 +249,31 @@ export class Configuration {
 
     _loadModule(moduleName: string) {
         trace.debug("loadModule {0}", moduleName);
+        if (!this._require)
+            throw new Error("Module loader isn't specified");
 
         return this._require(moduleName);
     }
 
-    async _visitRegistrations(data, name: _key) {
+    async _visitRegistrations(data: RegistrationMap<S>, name: string) {
         this._enter(name);
 
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             throw new Error("Configuration must be a simple object");
 
-        const o: ServiceMap = {};
-        const keys = Object.keys(data);
-
         const services = await mapAll(data, async (v, k) => {
-            const d = await this._visit(v, k);
+            const d = await this._visit(v, k.toString());
             return isDescriptor(d) ? d : new AggregateDescriptor(d);
-        }) as ServiceMap;
+        }) as PartialServiceMap<S>;
 
         this._leave();
 
         return services;
     }
 
-    _enter(name: _key) {
-        this._path.push(name);
+    _enter(name: string) {
+        this._path.push(name.toString());
         trace.debug(">{0}", name);
     }
 
@@ -178,11 +282,13 @@ export class Configuration {
         trace.debug("<{0}", name);
     }
 
-    async _visit(data, name: string) {
-        if (isPrimitive(data) || isDescriptor(data))
-            return data;
+    _visit(data: any, name: string): Promise<any> {
+        if (isPrimitive(data))
+            return Promise.resolve(new ValueDescriptor(data));
+        if (isDescriptor(data))
+            return Promise.resolve(data);
 
-        if (isDependencyRegistration(data)) {
+        if (isDependencyRegistration<S>(data)) {
             return this._visitDependencyRegistration(data, name);
         } else if (isValueRegistration(data)) {
             return this._visitValueRegistration(data, name);
@@ -197,7 +303,7 @@ export class Configuration {
         return this._visitObject(data, name);
     }
 
-    async _visitObject(data: object, name: _key) {
+    async _visitObject(data: any, name: string) {
         if (data.constructor &&
             data.constructor.prototype !== Object.prototype)
             return new ValueDescriptor(data);
@@ -220,7 +326,7 @@ export class Configuration {
         return v;
     }
 
-    async _visitArray(data: any[], name: _key) {
+    async _visitArray(data: any[], name: string) {
         if (data.constructor &&
             data.constructor.prototype !== Array.prototype)
             return new ValueDescriptor(data);
@@ -233,9 +339,8 @@ export class Configuration {
         return v;
     }
 
-    _makeServiceParams(data: ServiceRegistration) {
+    _makeServiceParams(data: ServiceRegistration<any, S>) {
         const opts: any = {
-            owner: this._container
         };
         if (data.services)
             opts.services = this._visitRegistrations(data.services, "services");
@@ -257,30 +362,7 @@ export class Configuration {
                 this._visit(data.params, "params");
 
         if (data.activation) {
-            if (typeof (data.activation) === "string") {
-                switch (data.activation.toLowerCase()) {
-                    case "singleton":
-                        opts.activation = ActivationType.Singleton;
-                        break;
-                    case "container":
-                        opts.activation = ActivationType.Container;
-                        break;
-                    case "hierarchy":
-                        opts.activation = ActivationType.Hierarchy;
-                        break;
-                    case "context":
-                        opts.activation = ActivationType.Context;
-                        break;
-                    case "call":
-                        opts.activation = ActivationType.Call;
-                        break;
-                    default:
-                        throw new Error("Unknown activation type: " +
-                            data.activation);
-                }
-            } else {
-                opts.activation = Number(data.activation);
-            }
+            opts.activation = this._getLifetimeManager(data.activation, data.typeId);
         }
 
         if (data.cleanup)
@@ -289,28 +371,28 @@ export class Configuration {
         return opts;
     }
 
-    async _visitValueRegistration(data: ValueRegistration, name: _key) {
+    async _visitValueRegistration<T>(data: ValueRegistration<T>, name: string) {
         this._enter(name);
         const d = data.parse ? new AggregateDescriptor(data.$value) : new ValueDescriptor(data.$value);
         this._leave();
         return d;
     }
 
-    async _visitDependencyRegistration(data: DependencyRegistration, name: _key) {
+    async _visitDependencyRegistration<K extends keyof S>(data: DependencyRegistration<S, K>, name: string) {
         argumentNotEmptyString(data && data.$dependency, "data.$dependency");
         this._enter(name);
-        const d = new ReferenceDescriptor({
+        const options = {
             name: data.$dependency,
-            lazy: data.lazy,
             optional: data.optional,
             default: data.default,
             services: data.services && await this._visitRegistrations(data.services, "services")
-        });
+        };
+        const d = data.lazy ? new LazyReferenceDescriptor<S, K>(options) : new ReferenceDescriptor<S, K>(options);
         this._leave();
         return d;
     }
 
-    async _visitTypeRegistration(data: TypeRegistration, name: _key) {
+    async _visitTypeRegistration(data: TypeRegistration<new () => any, S>, name: string) {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
@@ -319,10 +401,14 @@ export class Configuration {
             opts.type = data.$type;
         } else {
             const [moduleName, typeName] = data.$type.split(":", 2);
-            opts.type = this._resolveType(moduleName, typeName);
+            opts.type = this._resolveType(moduleName, typeName).then(t => {
+                if (!(t instanceof Function))
+                    throw Error("$type (" + data.$type + ") is not a constructable");
+                return t;
+            });
         }
 
-        const d = new TypeServiceDescriptor(
+        const d = new TypeServiceDescriptor<S, any, any[]>(
             await mapAll(opts)
         );
 
@@ -331,18 +417,35 @@ export class Configuration {
         return d;
     }
 
-    async _visitFactoryRegistration(data: FactoryRegistration, name: _key) {
+    async _visitFactoryRegistration(data: FactoryRegistration<() => any, S>, name: string) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
 
         const opts = this._makeServiceParams(data);
         opts.factory = data.$factory;
 
-        const d = new FactoryServiceDescriptor(
+        const d = new FactoryServiceDescriptor<S, any, any[]>(
             await mapAll(opts)
         );
 
         this._leave();
         return d;
+    }
+
+    _getLifetimeManager(activation: ActivationType, typeId: string | undefined): ILifetime {
+        switch (activation) {
+            case "container":
+                return LifetimeManager.containerLifetime(this._container);
+            case "hierarchy":
+                return LifetimeManager.hierarchyLifetime();
+            case "context":
+                return LifetimeManager.contextLifetime();
+            case "singleton":
+                if (typeId === undefined)
+                    throw Error("The singleton activation requires a typeId");
+                return LifetimeManager.singletonLifetime(typeId);
+            default:
+                return LifetimeManager.empty();
+        }
     }
 }

@@ -3,7 +3,7 @@ import { argumentNotNull, destroyed } from "./safe";
 
 export class Cancellation implements ICancellation {
     private _reason: any;
-    private _cbs: Array<(e: any) => void>;
+    private _cbs: Array<(e: any) => void> | undefined;
 
     constructor(action: (cancel: (e?: any) => void) => void) {
         argumentNotNull(action, "action");
@@ -44,7 +44,7 @@ export class Cancellation implements ICancellation {
         }
     }
 
-    private _unregister(cb) {
+    private _unregister(cb: any) {
         if (this._cbs) {
             const i = this._cbs.indexOf(cb);
             if (i >= 0)
@@ -52,7 +52,7 @@ export class Cancellation implements ICancellation {
         }
     }
 
-    private _cancel(reason) {
+    private _cancel(reason: any) {
         if (this._reason)
             return;
 
@@ -60,7 +60,7 @@ export class Cancellation implements ICancellation {
 
         if (this._cbs) {
             this._cbs.forEach(cb => cb(reason));
-            this._cbs = null;
+            this._cbs = undefined;
         }
     }
 

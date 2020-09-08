@@ -1,6 +1,7 @@
 import { Observable } from "../Observable";
 import { Registry } from "./Registry";
 import { TraceEventData } from "./TraceEventData";
+import { EventProvider } from "../EventProvider";
 
 export const DebugLevel = 400;
 
@@ -25,22 +26,21 @@ export interface TraceEvent {
 export class TraceSource {
     readonly id: any;
 
-    level: number;
+    level = 0;
 
     readonly events: Observable<TraceEvent>;
 
-    _notifyNext: (arg: TraceEvent) => void;
+    private readonly _provider: EventProvider<TraceEvent>;
 
-    constructor(id: any) {
+    constructor(id?: any) {
 
         this.id = id || new Object();
-        this.events = new Observable(next => {
-            this._notifyNext = next;
-        });
+        this._provider = new EventProvider();
+        this.events = this._provider.getObservable();
     }
 
-    protected emit(level: number, message: any, args?: any[]) {
-        this._notifyNext(new TraceEventData(this, level, message, args));
+    protected emit(level: number, message: any, args: any[]) {
+        this._provider.post(new TraceEventData(this, level, message, args));
     }
 
     isDebugEnabled() {

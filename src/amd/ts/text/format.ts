@@ -2,29 +2,32 @@ import { format as dojoFormatNumber } from "dojo/number";
 import { format as dojoFormatDate } from "dojo/date/locale";
 import { Formatter, compile as _compile } from "./StringFormat";
 
-import { isNumber, isNull } from "../safe";
+import { isNumber, isNull, get } from "../safe";
 
 interface NumberFormatOptions {
     round?: number;
     pattern?: string;
 }
 
-function convertNumber(value: any, pattern: string) {
+function convertNumber(value: any, _pattern?: string) {
     if (isNumber(value)) {
         const nopt = {} as NumberFormatOptions;
-        if (pattern.indexOf("!") === 0) {
+        let pattern = _pattern;
+        if (pattern && pattern.indexOf("!") === 0) {
             nopt.round = -1;
             pattern = pattern.substr(1);
         }
         nopt.pattern = pattern;
 
         return dojoFormatNumber(value, nopt);
+    } else {
+        return "";
     }
 }
 
-function convertDate(value: any, pattern: string) {
+function convertDate(value: any, pattern?: string) {
     if (value instanceof Date) {
-        const m = pattern.match(/^(\w+)-(\w+)$/);
+        const m = pattern && pattern.match(/^(\w+)-(\w+)$/);
         if (m)
             return dojoFormatDate(value, {
                 selector: m[2],
@@ -37,6 +40,8 @@ function convertDate(value: any, pattern: string) {
                 selector: "date",
                 datePattern: pattern
             });
+    } else {
+        return "";
     }
 }
 
@@ -46,7 +51,7 @@ function format(msg: string, ...args: any[]) {
     return _formatter.format(msg, ...args);
 }
 
-function _convert(value: any, pattern: string) {
+function _convert(value: any, pattern?: string) {
     return _formatter.convert(value, pattern);
 }
 
@@ -55,9 +60,9 @@ namespace format {
     export function compile(text: string) {
         const template = _compile(text);
 
-        return (...data) => {
+        return (...data: any[]) => {
             return template((name, pattern) => {
-                const value = data[name];
+                const value = get(name, data);
                 return !isNull(value) ? convert(value, pattern) : "";
             });
         };

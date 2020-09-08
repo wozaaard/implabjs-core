@@ -3,9 +3,19 @@ export interface Constructor<T = {}> {
     prototype: T;
 }
 
+export type PromiseOrValue<T> = T | PromiseLike<T>;
+
 export type Factory<T = {}> = (...args: any[]) => T;
 
 export type Predicate<T = any> = (x: T) => boolean;
+
+export type MatchingMemberKeys<T, From> = { [K in keyof From]: From[K] extends T ? K : never}[keyof From];
+
+export type NotMatchingMemberKeys<T, From> = { [K in keyof From]: From[K] extends T ? never : K}[keyof From];
+
+export type ExtractMembers<T, From> = Pick<From, MatchingMemberKeys<T, From>>;
+
+export type ExcludeMembers<T, From> = Pick<From, NotMatchingMemberKeys<T, From>>;
 
 export interface MapOf<T> {
     [key: string]: T;
@@ -55,7 +65,10 @@ export interface IActivatable {
      * can be activated and manages the active state of the
      * component
      */
-    setActivationController(controller: IActivationController);
+    setActivationController(controller: IActivationController): void;
+
+    /** Indicates whether this component has an activation controller */
+    hasActivationController(): boolean;
 
     /**
      * Gets the current activation controller for this component
@@ -75,6 +88,8 @@ export interface IActivationController {
     deactivate(ct?: ICancellation): Promise<void>;
 
     activate(component: IActivatable, ct?: ICancellation): Promise<void>;
+
+    hasActive(): boolean;
 
     getActive(): IActivatable;
 }

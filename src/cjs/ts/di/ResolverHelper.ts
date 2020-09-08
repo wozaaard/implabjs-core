@@ -4,10 +4,10 @@ import { TraceSource } from "../log/TraceSource";
 const trace = TraceSource.get(module.id);
 
 const mainModule = require.main;
-const mainRequire = (id: string) => mainModule.require(id);
+const mainRequire = (id: string) => mainModule ? mainModule.require(id) : require;
 
 class ModuleResolver {
-    _base: string;
+    _base: string | undefined;
     _require: NodeRequireFunction;
 
     constructor(req: NodeRequireFunction, base?: string) {

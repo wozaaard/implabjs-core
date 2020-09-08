@@ -8,7 +8,7 @@ export class TapeWriter implements IDestroyable {
     private readonly _tape: tape.Test;
 
     private readonly _subscriptions = new Array<IDestroyable>();
-    private _destroyed;
+    private _destroyed = false;
 
     constructor(t: tape.Test) {
         argumentNotNull(t, "tape");
@@ -38,6 +38,9 @@ export class TapeWriter implements IDestroyable {
     }
 
     destroy() {
+        if (this._destroyed)
+            return;
+        this._destroyed = true;
         this._subscriptions.forEach(destroy);
     }
 }
