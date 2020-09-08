@@ -5,3 +5,4 @@ import "./ObservableTests";
 import "./ContainerTests";
 import "./SafeTests";
 import "./TextTests";
+import "./FluentContainerTests";

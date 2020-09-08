@@ -185,10 +185,11 @@ export class Configuration<S extends object> {
         );
     }
 
-    async applyConfiguration(data: RegistrationMap<S>, contextRequire?: any, ct = Cancellation.none) {
+    async applyConfiguration(data: RegistrationMap<S>, opts: { contextRequire?: any; baseModule?: string }, ct = Cancellation.none) {
         argumentNotNull(data, "data");
+        const _opts = opts || {};
 
-        await this._applyConfiguration(data, await makeResolver(void (0), contextRequire), ct);
+        await this._applyConfiguration(data, await makeResolver(_opts.baseModule, _opts.contextRequire), ct);
     }
 
     async _applyConfiguration(data: RegistrationMap<S>, resolver?: ModuleResolver, ct = Cancellation.none) {

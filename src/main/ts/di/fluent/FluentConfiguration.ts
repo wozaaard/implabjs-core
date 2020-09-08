@@ -21,11 +21,13 @@ export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> 
         return this;
     }
 
-    apply(target: Container<S>, ct = Cancellation.none) {
+    apply<SC extends object>(target: Container<SC>, ct = Cancellation.none) {
 
         let pending = 1;
 
-        return new Promise((resolve, reject) => {
+        const _t2 = target as unknown as Container<SC & S>;
+
+        return new Promise<Container<SC & S>>((resolve, reject) => {
             function guard(v: void | Promise<void>) {
                 if (isPromise(v))
                     v.catch(reject);
@@ -33,13 +35,13 @@ export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> 
 
             function complete() {
                 if (!--pending)
-                    resolve();
+                    resolve(_t2);
             }
             each(this._builders, (v, k) => {
                 pending++;
-                const d = new DescriptorBuilder<S, any>(target,
+                const d = new DescriptorBuilder<SC & S, any>(_t2,
                     result => {
-                        target.register(k, result);
+                        _t2.register(k, result);
                         complete();
                     },
                     reject

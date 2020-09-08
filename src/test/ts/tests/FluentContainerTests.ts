@@ -5,6 +5,7 @@ import { Container } from "../di/Container";
 import { Foo } from "../mock/Foo";
 import { Box } from "../mock/Box";
 import { delay } from "../safe";
+import { Services } from "../mock/services";
 
 test("Simple fluent config", async t => {
     const config = fluent<{ host: string; bar: Bar; foo: Foo }>()
@@ -14,8 +15,8 @@ test("Simple fluent config", async t => {
             foo: it => import("../mock/Foo").then(m => it.lifetime("container").factory(() => new m.Foo()))
         });
 
-    const container = new Container<{ host: string; bar: Bar; foo: Foo; }>();
-    await config.apply(container);
+    const c1 = new Container<{}>();
+    const container = await config.apply(c1);
 
     t.equal(container.resolve("host"), "example.com", "The value should be resolved");
     t.assert(container.resolve("bar"), "The service should de activated");
@@ -51,4 +52,12 @@ test("Bad fluent config", async t => {
         t.pass("The configuration should fail");
         t.equal(e.message, "bad override", "the error should pass");
     }
+});
+
+test("Load fluent config", async t => {
+    const container = new Container<Services>();
+
+    await container.configure("../mock/config", { contextRequire: require });
+
+    t.assert(container.resolve("host"), "Should resolve simple value");
 });
