@@ -1,5 +1,5 @@
 import { ActivationContext } from "./ActivationContext";
-import { Descriptor, ServiceMap, PartialServiceMap, ILifetimeManager, ILifetime } from "./interfaces";
+import { Descriptor, ServiceMap, PartialServiceMap, ILifetime } from "./interfaces";
 import { isPrimitive, keys, isNull } from "../safe";
 import { TraceSource } from "../log/TraceSource";
 import { isDescriptor } from "./traits";

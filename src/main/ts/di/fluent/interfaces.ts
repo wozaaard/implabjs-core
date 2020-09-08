@@ -1,6 +1,6 @@
 import { primitive } from "../../safe";
-import { AnnotationBuilder } from "../Annotations";
-import { ILifetime, TypeOfService, ContainerKeys } from "../interfaces";
+import { TypeOfService, ContainerKeys, ActivationType, ILifetime } from "../interfaces";
+import { ICancellation } from "../../interfaces";
 
 export interface DependencyOptions {
     optional?: boolean;
@@ -22,10 +22,6 @@ export type ExtractDependency<D, S> = D extends { $dependency: infer K } ?
 export type WalkDependencies<D, S> = D extends primitive ? D :
     { [K in keyof D]: ExtractDependency<D[K], S> };
 
-export type ServiceModule<T, S extends object, M extends keyof any = "service"> = {
-    [m in M]: AnnotationBuilder<T, S>;
-};
-
 export type InferReferenceType<S extends object, K extends ContainerKeys<S>, O> = O extends { default: infer X } ? (TypeOfService<S, K> | X) :
     O extends { optional: true } ? (TypeOfService<S, K> | undefined) :
     TypeOfService<S, K>;
@@ -35,14 +31,22 @@ export interface Resolver<S extends object> {
     <K extends ContainerKeys<S>, O extends DependencyOptions>(this: void, name: K, opts?: O): InferReferenceType<S, K, O>;
 }
 
-export interface DescriptorBuilder<T, S extends object> {
-    service(service: AnnotationBuilder<T, S> | ServiceModule<T, S>): void;
+export interface DescriptorBuilder<S extends object, T> {
+    factory(f: (resolve: Resolver<S>) => T): void;
 
-    factory(f: (resolve: Resolver<S>, activate: <T2>(lifetime: ILifetime, factory: () => T2, cleanup?: (item: T2) => void) => T2) => T): void;
+    build<T2>(): DescriptorBuilder<S, T2>;
+
+    override<K extends keyof S>(name: K, builder: RegistrationBuilder<S, S[K]>): this;
+    override<K extends keyof S>(services: { [name in K]: RegistrationBuilder<S, S[K]> }): this;
+
+    lifetime(lifetime: "singleton", typeId: any): this;
+    lifetime(lifetime: ILifetime | Exclude<ActivationType, "singleton">): this;
+
+    cleanup(cb: (item: T) => void): this;
 
     value(v: T): void;
 }
 
-export interface Configuration<S extends object, Y extends keyof S = keyof S> {
-    register<K extends Y>(name: K, builder: (d: DescriptorBuilder<S[K], S>) => void): Configuration<S, Exclude<Y, K>>;
-}
+export type RegistrationBuilder<S extends object, T> = (d: DescriptorBuilder<S, T>, ct?: ICancellation) => void | Promise<void>;
+
+export type FluentRegistrations<K extends keyof S, S extends object> = { [k in K]: RegistrationBuilder<S, S[k]> };

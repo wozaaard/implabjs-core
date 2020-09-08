@@ -1,7 +1,7 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { ServiceMap, Descriptor, PartialServiceMap, ContainerProvided, ServiceLocator, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetimeManager } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ServiceLocator, ContainerServiceMap, ContainerKeys, TypeOfService } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
@@ -9,13 +9,15 @@ import { MapOf, IDestroyable } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
 import { each } from "../safe";
+import { FluentRegistrations } from "./fluent/interfaces";
+import { FluentConfiguration } from "./fluent/FluentConfiguration";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
 export class Container<S extends object = any> implements ServiceLocator<S>, IDestroyable {
     readonly _services: ContainerServiceMap<S>;
 
-    readonly _lifetimeManager: ILifetimeManager;
+    readonly _lifetimeManager: LifetimeManager;
 
     readonly _cleanup: (() => void)[];
 
@@ -124,6 +126,11 @@ export class Container<S extends object = any> implements ServiceLocator<S>, IDe
         } else {
             return c.applyConfiguration(config, opts && opts.contextRequire, ct);
         }
+    }
+
+    async fluent<K extends keyof S>(config: FluentRegistrations<K, S>, ct = Cancellation.none): Promise<this> {
+        await new FluentConfiguration<S>().register(config).apply(this, ct);
+        return this;
     }
 
     createChildContainer<S2 extends object = S>(): Container<S & S2> {

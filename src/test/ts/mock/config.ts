@@ -1,16 +1,19 @@
 import { Services } from "./services";
-import { configure } from "../di/traits";
-import { LifetimeManager } from "../di/LifetimeManager";
+import { fluent } from "../di/traits";
 
-export const config = configure<Services>()
-    .register("host", s => s.value("example.com"))
-    .register("bar2", bar2 => Promise.all([import("./Foo"), import("./Bar")])
-        .then(([{ Foo }, { Bar }]) => {
-            const lifetime = LifetimeManager.hierarchyLifetime();
+export default fluent<Services>().register({
+    host: it => it.value("example.com"),
 
-            bar2.factory((resolve, activate) => {
+    bar2: it => Promise.all([import("./Foo"), import("./Bar")])
+        .then(([{ Foo }, { Bar }]) => it
+            .lifetime("container")
+            .override({
+                host: it2 => it2.value("simple.org"),
+                foo: it2 => it2.value(new Foo())
+            })
+            .factory(resolve => {
                 const bar = new Bar({
-                    foo: activate(lifetime, () => new Foo()),
+                    foo: new Foo(),
                     nested: {
                         lazy: resolve("foo", { lazy: true })
                     },
@@ -18,6 +21,6 @@ export const config = configure<Services>()
                 }, "some text");
                 bar.setName(resolve("host"));
                 return bar;
-            });
-        })
-    );
+            })
+        )
+});
