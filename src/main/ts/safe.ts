@@ -166,7 +166,7 @@ export function each(obj: any, cb: any, thisArg?: any) {
  *  own properties of the source are entirely copied to the destination.
  *
  */
-export function mixin<T extends object, S extends object>(dest: T, source: S, template?: keyof S[]): T & S;
+export function mixin<T extends object, S extends object>(dest: T, source: S, template?: (keyof S)[]): T & S;
 export function mixin<T extends object, S extends object, R extends object = T>(dest: T, source: S, template: { [p in keyof S]?: keyof R; }): T & R;
 export function mixin<T extends object, S extends object>(dest: T, source: S, template?: any): any {
     argumentNotNull(dest, "dest");
