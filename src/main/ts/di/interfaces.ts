@@ -1,75 +1,53 @@
-import { isNull, isPrimitive } from "../safe";
 import { ActivationContext } from "./ActivationContext";
-import { Constructor, Factory } from "../interfaces";
 
-export interface Descriptor {
-    activate(context: ActivationContext, name?: string);
+export interface Descriptor<S extends object = any, T = any> {
+    activate(context: ActivationContext<S>): T;
 }
 
-export function isDescriptor(x): x is Descriptor {
-    return (!isPrimitive(x)) &&
-        (x.activate instanceof Function);
+export type ServiceMap<S extends object> = {
+    [k in keyof S]: Descriptor<S, S[k]>;
+};
+
+export type ContainerKeys<S extends object> = keyof S | keyof ContainerProvided<S>;
+
+export type TypeOfService<S extends object, K> =
+    K extends keyof ContainerProvided<S> ? ContainerProvided<S>[K] :
+    K extends keyof S ? S[K] : never;
+
+export type ContainerServiceMap<S extends object> = {
+    [K in ContainerKeys<S>]: Descriptor<S, TypeOfService<S, K>>;
+};
+
+export type PartialServiceMap<S extends object> = {
+    [k in keyof S]?: Descriptor<S, S[k]>;
+};
+
+export interface ServiceLocator<S extends object> {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K>;
 }
 
-export interface ServiceMap {
-    [s: string]: Descriptor;
+export interface ContainerProvided<S extends object> {
+    container: ServiceLocator<S>;
 }
 
-export enum ActivationType {
-    Singleton = 1,
-    Container,
-    Hierarchy,
-    Context,
-    Call
-}
+export type ContainerRegistered<S extends object> = /*{
+    [K in Exclude<keyof S, keyof ContainerProvided<S>>]: S[K];
+};*/
+    Exclude<S, ContainerProvided<S>>;
 
-export interface RegistrationWithServices {
-    services?: object;
-}
+export type ActivationType = "singleton" | "container" | "hierarchy" | "context" | "call";
 
-export interface ServiceRegistration extends RegistrationWithServices {
+/**
+ * Интерфейс для управления жизнью экземпляра объекта. Каждая регистрация имеет
+ * свой собственный объект `ILifetime`, который создается при первой активации
+ */
+export interface ILifetime {
+    /** Проверяет, что уже создан экземпляр объекта */
+    has(): boolean;
 
-    activation?: "singleton" | "container" | "hierarchy" | "context" | "call";
+    get(): any;
 
-    params?;
+    initialize(context: ActivationContext<any>): void;
 
-    inject?: object | object[];
-
-    cleanup?: (instance) => void | string;
-}
-
-export interface TypeRegistration extends ServiceRegistration {
-    $type: string | Constructor;
-}
-
-export interface FactoryRegistration extends ServiceRegistration {
-    $factory: string | Factory;
-}
-
-export interface ValueRegistration {
-    $value;
-    parse?: boolean;
-}
-
-export interface DependencyRegistration extends RegistrationWithServices {
-    $dependency: string;
-    lazy?: boolean;
-    optional?: boolean;
-    default?;
-}
-
-export function isTypeRegistration(x): x is TypeRegistration {
-    return (!isPrimitive(x)) && ("$type" in x);
-}
-
-export function isFactoryRegistration(x): x is FactoryRegistration {
-    return (!isPrimitive(x)) && ("$factory" in x);
-}
-
-export function isValueRegistration(x): x is ValueRegistration {
-    return (!isPrimitive(x)) && ("$value" in x);
-}
-
-export function isDependencyRegistration(x): x is DependencyRegistration {
-    return (!isPrimitive(x)) && ("$dependency" in x);
+    store(item: any, cleanup?: (item: any) => void): void;
 }

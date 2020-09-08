@@ -9,7 +9,7 @@ export = {
             cb = filter;
             filter = undefined;
         }
-        let test: Predicate<string>;
+        let test: Predicate<string> | undefined;
         if (filter instanceof RegExp) {
             test = chId => filter.test(chId);
         } else if (filter instanceof Function) {
@@ -21,7 +21,7 @@ export = {
         if (test) {
             TraceSource.on(source => {
                 source.level = this.level;
-                if (test(source.id))
+                if (test && test(source.id))
                     source.events.on(cb);
             });
         } else {

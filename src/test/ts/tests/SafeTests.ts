@@ -1,5 +1,5 @@
 import { Cancellation } from "../Cancellation";
-import { first, isPromise, firstWhere, delay, nowait } from "../safe";
+import { first, isPromise, firstWhere, delay, nowait, notImplemented } from "../safe";
 import { test } from "./TestTraits";
 
 test("await delay test", async t => {
@@ -13,7 +13,7 @@ test("await delay test", async t => {
     t.pass("await delay");
 
     // create cancellation token
-    let cancel: (e?: any) => void;
+    let cancel: (e?: any) => void = notImplemented;
     const ct = new Cancellation(c => cancel = c);
 
     // schedule delay
@@ -40,14 +40,14 @@ test("await delay test", async t => {
 
 test("sequemce test", async t => {
     const sequence = ["a", "b", "c"];
-    const empty = [];
+    const empty: string[] = [];
 
     // synchronous tests
     t.equals(first(sequence), "a", "Should return the first element");
     t.equals(firstWhere(sequence, x => x === "b"), "b", "Should get the second element");
 
-    let v: string;
-    let e: Error;
+    let v: string | undefined;
+    let e: Error | undefined;
     first(sequence, x => v = x);
     t.equal(v, "a", "The callback should be called for the first element");
     firstWhere(sequence, x => x === "b", x => v = x);
@@ -77,7 +77,7 @@ test("sequemce test", async t => {
         firstWhere(sequence, x => x === "z", x => v = x);
     }, "Should throw when the element isn't found");
 
-    first(empty, null, x => e = x);
+    first(empty, undefined, x => e = x);
     t.true(e, "The errorback should be called for the empty sequence");
 
     // async tests

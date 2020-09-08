@@ -32,7 +32,11 @@ export class ConsoleLogger implements IDestroyable {
             this._writer.setLogLevel("error");
         }
         this._writer.write("{0}: ", next.source.id);
-        this._writer.writeLine(next.message, ...next.args);
+
+        if (next.args)
+            this._writer.writeLine(next.message, ...next.args);
+        else
+        this._writer.writeLine(next.message);
     }
 
     destroy() {

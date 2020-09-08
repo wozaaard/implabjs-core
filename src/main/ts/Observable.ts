@@ -1,10 +1,10 @@
 import { IObservable, IDestroyable, ICancellation, IObserver } from "./interfaces";
 import { Cancellation } from "./Cancellation";
-import { argumentNotNull, destroyed } from "./safe";
+import { argumentNotNull } from "./safe";
 
 type Handler<T> = (x: T) => void;
 
-type Initializer<T> = (notify: Handler<T>, error?: (e: any) => void, complete?: () => void) => void;
+type Initializer<T> = (notify: Handler<T>, error: (e: any) => void, complete: () => void) => void;
 
 const noop = () => { };
 
@@ -17,7 +17,7 @@ export class Observable<T> implements IObservable<T> {
 
     private _observers = new Array<IObserver<T>>();
 
-    private _complete: boolean;
+    private _complete = false;
 
     private _error: any;
 
@@ -46,7 +46,7 @@ export class Observable<T> implements IObservable<T> {
         const me = this;
 
         const observer: IObserver<T> & IDestroyable = {
-            next,
+            next: next.bind(null),
             error: error ? error.bind(null) : noop,
             complete: complete ? complete.bind(null) : noop,
 
@@ -62,30 +62,21 @@ export class Observable<T> implements IObservable<T> {
 
     subscribe(next: IObserver<T> | Handler<T>, error?: Handler<any>, complete?: () => void): IDestroyable {
         if (isObserver(next)) {
-            const me = this;
-            const subscription = {
-                destroy() {
-                    me._removeObserver(next);
-                }
-            };
             this._addObserver(next);
-            return subscription;
-        } else if (next) {
-            const observer = {
-                next,
-                error,
-                complete
+            return {
+                destroy: () => this._removeObserver(next)
             };
-            const me = this;
-            const subscription = {
-                destroy() {
-                    me._removeObserver(observer);
-                }
-            };
-            this._addObserver(observer);
-            return subscription;
         } else {
-            return destroyed;
+            const observer = {
+                next: next.bind(null),
+                error: error ? error.bind(null) : noop,
+                complete: complete ? complete.bind(null) : noop
+            };
+
+            this._addObserver(observer);
+            return {
+                destroy: () => this._removeObserver(observer)
+            };
         }
     }
 

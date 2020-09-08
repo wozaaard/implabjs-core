@@ -1,3 +1,3 @@
 export class Foo {
-    name = "foo";
+    fooName = "foo";
 }

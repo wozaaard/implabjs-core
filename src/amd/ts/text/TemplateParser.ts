@@ -38,7 +38,7 @@ export class TemplateParser implements ITemplateParser {
     _tokens: string[];
     _pos = -1;
     _type: TokenType;
-    _value: string;
+    _value: string | undefined;
 
     constructor(text: string) {
         argumentNotEmptyString(text, "text");
@@ -66,6 +66,8 @@ export class TemplateParser implements ITemplateParser {
     }
 
     value() {
+        if (!this._value)
+            throw new Error("The current token doesn't have a value");
         return this._value;
     }
 

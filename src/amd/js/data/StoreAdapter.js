@@ -71,7 +71,6 @@ function(declare, safe, when, QueryResults) {
                 });
                 mapped.total = total;
                 var results = new QueryResults(mapped);
-                console.log(results);
                 return results;
             });
         },

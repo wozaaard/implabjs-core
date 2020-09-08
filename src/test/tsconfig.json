@@ -1,8 +1,6 @@
 {
     "extends": "../tsconfig",
     "compilerOptions": {
-        "rootDir": "ts",
-        "baseUrl": ".",
         "rootDirs": [
             "ts",
             "../main/ts"

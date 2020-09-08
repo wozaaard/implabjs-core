@@ -16,8 +16,8 @@ const typeMap = {
 
 export class FormatScanner {
     private _text: string;
-    private _tokenType: TokeType;
-    private _tokenValue: string;
+    private _tokenType: TokeType | undefined;
+    private _tokenValue: string | undefined;
     private _rx = /[^{}:]+|(.)/g;
 
     constructor(text: string) {
@@ -30,6 +30,9 @@ export class FormatScanner {
             return false;
 
         const match = this._rx.exec(this._text);
+        if (match === null)
+            return false;
+
         this._tokenType = typeMap[match[1]] || TokeType.Text;
         this._tokenValue = match[0];
 
@@ -37,10 +40,15 @@ export class FormatScanner {
     }
 
     getTokenValue() {
+        if (this._tokenValue === undefined)
+            throw new Error("The scanner is before the first element");
         return this._tokenValue;
     }
 
     getTokenType() {
+
+        if (this._tokenType === undefined)
+            throw new Error("The scanner is before the first element");
         return this._tokenType;
     }
 }

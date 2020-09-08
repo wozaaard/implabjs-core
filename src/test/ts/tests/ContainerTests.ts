@@ -8,12 +8,19 @@ import { Bar } from "../mock/Bar";
 import { isNull } from "../safe";
 
 test("Container register/resolve tests", async t => {
-    const container = new Container();
+    const container = new Container<{
+        "bla-bla": string;
+        "connection": string;
+        "dbParams": {
+            timeout: number;
+            connection: string;
+        }
+    }>();
 
     const connection1 = "db://localhost";
 
     t.throws(
-        () => container.register("bla-bla", "bla-bla"),
+        () => container.register("bla-bla", "bla-bla" as any),
         "Do not allow to register anything other than descriptors"
     );
 
@@ -41,7 +48,12 @@ test("Container register/resolve tests", async t => {
 
 test("Container configure/resolve tests", async t => {
 
-    const container = new Container();
+    const container = new Container<{
+        foo: Foo;
+        box: Bar;
+        bar: Bar;
+        db: any;
+    }>();
 
     await container.configure({
         foo: {
@@ -57,13 +69,13 @@ test("Container configure/resolve tests", async t => {
 
         bar: {
             $type: Bar,
-            params: {
+            params: [{
                 db: {
                     provider: {
                         $dependency: "db"
                     }
                 }
-            }
+            }]
         }
     });
     t.pass("should configure from js object");
@@ -89,5 +101,6 @@ test("Load configuration from module", async t => {
     const b1 = container.resolve("bar") as Bar;
 
     t.assert(!isNull(b1), "bar should not be null");
-    t.assert(!isNull(b1.foo), "bar.foo should not be null");
+    t.assert(!isNull(b1._v), "bar.foo should not be null");
+
 });

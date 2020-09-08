@@ -3,9 +3,9 @@ import { isPrimitive, isNull } from "../safe";
 export class Converter {
     static readonly default = new Converter();
 
-    convert(value: any, pattern: string) {
+    convert(value: any, pattern?: string) {
         if (pattern && pattern.toLocaleLowerCase() === "json") {
-            const seen = [];
+            const seen: any[] = [];
             return JSON.stringify(value, (k, v) => {
                 if (!isPrimitive(v)) {
                     const id = seen.indexOf(v);
