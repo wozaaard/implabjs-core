@@ -61,3 +61,9 @@ test("Load fluent config", async t => {
 
     t.assert(container.resolve("host"), "Should resolve simple value");
 });
+
+test("Container applyConfig", async t => {
+    const container = await new Container<{}>().applyConfig(import("../mock/config"));
+
+    t.assert(container.resolve("host"), "Should resolve simple value");
+});

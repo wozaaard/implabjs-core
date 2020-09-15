@@ -1,12 +1,16 @@
 import { Container } from "../Container";
 import { argumentNotNull, each, isPrimitive, isPromise } from "../../safe";
 import { DescriptorBuilder } from "./DescriptorBuilder";
-import { RegistrationBuilder, FluentRegistrations } from "./interfaces";
+import { RegistrationBuilder, FluentRegistrations, ContainerConfiguration } from "./interfaces";
 import { Cancellation } from "../../Cancellation";
 
 export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> {
 
     _builders: { [k in keyof S]?: RegistrationBuilder<S, S[k]> } = {};
+
+    provided<K extends Y>(): FluentConfiguration<S, Exclude<Y, K>> {
+        return this;
+    }
 
     register<K extends Y>(name: K, builder: RegistrationBuilder<S, S[K]>): FluentConfiguration<S, Exclude<Y, K>>;
     register<K extends Y>(config: FluentRegistrations<K, S>): FluentConfiguration<S, Exclude<Y, K>>;
@@ -19,6 +23,10 @@ export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> 
         }
 
         return this;
+    }
+
+    configure(config: FluentRegistrations<Y, S>): ContainerConfiguration<S> {
+        return this.register(config);
     }
 
     apply<SC extends object>(target: Container<SC>, ct = Cancellation.none) {
