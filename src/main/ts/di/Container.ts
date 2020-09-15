@@ -5,11 +5,11 @@ import { ServiceMap, Descriptor, PartialServiceMap, ServiceLocator, ContainerSer
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
-import { MapOf, IDestroyable } from "../interfaces";
+import { IDestroyable, PromiseOrValue, ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
-import { each } from "../safe";
-import { FluentRegistrations } from "./fluent/interfaces";
+import { each, isString } from "../safe";
+import { ContainerConfiguration, FluentRegistrations } from "./fluent/interfaces";
 import { FluentConfiguration } from "./fluent/FluentConfiguration";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
@@ -132,6 +132,29 @@ export class Container<S extends object = any> implements ServiceLocator<S>, IDe
         } else {
             return this._applyLegacyConfig(config, _opts, ct);
         }
+    }
+
+    applyConfig<S2 extends object>(config: Promise<{ default: ContainerConfiguration<S2>; }>, ct?: ICancellation): Promise<Container<S & S2>>;
+    applyConfig<S2 extends object, P extends string>(config: Promise<{ [p in P]: ContainerConfiguration<S2>; }>, prop: P, ct?: ICancellation): Promise<Container<S & S2>>;
+    async applyConfig<S2 extends object, P extends string>(
+        config: Promise<{ [p in P | "default"]: ContainerConfiguration<S2>; }>,
+        propOrCt?: P | ICancellation,
+        ct?: ICancellation
+    ): Promise<Container<S & S2>> {
+        const mod = await config;
+
+        let _ct: ICancellation;
+        let _prop: P | "default";
+
+        if (isString(propOrCt)) {
+            _prop = propOrCt;
+            _ct = ct || Cancellation.none;
+        } else {
+            _ct = propOrCt || Cancellation.none;
+            _prop = "default";
+        }
+
+        return mod[_prop].apply(this, _ct);
     }
 
     async _applyLegacyConfig(config: RegistrationMap<S>, opts: { contextRequire: any; baseModule?: string }, ct = Cancellation.none) {

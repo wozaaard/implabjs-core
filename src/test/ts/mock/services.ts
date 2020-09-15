@@ -1,6 +1,6 @@
 import { Foo } from "./Foo";
-import { Bar } from "./Bar";
 import { Box } from "./Box";
+import { Bar } from "./Bar";
 
 /**
  * Сервисы доступные внутри контейнера
@@ -12,4 +12,11 @@ export interface Services {
 
     host: string;
 
+}
+
+export interface ChildServices extends Services {
+
+    foo2?: Foo;
+
+    bar: Bar;
 }

@@ -4,7 +4,7 @@
         "experimentalDecorators": true,
         "noEmitOnError": true,
         "listFiles": true,
-        "strict": true,
+        //"strict": true,
         "types": [],
         "target": "ES5",
         "lib": ["es5", "es2015.promise", "es2015.symbol", "es2015.iterable", "dom", "scripthost"]

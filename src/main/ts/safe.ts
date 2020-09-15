@@ -151,7 +151,7 @@ export function each(obj: any, cb: any, thisArg?: any) {
 }
 
 /** Copies property values from a source object to the destination and returns
- * the destination onject.
+ * the destination object.
  *
  * @param dest The destination object into which properties from the source
  *  object will be copied.
