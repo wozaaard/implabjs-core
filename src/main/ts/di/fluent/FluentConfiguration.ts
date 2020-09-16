@@ -1,8 +1,8 @@
-import { Container } from "../Container";
 import { argumentNotNull, each, isPrimitive, isPromise } from "../../safe";
 import { DescriptorBuilder } from "./DescriptorBuilder";
 import { RegistrationBuilder, FluentRegistrations, ContainerConfiguration } from "./interfaces";
 import { Cancellation } from "../../Cancellation";
+import { ServiceContainer } from "../interfaces";
 
 export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> {
 
@@ -29,13 +29,13 @@ export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> 
         return this.register(config);
     }
 
-    apply<SC extends object>(target: Container<SC>, ct = Cancellation.none) {
+    apply<S2 extends object>(target: ServiceContainer<S2>, ct = Cancellation.none) {
 
         let pending = 1;
 
-        const _t2 = target as unknown as Container<SC & S>;
+        const _t2 = target as unknown as ServiceContainer<S2 & S>;
 
-        return new Promise<Container<SC & S>>((resolve, reject) => {
+        return new Promise<ServiceContainer<S2 & S>>((resolve, reject) => {
             function guard(v: void | Promise<void>) {
                 if (isPromise(v))
                     v.catch(reject);
@@ -47,7 +47,7 @@ export class FluentConfiguration<S extends object, Y extends keyof S = keyof S> 
             }
             each(this._builders, (v, k) => {
                 pending++;
-                const d = new DescriptorBuilder<SC & S, any>(_t2,
+                const d = new DescriptorBuilder<S2 & S, any>(_t2,
                     result => {
                         _t2.register(k, result);
                         complete();

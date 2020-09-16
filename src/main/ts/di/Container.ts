@@ -1,11 +1,11 @@
 import { ActivationContext } from "./ActivationContext";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ActivationError } from "./ActivationError";
-import { ServiceMap, Descriptor, PartialServiceMap, ServiceLocator, ContainerServiceMap, ContainerKeys, TypeOfService } from "./interfaces";
+import { ServiceMap, Descriptor, PartialServiceMap, ContainerServiceMap, ContainerKeys, TypeOfService, ServiceContainer } from "./interfaces";
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
-import { IDestroyable, PromiseOrValue, ICancellation } from "../interfaces";
+import { IDestroyable, ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
 import { each, isString } from "../safe";
@@ -14,7 +14,7 @@ import { FluentConfiguration } from "./fluent/FluentConfiguration";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S extends object = any> implements ServiceLocator<S>, IDestroyable {
+export class Container<S extends object = any> implements ServiceContainer<S>, IDestroyable {
     readonly _services: ContainerServiceMap<S>;
 
     readonly _lifetimeManager: LifetimeManager;
@@ -91,6 +91,7 @@ export class Container<S extends object = any> implements ServiceLocator<S>, IDe
         return this;
     }
 
+    /** @deprecated use getLifetimeManager() */
     onDispose(callback: () => void) {
         if (!(callback instanceof Function))
             throw new Error("The callback must be a function");
@@ -134,13 +135,13 @@ export class Container<S extends object = any> implements ServiceLocator<S>, IDe
         }
     }
 
-    applyConfig<S2 extends object>(config: Promise<{ default: ContainerConfiguration<S2>; }>, ct?: ICancellation): Promise<Container<S & S2>>;
-    applyConfig<S2 extends object, P extends string>(config: Promise<{ [p in P]: ContainerConfiguration<S2>; }>, prop: P, ct?: ICancellation): Promise<Container<S & S2>>;
+    applyConfig<S2 extends object>(config: Promise<{ default: ContainerConfiguration<S2>; }>, ct?: ICancellation): Promise<ServiceContainer<S & S2>>;
+    applyConfig<S2 extends object, P extends string>(config: Promise<{ [p in P]: ContainerConfiguration<S2>; }>, prop: P, ct?: ICancellation): Promise<ServiceContainer<S & S2>>;
     async applyConfig<S2 extends object, P extends string>(
         config: Promise<{ [p in P | "default"]: ContainerConfiguration<S2>; }>,
         propOrCt?: P | ICancellation,
         ct?: ICancellation
-    ): Promise<Container<S & S2>> {
+    ): Promise<ServiceContainer<S & S2>> {
         const mod = await config;
 
         let _ct: ICancellation;

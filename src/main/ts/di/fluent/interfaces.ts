@@ -1,7 +1,6 @@
 import { primitive } from "../../safe";
-import { TypeOfService, ContainerKeys, ActivationType, ILifetime } from "../interfaces";
+import { TypeOfService, ContainerKeys, ActivationType, ILifetime, ServiceContainer } from "../interfaces";
 import { ICancellation } from "../../interfaces";
-import { Container } from "../Container";
 
 export interface DependencyOptions {
     optional?: boolean;
@@ -49,7 +48,7 @@ export interface DescriptorBuilder<S extends object, T> {
 }
 
 export interface ContainerConfiguration<S extends object> {
-    apply<S2 extends object>(target: Container<S2>, ct: ICancellation): Promise<Container<S2 & S>>;
+    apply<S2 extends object>(target: ServiceContainer<S2>, ct?: ICancellation): Promise<ServiceContainer<S2 & S>>;
 }
 
 export type RegistrationBuilder<S extends object, T> = (d: DescriptorBuilder<S, T>, ct?: ICancellation) => void | Promise<void>;

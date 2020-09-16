@@ -20,3 +20,7 @@ export interface ChildServices extends Services {
 
     bar: Bar;
 }
+
+export interface FooServices {
+    foo: Foo;
+}

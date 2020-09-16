@@ -5,7 +5,8 @@ import { Container } from "../di/Container";
 import { Foo } from "../mock/Foo";
 import { Box } from "../mock/Box";
 import { delay } from "../safe";
-import { Services } from "../mock/services";
+import { FooServices, Services } from "../mock/services";
+import { ContainerConfiguration } from "../di/fluent/interfaces";
 
 test("Simple fluent config", async t => {
     const config = fluent<{ host: string; bar: Bar; foo: Foo }>()
@@ -66,4 +67,14 @@ test("Container applyConfig", async t => {
     const container = await new Container<{}>().applyConfig(import("../mock/config"));
 
     t.assert(container.resolve("host"), "Should resolve simple value");
+});
+
+test("Child container config", async t => {
+    const container = await new Container<{}>().applyConfig(import("../mock/config"));
+    
+    const fooServices: ContainerConfiguration<FooServices> = (await import("../mock/config2")).default;
+
+    const child = await fooServices.apply(container.createChildContainer());
+
+    t.assert(child.resolve("foo"), "foo should be resolved");
 });
