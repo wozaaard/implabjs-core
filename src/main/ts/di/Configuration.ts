@@ -3,13 +3,12 @@ import {
     ActivationType,
     ContainerKeys,
     TypeOfService,
-    ILifetime
+    ILifetime, ServiceContainer
 } from "./interfaces";
 
 import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { ValueDescriptor } from "./ValueDescriptor";
-import { Container } from "./Container";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
 import { TypeServiceDescriptor } from "./TypeServiceDescriptor";
 import { FactoryServiceDescriptor } from "./FactoryServiceDescriptor";
@@ -149,7 +148,7 @@ export class Configuration<S extends object> {
 
     _hasInnerDescriptors = false;
 
-    readonly _container: Container<S>;
+    readonly _container: ServiceContainer<S>;
 
     _path: Array<string>;
 
@@ -157,7 +156,7 @@ export class Configuration<S extends object> {
 
     _require: ModuleResolver | undefined;
 
-    constructor(container: Container<S>) {
+    constructor(container: ServiceContainer<S>) {
         argumentNotNull(container, "container");
         this._container = container;
         this._path = [];

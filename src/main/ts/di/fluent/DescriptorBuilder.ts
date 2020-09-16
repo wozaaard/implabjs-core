@@ -1,12 +1,11 @@
 import { Resolver, RegistrationBuilder } from "./interfaces";
-import { Container } from "../Container";
-import { Descriptor, ILifetime, ActivationType, PartialServiceMap } from "../interfaces";
+import { Descriptor, ILifetime, ActivationType, PartialServiceMap, ServiceContainer } from "../interfaces";
 import { DescriptorImpl } from "./DescriptorImpl";
 import { LifetimeManager } from "../LifetimeManager";
 import { isString, each, isPrimitive, isPromise, oid } from "../../safe";
 
 export class DescriptorBuilder<S extends object, T> {
-    private readonly _container: Container<S>;
+    private readonly _container: ServiceContainer<S>;
     private readonly _cb: (d: Descriptor<S, T>) => void;
 
     private readonly _eb: (err: any) => void;
@@ -23,7 +22,7 @@ export class DescriptorBuilder<S extends object, T> {
 
     private _failed = false;
 
-    constructor(container: Container<S>, cb: (d: Descriptor<S, T>) => void, eb: (err: any) => void) {
+    constructor(container: ServiceContainer<S>, cb: (d: Descriptor<S, T>) => void, eb: (err: any) => void) {
         this._container = container;
         this._cb = cb;
         this._eb = eb;

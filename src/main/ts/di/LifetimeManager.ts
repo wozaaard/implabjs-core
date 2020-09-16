@@ -1,8 +1,7 @@
 import { IDestroyable, MapOf } from "../interfaces";
-import { argumentNotNull, isDestroyable, primitive, isNull, argumentNotEmptyString } from "../safe";
-import { ILifetime } from "./interfaces";
+import { argumentNotNull, isDestroyable, argumentNotEmptyString } from "../safe";
+import { ILifetime, ServiceContainer } from "./interfaces";
 import { ActivationContext } from "./ActivationContext";
-import { Container } from "./Container";
 
 function safeCall(item: () => void) {
     try {
@@ -48,7 +47,7 @@ const unknownLifetime: ILifetime = Object.freeze({
 
 let nextId = 0;
 
-const singletons: { [k in keyof any]: any; } = {};
+const singletons: any = {};
 
 export class LifetimeManager implements IDestroyable {
     private _cleanup: (() => void)[] = [];
@@ -176,7 +175,7 @@ export class LifetimeManager implements IDestroyable {
         };
     }
 
-    static containerLifetime(container: Container<any>) {
+    static containerLifetime(container: ServiceContainer<any>) {
         let _lifetime = unknownLifetime;
         return {
             initialize(context: ActivationContext<any>) {

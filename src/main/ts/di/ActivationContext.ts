@@ -1,7 +1,6 @@
 import { TraceSource } from "../log/TraceSource";
 import { argumentNotEmptyString } from "../safe";
-import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetime } from "./interfaces";
-import { Container } from "./Container";
+import { Descriptor, ContainerServiceMap, ContainerKeys, TypeOfService, ILifetime, ServiceContainer } from "./interfaces";
 import { MapOf } from "../interfaces";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
@@ -30,7 +29,7 @@ export class ActivationContext<S extends object> {
 
     _service: Descriptor<S, any>;
 
-    _container: Container<S>;
+    _container: ServiceContainer<S>;
 
     _parent: ActivationContext<S> | undefined;
 
@@ -42,7 +41,7 @@ export class ActivationContext<S extends object> {
      * @param service the service to activate, this parameter is used for the
      *  debug purpose.
      */
-    constructor(container: Container<S>, services: ContainerServiceMap<S>, name: string, service: Descriptor<S, any>) {
+    constructor(container: ServiceContainer<S>, services: ContainerServiceMap<S>, name: string, service: Descriptor<S, any>) {
         this._name = name;
         this._service = service;
         this._visited = {};

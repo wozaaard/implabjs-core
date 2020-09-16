@@ -1,4 +1,5 @@
 import { ActivationContext } from "./ActivationContext";
+import { LifetimeManager } from "./LifetimeManager";
 
 export interface Descriptor<S extends object = any, T = any> {
     activate(context: ActivationContext<S>): T;
@@ -24,6 +25,14 @@ export type PartialServiceMap<S extends object> = {
 
 export interface ServiceLocator<S extends object> {
     resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K>;
+}
+
+export interface ServiceContainer<S extends object> extends ServiceLocator<S> {
+    getLifetimeManager(): LifetimeManager;
+    register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>): this;
+    register(services: PartialServiceMap<S>): this;
+
+    createChildContainer(): ServiceContainer<S>;
 }
 
 export interface ContainerProvided<S extends object> {
