@@ -2,6 +2,7 @@ import { StringBuilder } from "../text/StringBuilder";
 import { test } from "./TestTraits";
 import { MockConsole } from "../mock/MockConsole";
 import { ConsoleWriter } from "../log/ConsoleWriter";
+import { Uuid } from "../Uuid";
 
 test("String builder", async t => {
     const sb = new StringBuilder();
@@ -82,5 +83,13 @@ test("ConsoleWriter", t => {
     mockConsole.clear();
     writer.writeLine("{0} or {1} to {2}! Let's have some {3}", 25, 6, 4, { product: "tee" } );
     t.deepEqual(mockConsole.getBuffer()[0].data, ["25 or 6 to 4! Let's have some ", { product: "tee" }], "Should handle many text chunks and object at the end");
+
+});
+
+test("Uuid test", (t, log) => {
+    const id = Uuid();
+    log.log("uuid = {0}", id);
+    t.assert(id, "Should generate uuid");
+    t.notEqual(id, Uuid(), "uuid should never match");
 
 });
