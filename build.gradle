@@ -56,7 +56,7 @@ typescript {
         
         if(symbols != 'none') {
             sourceMap = true
-            sourceRoot = packageName
+            sourceRoot = "pack:${packageName}"
         }
 
         if (flavour == 'node') {

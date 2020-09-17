@@ -5,7 +5,7 @@ import { ServiceMap, Descriptor, PartialServiceMap, ContainerServiceMap, Contain
 import { TraceSource } from "../log/TraceSource";
 import { Configuration, RegistrationMap } from "./Configuration";
 import { Cancellation } from "../Cancellation";
-import { IDestroyable, ICancellation } from "../interfaces";
+import { ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LifetimeManager } from "./LifetimeManager";
 import { each, isString } from "../safe";
@@ -14,7 +14,7 @@ import { FluentConfiguration } from "./fluent/FluentConfiguration";
 
 const trace = TraceSource.get("@implab/core/di/ActivationContext");
 
-export class Container<S extends object = any> implements ServiceContainer<S>, IDestroyable {
+export class Container<S extends object = any> implements ServiceContainer<S> {
     readonly _services: ContainerServiceMap<S>;
 
     readonly _lifetimeManager: LifetimeManager;
@@ -29,10 +29,11 @@ export class Container<S extends object = any> implements ServiceContainer<S>, I
 
     constructor(parent?: Container<S>) {
         this._parent = parent;
-        this._services = parent ? Object.create(parent._services) : {};
+        this._services = Object.create(parent ? parent._services : null);
         this._cleanup = [];
         this._root = parent ? parent.getRootContainer() : this;
         this._services.container = new ValueDescriptor(this) as any;
+        this._services.childContainer = { activate: () => this.createChildContainer() };
         this._disposed = false;
         this._lifetimeManager = new LifetimeManager();
     }

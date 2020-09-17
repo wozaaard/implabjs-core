@@ -1,3 +1,4 @@
+import { IDestroyable } from "../interfaces";
 import { ActivationContext } from "./ActivationContext";
 import { LifetimeManager } from "./LifetimeManager";
 
@@ -27,7 +28,7 @@ export interface ServiceLocator<S extends object> {
     resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K>;
 }
 
-export interface ServiceContainer<S extends object> extends ServiceLocator<S> {
+export interface ServiceContainer<S extends object> extends ServiceLocator<S>, IDestroyable {
     getLifetimeManager(): LifetimeManager;
     register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>): this;
     register(services: PartialServiceMap<S>): this;
@@ -37,6 +38,8 @@ export interface ServiceContainer<S extends object> extends ServiceLocator<S> {
 
 export interface ContainerProvided<S extends object> {
     container: ServiceLocator<S>;
+
+    childContainer: ServiceContainer<S>;
 }
 
 export type ContainerRegistered<S extends object> = /*{

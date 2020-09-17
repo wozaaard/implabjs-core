@@ -14,6 +14,10 @@ declare const Buffer: any;
 
 const _window: any = "undefined" !== typeof window ? window : null;
 
+function noop(): never {
+    throw new Error();
+}
+
 interface WritableArrayLike<T> {
     length: number;
     [n: number]: T;
@@ -24,13 +28,13 @@ interface WritableArrayLike<T> {
 // detect to determine the best RNG source, normalizing to a function
 // that
 // returns 128-bits of randomness, since that's what's usually required
-let _rng: () => WritableArrayLike<number> = () => [];
+let _rng: () => WritableArrayLike<number> = noop;
 
 function setupBrowser() {
     // Allow for MSIE11 msCrypto
     const _crypto = _window.crypto || _window.msCrypto;
 
-    if (!_rng && _crypto && _crypto.getRandomValues) {
+    if (_rng === noop && _crypto && _crypto.getRandomValues) {
         // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
         //
         // Moderately fast, high quality
@@ -44,7 +48,7 @@ function setupBrowser() {
         } catch (e) { /**/ }
     }
 
-    if (!_rng) {
+    if (_rng === noop) {
         // Math.random()-based (RNG)
         //
         // If all else fails, use Math.random(). It's fast, but is of
