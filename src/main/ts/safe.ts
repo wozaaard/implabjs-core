@@ -1,5 +1,4 @@
-import { ICancellable, Constructor, IDestroyable, PromiseOrValue } from "./interfaces";
-import { Cancellation } from "./Cancellation";
+import { ICancellable, Constructor, IDestroyable, ICancellation } from "./interfaces";
 
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
@@ -17,6 +16,23 @@ export function oid(instance: any): string | undefined {
     else
         return (instance[_oid] = "oid_" + (++_nextOid));
 }
+
+const cancellationNone: ICancellation = {
+    isSupported(): boolean {
+        return false;
+    },
+
+    throwIfRequested(): void {
+    },
+
+    isRequested(): boolean {
+        return false;
+    },
+
+    register(_cb: (e: any) => void): IDestroyable {
+        return destroyed;
+    }
+};
 
 export function keys<T>(arg: T): (Extract<keyof T, string>)[] {
     return isObject(arg) && arg ? Object.keys(arg) as (Extract<keyof T, string>)[] : [];
@@ -272,7 +288,7 @@ export function delegate(target: any, _method: any): (...args: any[]) => any {
     };
 }
 
-export function delay(timeMs: number, ct = Cancellation.none) {
+export function delay(timeMs: number, ct = cancellationNone) {
     ct.throwIfRequested();
     return new Promise((resolve, reject) => {
         const h = ct.register(e => {
