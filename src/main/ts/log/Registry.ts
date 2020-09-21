@@ -14,12 +14,12 @@ export class Registry {
 
         if (this._registry[id])
             return this._registry[id];
+        else
+            throw new Error("The specified trace source doesn't exists");
+    }
 
-        const source = new TraceSource(id);
-        this._registry[id] = source;
-        this._onNewSource(source);
-
-        return source;
+    has(id: string) {
+        return !!this._registry[id];
     }
 
     add(id: any, source: TraceSource) {

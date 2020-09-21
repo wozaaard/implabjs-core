@@ -136,6 +136,12 @@ export class TraceSource {
      * @param id the id for the trace source
      */
     static get(id: any) {
-        return Registry.instance.get(id);
+        if (!Registry.instance.has(id)) {
+            const trace = new TraceSource(id);
+            Registry.instance.add(id, trace);
+            return trace;
+        } else {
+            return Registry.instance.get(id);
+        }
     }
 }
