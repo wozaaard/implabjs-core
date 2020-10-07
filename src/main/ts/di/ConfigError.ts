@@ -1,12 +1,14 @@
-export class ConfigError extends Error {
+export class ConfigError {
     inner?: {};
+
+    message: string;
 
     path?: string;
 
     configName?: string;
 
     constructor(message: string, inner?: {}) {
-        super(message);
+        this.message = message;
         this.inner = inner;
     }
 }

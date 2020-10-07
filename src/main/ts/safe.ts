@@ -149,7 +149,7 @@ export function get(member: string, context?: object) {
  *                <c>this</c> в <c>cb</c>.
  * @returns {void}
  */
-export function each<T>(obj: T, cb: <X extends keyof T>(v: NonNullable<T[X]>, k: X) => void): void;
+export function each<T>(obj: T, cb: <X extends Extract<keyof T, string>>(v: NonNullable<T[X]>, k: X) => void): void;
 export function each<T>(array: T[], cb: (v: T, i: number) => void): void;
 export function each(obj: any, cb: any, thisArg?: any): any;
 export function each(obj: any, cb: any, thisArg?: any) {
