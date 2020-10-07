@@ -6,7 +6,7 @@ import {
     ILifetime, ServiceContainer
 } from "./interfaces";
 
-import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive } from "../safe";
+import { argumentNotEmptyString, isPrimitive, isPromise, delegate, argumentOfType, argumentNotNull, get, primitive, oid, mixin } from "../safe";
 import { AggregateDescriptor } from "./AggregateDescriptor";
 import { ValueDescriptor } from "./ValueDescriptor";
 import { ReferenceDescriptor } from "./ReferenceDescriptor";
@@ -20,6 +20,7 @@ import { ICancellation } from "../interfaces";
 import { isDescriptor } from "./traits";
 import { LazyReferenceDescriptor } from "./LazyReferenceDescriptor";
 import { LifetimeManager } from "./LifetimeManager";
+import { ServiceDescriptorParams } from "./ServiceDescriptor";
 
 export interface RegistrationScope<S extends object> {
 
@@ -339,8 +340,8 @@ export class Configuration<S extends object> {
     }
 
     _makeServiceParams(data: ServiceRegistration<any, S>) {
-        const opts: any = {
-        };
+        const opts: any = {};
+
         if (data.services)
             opts.services = this._visitRegistrations(data.services, "services");
 
@@ -361,7 +362,7 @@ export class Configuration<S extends object> {
                 this._visit(data.params, "params");
 
         if (data.activation) {
-            opts.activation = this._getLifetimeManager(data.activation, data.typeId);
+            opts.lifetime = this._getLifetimeManager(data.activation, data.typeId);
         }
 
         if (data.cleanup)
@@ -395,7 +396,7 @@ export class Configuration<S extends object> {
         argumentNotNull(data.$type, "data.$type");
         this._enter(name);
 
-        const opts = this._makeServiceParams(data);
+        const opts = {} as any;
         if (data.$type instanceof Function) {
             opts.type = data.$type;
         } else {
@@ -406,6 +407,11 @@ export class Configuration<S extends object> {
                 return t;
             });
         }
+
+        if (!data.typeId && data.activation === "singleton")
+            data.typeId = oid(opts.type);
+
+        mixin(opts, this._makeServiceParams(data));
 
         const d = new TypeServiceDescriptor<S, any, any[]>(
             await mapAll(opts)
@@ -419,6 +425,9 @@ export class Configuration<S extends object> {
     async _visitFactoryRegistration(data: FactoryRegistration<() => any, S>, name: string) {
         argumentOfType(data.$factory, Function, "data.$factory");
         this._enter(name);
+
+        if (!data.typeId && data.activation === "singleton")
+            data.typeId = oid(data.$factory);
 
         const opts = this._makeServiceParams(data);
         opts.factory = data.$factory;

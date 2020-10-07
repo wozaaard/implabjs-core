@@ -66,7 +66,7 @@ export class TemplateParser implements ITemplateParser {
     }
 
     value() {
-        if (!this._value)
+        if (this._value === undefined)
             throw new Error("The current token doesn't have a value");
         return this._value;
     }

@@ -38,10 +38,17 @@ compile.load = (id: string, require: Require, callback: OnLoadFn<TemplateFn>) =>
             trace.debug("{0}: compiled", url);
             callback(cache[url] = tc);
         }, (err: any) => {
-            callback.error({
-                inner: err,
-                src: "@implab/core/text/template-compile"
-            });
+            if (callback.error)
+                callback.error({
+                    inner: err,
+                    from: "@implab/core/text/template-compile"
+                });
+            else
+                trace.error({
+                    message: `Failed to load: ${url}`,
+                    error: err,
+                    from: "@implab/core/text/template-compile"
+                });
         });
     }
 };
