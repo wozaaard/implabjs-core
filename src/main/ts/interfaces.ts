@@ -9,13 +9,13 @@ export type Factory<T = {}> = (...args: any[]) => T;
 
 export type Predicate<T = any> = (x: T) => boolean;
 
-export type MatchingMemberKeys<T, From> = { [K in keyof From]: From[K] extends T ? K : never}[keyof From];
+export type MatchingMemberKeys<T, U> = { [K in keyof T]: T[K] extends U ? K : never}[keyof T];
 
-export type NotMatchingMemberKeys<T, From> = { [K in keyof From]: From[K] extends T ? never : K}[keyof From];
+export type NotMatchingMemberKeys<T, U> = { [K in keyof T]: T[K] extends U ? never : K}[keyof T];
 
-export type ExtractMembers<T, From> = Pick<From, MatchingMemberKeys<T, From>>;
+export type ExtractMembers<T, U> = Pick<T, MatchingMemberKeys<T, U>>;
 
-export type ExcludeMembers<T, From> = Pick<From, NotMatchingMemberKeys<T, From>>;
+export type ExcludeMembers<T, U> = Pick<T, NotMatchingMemberKeys<T, U>>;
 
 export interface MapOf<T> {
     [key: string]: T;

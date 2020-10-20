@@ -52,7 +52,7 @@ function _parse(value: any, context: ActivationContext<any>, path: string): any 
     return t;
 }
 
-export type Cleaner<T> = ((x: T) => void) | MatchingMemberKeys<() => void, T>;
+export type Cleaner<T> = ((x: T) => void) | MatchingMemberKeys<T, () => void>;
 
 export type InjectionSpec<T> = {
     [m in keyof T]?: any;
