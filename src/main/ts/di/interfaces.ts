@@ -26,6 +26,7 @@ export type PartialServiceMap<S extends object> = {
 
 export interface ServiceLocator<S extends object> {
     resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K>;
+    resolve<K extends ContainerKeys<S>>(name: K, def?: undefined): TypeOfService<S, K> | undefined;
 }
 
 export interface ServiceContainer<S extends object> extends ServiceLocator<S>, IDestroyable {
