@@ -50,11 +50,13 @@ export class Container<S extends object = any> implements ServiceContainer<S> {
         return this._lifetimeManager;
     }
 
-    resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K> {
+    resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K>;
+    resolve<K extends ContainerKeys<S>>(name: K, def: undefined): TypeOfService<S, K> | undefined;
+    resolve<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>): TypeOfService<S, K> | undefined {
         trace.debug("resolve {0}", name);
         const d = this._services[name];
         if (d === undefined) {
-            if (def !== undefined)
+            if (arguments.length > 1)
                 return def;
             else
                 throw new Error("Service '" + name + "' isn't found");
@@ -73,7 +75,7 @@ export class Container<S extends object = any> implements ServiceContainer<S> {
      * @deprecated use resolve() method
      */
     getService<K extends ContainerKeys<S>>(name: K, def?: TypeOfService<S, K>) {
-        return this.resolve(name, def);
+        return arguments.length === 1 ? this.resolve(name) : this.resolve(name, def);
     }
 
     register<K extends keyof S>(name: K, service: Descriptor<S, S[K]>): this;
@@ -108,6 +110,7 @@ export class Container<S extends object = any> implements ServiceContainer<S> {
         this._disposed = true;
         for (const f of this._cleanup)
             f();
+        this._lifetimeManager.destroy();
     }
 
     /**

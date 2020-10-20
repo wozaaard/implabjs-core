@@ -1,4 +1,4 @@
-import { ICancellable, Constructor, IDestroyable, ICancellation } from "./interfaces";
+import { ICancellable, Constructor, IDestroyable, ICancellation, IRemovable } from "./interfaces";
 
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
@@ -62,10 +62,6 @@ export function argumentOfType(arg: any, type: Constructor<{}>, name: string) {
         throw new Error("The argument '" + name + "' type doesn't match");
 }
 
-export function isObject(val: any): val is object {
-    return typeof val === "object";
-}
-
 export function isNull(val: any): val is null | undefined {
     return (val === null || val === undefined);
 }
@@ -77,6 +73,10 @@ export function isPrimitive(val: any): val is primitive {
         typeof (val) === "number" || typeof (val) === "boolean");
 }
 
+export function isObject<T>(value: T): value is Exclude<T & object, primitive> {
+    return !!(value && typeof value === "object");
+}
+
 export function isInteger(val: any): val is number {
     return parseInt(val, 10) === val;
 }
@@ -86,15 +86,15 @@ export function isNumber(val: any): val is number {
 }
 
 export function isString(val: any): val is string {
-    return typeof (val) === "string" || val instanceof String;
+    return typeof (val) === "string";
 }
 
 export function isPromise<T = any>(val: any): val is PromiseLike<T> {
-    return val && typeof val.then === "function";
+    return !!(val && typeof val.then === "function");
 }
 
 export function isCancellable(val: any): val is ICancellable {
-    return val && typeof val.cancel === "function";
+    return !!(val && typeof val.cancel === "function");
 }
 
 export function isNullOrEmptyString(val: any): val is ("" | null | undefined) {
@@ -315,7 +315,7 @@ export function fork() {
  * assigned later and are required to be not null.
  */
 export function notImplemented(): never {
-    throw new Error("Not implemeted");
+    throw new Error("Not implemented");
 }
 /**
  * Iterates over the specified array of items and calls the callback `cb`, if
@@ -491,13 +491,15 @@ export function firstWhere<T>(
 }
 
 export function isDestroyable(d: any): d is IDestroyable {
-    if (d && "destroy" in d && typeof (destroy) === "function")
-        return true;
-    return false;
+    return !!(d && typeof d.destroy === "function");
+}
+
+export function isRemovable(value: any): value is IRemovable {
+    return !!(value && typeof value.remove === "function");
 }
 
 export function destroy(d: any) {
-    if (d && "destroy" in d)
+    if (isDestroyable(d))
         d.destroy();
 }
 
