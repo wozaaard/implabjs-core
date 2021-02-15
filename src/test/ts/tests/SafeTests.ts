@@ -1,5 +1,6 @@
 import { Cancellation } from "../Cancellation";
-import { first, isPromise, firstWhere, delay, nowait, notImplemented } from "../safe";
+import { ICancellation } from "../interfaces";
+import { first, isPromise, firstWhere, delay, nowait, notImplemented, debounce, fork } from "../safe";
 import { test } from "./TestTraits";
 
 test("await delay test", async t => {
@@ -92,4 +93,64 @@ test("sequemce test", async t => {
 
     v = await new Promise(resolve => first(asyncSequence, resolve));
     t.equal(v, "a", "The callback should be called for the first element");
+});
+
+test("debounce tests", async (t, trace) => {
+    let count = 0;
+    let rejected = 0;
+    function increment(step: number = 1) {
+        count += step;
+        return count;
+    }
+
+    const f = debounce(increment, 100);
+    f().then(undefined, () => rejected++);
+    f().then(undefined, () => rejected++);
+
+    await f(1);
+
+    t.equal(rejected, 2, "Previous operations should be rejected");
+    t.equal(count, 1, "The operation should run once");
+
+    const acc = debounce(
+        (...values: number[]) => count = values.reduce((a, v) => v + a, count),
+        100
+    );
+
+    acc(1, 2, 3).catch(() => { });
+    const result = acc(1, 2, 3);
+    acc.cancel();
+
+    try {
+        await result;
+        t.notOk("fn.cancel() should make current operation to throw an exception");
+    } catch {
+        t.ok("fn.cancel() should make current operation to throw an exception");
+    }
+
+    t.equal(count, 1, "fn.cancel() The operation should not run");
+
+    acc.cancel();
+    await acc(1, 2);
+    t.equal(count, 4, "The variable arguments list shoud be handled correctly");
+
+    // create cancellation token
+    let cancel: (e?: any) => void = notImplemented;
+    const ct = new Cancellation(c => cancel = c);
+
+    const d = debounce(async (ct2: ICancellation = Cancellation.none) => {
+        ct2.throwIfRequested();
+        trace.debug("do async increment");
+        await fork();
+        count++;
+        return count;
+    }, 0);
+
+    const p = d.applyAsync(null, [ct], ct).then(undefined, () => rejected++);
+    cancel();
+    await p;
+
+    t.equal(count, 4, "Cancellation token should prevent the function execution");
+    t.equal(rejected, 3, "Cancellation token should reject operation");
+
 });
