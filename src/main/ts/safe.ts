@@ -5,6 +5,8 @@ const _oid = typeof Symbol === "function" ?
     Symbol("__implab__oid__") :
     "__implab__oid__";
 
+function _noop() { }
+
 export function oid(instance: null | undefined): undefined;
 export function oid(instance: NonNullable<any>): string;
 export function oid(instance: any): string | undefined {
@@ -288,9 +290,14 @@ export function delegate(target: any, _method: any): (...args: any[]) => any {
     };
 }
 
+/** Returns promise which will be resolved after the specified amount of time.
+ *
+ * @param timeMs The delay before the promise will be resolved in milliseconds.
+ * @param ct Optional. A cancellation token for the operation.
+ */
 export function delay(timeMs: number, ct = cancellationNone) {
     ct.throwIfRequested();
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
         const h = ct.register(e => {
             clearTimeout(id);
             reject(e);
@@ -302,6 +309,53 @@ export function delay(timeMs: number, ct = cancellationNone) {
         }, timeMs);
 
     });
+}
+
+export function debounce<T extends any[], R, This>(func: (this: This, ...args: T) => R | PromiseLike<R>, wait: number) {
+    let cancel: (e?: any) => void = _noop;
+
+    const fn = function executedFunction(this: This, ...args: T) {
+        return new Promise<R>((resolve, reject) => {
+
+            // used to cleanup currently allocated resources
+            const _cleanup = () => {
+                cancel = _noop;
+                clearTimeout(handle);
+            };
+
+            // used in case of cancellation of the current operation
+            const _cancel = (e: any) => {
+                _cleanup();
+                reject(e);
+            };
+
+            // performs actual work
+            const _later = () => {
+                _cleanup();
+                resolve(func.apply(this, args));
+            };
+
+            // cancel previously queued operation
+            if (cancel !== _noop)
+                cancel(new Error("Operation cancelled due to debouncing"));
+            cancel = _cancel;
+
+            const handle = setTimeout(_later, wait);
+        });
+    };
+
+    fn.cancel = (e?: any) => cancel(e);
+
+    fn.applyAsync = async (thisArg: This, args: T, ct: ICancellation) => {
+        const h = ct.register(cancel);
+        try {
+            await fn.apply(thisArg, args);
+        } finally {
+            h.destroy();
+        }
+    };
+
+    return fn;
 }
 
 /** Returns resolved promise, awaiting this method will cause the asynchronous
