@@ -60,4 +60,7 @@ export class DescriptorImpl<S extends object, T> implements Descriptor<S, T> {
         return instance;
     }
 
+    toString() {
+        return `[object DescriptorImpl, lifetime=${this._lifetime}]`;
+    }
 }

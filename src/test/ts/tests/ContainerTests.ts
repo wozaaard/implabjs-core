@@ -6,6 +6,7 @@ import { ValueDescriptor } from "../di/ValueDescriptor";
 import { Foo } from "../mock/Foo";
 import { Bar } from "../mock/Bar";
 import { isNull } from "../safe";
+import { Box } from "../mock/Box";
 
 test("Container register/resolve tests", async t => {
     const container = new Container<{
@@ -103,4 +104,22 @@ test("Load configuration from module", async t => {
     t.assert(!isNull(b1), "bar should not be null");
     t.assert(!isNull(b1._v), "bar.foo should not be null");
 
+});
+
+test("Optional dependency with child container", async t => {
+    const container = new Container<{
+        foo?: Foo;
+        box: Box<Foo>;
+    }>();
+    await container.fluent({
+        box: it => it.factory($ => new Box($("foo")))
+    });
+
+    const child = await container.createChildContainer()
+        .fluent({
+            foo: it => it.factory(() => new Foo())
+        })
+
+    const box = child.resolve("box");
+    t.assert(!isNull(box.getValue()), "'foo' dependency is declared in child container");
 });
