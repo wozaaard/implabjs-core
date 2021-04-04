@@ -123,7 +123,7 @@ export class ActivationContext<S extends object> {
 
     activate<T>(d: Descriptor<S, T>, name: string) {
         if (trace.isLogEnabled())
-            trace.log(`enter ${name} ${d}`);
+            trace.log("enter {0} {1}", name, d);
 
         const ctx = this.enter(d, name);
         const v = d.activate(ctx);
