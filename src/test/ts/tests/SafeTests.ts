@@ -138,15 +138,15 @@ test("debounce tests", async (t, trace) => {
     let cancel: (e?: any) => void = notImplemented;
     const ct = new Cancellation(c => cancel = c);
 
-    const d = debounce(async (ct2: ICancellation = Cancellation.none) => {
-        ct2.throwIfRequested();
+    const d = debounce(async () => {
+        ct.throwIfRequested();
         trace.debug("do async increment");
         await fork();
         count++;
         return count;
     }, 0);
 
-    const p = d.applyAsync(null, [ct], ct).then(undefined, () => rejected++);
+    const p = d().then(undefined, () => rejected++);
     cancel();
     await p;
 

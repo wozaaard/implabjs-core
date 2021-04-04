@@ -346,15 +346,6 @@ export function debounce<T extends any[], R, This>(func: (this: This, ...args: T
 
     fn.cancel = (e?: any) => cancel(e);
 
-    fn.applyAsync = async (thisArg: This, args: T, ct: ICancellation) => {
-        const h = ct.register(cancel);
-        try {
-            await fn.apply(thisArg, args);
-        } finally {
-            h.destroy();
-        }
-    };
-
     return fn;
 }
 
