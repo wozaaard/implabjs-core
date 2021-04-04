@@ -26,6 +26,10 @@ const emptyLifetime: ILifetime = Object.freeze({
 
     store() {
         // does nothing
+    },
+
+    toString() {
+        return `[object EmptyLifetime]`;
     }
 
 });
@@ -42,6 +46,9 @@ const unknownLifetime: ILifetime = Object.freeze({
     },
     store() {
         throw new Error("Can't store a value in the unknown lifetime object");
+    },
+    toString() {
+        return `[object UnknownLifetime]`;
     }
 });
 
@@ -112,7 +119,7 @@ export class LifetimeManager implements IDestroyable {
         return emptyLifetime;
     }
 
-    static hierarchyLifetime(): ILifetime {
+    static hierarchyLifetime() {
         let _lifetime = unknownLifetime;
         return {
             initialize(context: ActivationContext<any>) {
@@ -129,11 +136,14 @@ export class LifetimeManager implements IDestroyable {
             },
             store(item: any, cleanup?: (item: any) => void) {
                 return _lifetime.store(item, cleanup);
+            },
+            toString() {
+                return `[object HierarchyLifetime, has=${this.has()}]`;
             }
         };
     }
 
-    static contextLifetime(): ILifetime {
+    static contextLifetime() {
         let _lifetime = unknownLifetime;
         return {
             initialize(context: ActivationContext<any>) {
@@ -149,11 +159,14 @@ export class LifetimeManager implements IDestroyable {
             },
             store(item: any) {
                 _lifetime.store(item);
+            },
+            toString() {
+                return `[object ContextLifetime, has=${this.has()}]`;
             }
         };
     }
 
-    static singletonLifetime(typeId: string): ILifetime {
+    static singletonLifetime(typeId: string) {
         argumentNotEmptyString(typeId, "typeId");
         let pending = false;
         return {
@@ -173,6 +186,9 @@ export class LifetimeManager implements IDestroyable {
             store(item: any) {
                 singletons[typeId] = item;
                 pending = false;
+            },
+            toString() {
+                return `[object SingletonLifetime, has=${this.has()}, typeId=${typeId}]`;
             }
         };
     }
@@ -193,6 +209,9 @@ export class LifetimeManager implements IDestroyable {
             },
             store(item: any) {
                 _lifetime.store(item);
+            },
+            toString() {
+                return `[object ContainerLifetime, has=${_lifetime.has()}]`
             }
         };
     }
