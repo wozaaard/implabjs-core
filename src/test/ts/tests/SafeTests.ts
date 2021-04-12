@@ -103,7 +103,7 @@ test("debounce tests", async (t, trace) => {
         return count;
     }
 
-    const f = debounce(increment, 100);
+    const f = debounce(() => increment, 100);
     f().then(undefined, () => rejected++);
     f().then(undefined, () => rejected++);
 
@@ -113,7 +113,7 @@ test("debounce tests", async (t, trace) => {
     t.equal(count, 1, "The operation should run once");
 
     const acc = debounce(
-        (...values: number[]) => count = values.reduce((a, v) => v + a, count),
+        () => (...values: number[]) => count = values.reduce((a, v) => v + a, count),
         100
     );
 
@@ -138,15 +138,15 @@ test("debounce tests", async (t, trace) => {
     let cancel: (e?: any) => void = notImplemented;
     const ct = new Cancellation(c => cancel = c);
 
-    const d = debounce(async () => {
-        ct.throwIfRequested();
+    const d = debounce(() => async (_ct: ICancellation) => {
+        _ct.throwIfRequested();
         trace.debug("do async increment");
         await fork();
         count++;
         return count;
     }, 0);
 
-    const p = d().then(undefined, () => rejected++);
+    const p = d(ct).then(undefined, () => rejected++);
     cancel();
     await p;
 

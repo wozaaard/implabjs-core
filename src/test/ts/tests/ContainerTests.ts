@@ -109,16 +109,18 @@ test("Load configuration from module", async t => {
 test("Optional dependency with child container", async t => {
     const container = new Container<{
         foo?: Foo;
-        box: Box<Foo>;
+        box: Box<Bar>;
+        bar: Bar;
     }>();
     await container.fluent({
-        box: it => it.factory($ => new Box($("foo")))
+        box: it => it.factory($ => new Box($("bar"))),
+        bar: it => it.factory($ => new Bar({ host: "local", foo: $("foo") }, "bar"))
     });
 
     const child = await container.createChildContainer()
         .fluent({
             foo: it => it.factory(() => new Foo())
-        })
+        });
 
     const box = child.resolve("box");
     t.assert(!isNull(box.getValue()), "'foo' dependency is declared in child container");
