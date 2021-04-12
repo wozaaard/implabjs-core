@@ -1,4 +1,5 @@
-import { ICancellable, Constructor, IDestroyable, ICancellation, IRemovable } from "./interfaces";
+import { Cancellation } from "./Cancellation";
+import { ICancellable, Constructor, IDestroyable, ICancellation, IRemovable, PromiseOrValue } from "./interfaces";
 
 let _nextOid = 0;
 const _oid = typeof Symbol === "function" ?
@@ -311,37 +312,36 @@ export function delay(timeMs: number, ct = cancellationNone) {
     });
 }
 
-export function debounce<T extends any[], R, This>(func: (this: This, ...args: T) => R | PromiseLike<R>, wait: number) {
+/**
+ *  Wraps the specified function to delay its execution by the specified timeout.
+ * If the wrapped function was called multiple times before the timeout has elapsed,
+ * the target function will be executed only once.
+ * Each call to the wrapped function will return a promise is the timeout hasn't
+ * elapsed the subsequent calls to the wrapped function will reject previous promises.
+ *
+ * @param func function that accepts a cancellation token as a single
+ *  parameter and returns the callback which will be invoked.
+ * @param wait A timeout to wait before the callback should be invoked
+ * @returns The function withe the same parameters as the original callback.
+ */
+export function debounce<T extends any[], R, This>(func: (ct: ICancellation) => ((this: This, ...args: T) => PromiseOrValue<R>), wait: number) {
     let cancel: (e?: any) => void = _noop;
 
-    const fn = function executedFunction(this: This, ...args: T) {
-        return new Promise<R>((resolve, reject) => {
+    let pending = Promise.resolve();
 
-            // used to cleanup currently allocated resources
-            const _cleanup = () => {
-                cancel = _noop;
-                clearTimeout(handle);
-            };
+    const fn = async function executedFunction(this: This, ...args: T) {
+        cancel();
+        const ct = new Cancellation(_cancel => cancel = _cancel);
 
-            // used in case of cancellation of the current operation
-            const _cancel = (e: any) => {
-                _cleanup();
-                reject(e);
-            };
-
-            // performs actual work
-            const _later = () => {
-                _cleanup();
-                resolve(func.apply(this, args));
-            };
-
-            // cancel previously queued operation
-            if (cancel !== _noop)
-                cancel(new Error("Operation cancelled due to debouncing"));
-            cancel = _cancel;
-
-            const handle = setTimeout(_later, wait);
-        });
+        await pending;
+        let resolve = _noop;
+        pending = new Promise(_resolve => resolve = _resolve);
+        try {
+            await delay(wait, ct);
+            return func(ct).apply(this, args);
+        } finally {
+            resolve();
+        }
     };
 
     fn.cancel = (e?: any) => cancel(e);
