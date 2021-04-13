@@ -100,8 +100,6 @@ export class LifetimeManager implements IDestroyable {
                     self._cleanup.push(() => cleanup(item));
                 } else if (isDestroyable(item)) {
                     self._cleanup.push(() => item.destroy());
-                } else if (isRemovable(item)) {
-                    self._cleanup.push(() => item.remove());
                 }
             }
         };
