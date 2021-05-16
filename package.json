@@ -13,9 +13,6 @@
   "author": "Implab team",
   "license": "BSD-2-Clause",
   "repository": "https://bitbucket.org/implab/implabjs",
-  "publishConfig": {
-    "access": "public"
-  },
   "peerDependencies": {
     "dojo": "^1.10.0"
   },
@@ -25,10 +22,10 @@
     "@types/tape": "~4.2.33",
     "dojo": "~1.10.0",
     "dojo-typings": "^1.11.9",
+    "eslint": "6.1.0",
     "requirejs": "latest",
     "tape": "~4.11.0",
-    "typescript": "~4.1.5",
-    "eslint": "6.1.0",
-    "tslint": "5.18.0"
+    "tslint": "5.18.0",
+    "typescript": "~4.1.5"
   }
 }

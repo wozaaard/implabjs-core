@@ -154,3 +154,57 @@ test("debounce tests", async (t, trace) => {
     t.equal(rejected, 3, "Cancellation token should reject operation");
 
 });
+
+test("async debounce test", async t => {
+    let rejected = 0;
+    let executed = 0;
+
+    const longTask = (ct = Cancellation.none) => {
+        executed++;
+        return delay(100, ct);
+    };
+
+    // d - can be cancelled
+    const d = debounce(ct => () => longTask(ct), 1);
+    d().catch(() => rejected++);
+    await delay(10);
+    t.equal(executed, 1, "first call should be executed");
+    await d();
+    t.equal(rejected, 1, "First call to debounced should be rejected");
+});
+
+test("async debounce test", async t => {
+    let rejected = 0;
+    let executed = 0;
+    let running = 0;
+
+    const start = () => {
+        if (running++)
+            throw new Error("The task started in parallel");
+        executed++;
+    };
+
+    const end = () => {
+        if (--running)
+            throw new Error("running !== 0");
+    };
+
+    const longTask = async (ct = Cancellation.none) => {
+        start();
+        try {
+            await delay(100, ct);
+        } finally {
+            end();
+        }
+    };
+
+    // d2 - can't be cancelled
+    const d2 = debounce(ct => () => longTask(), 1);
+    d2().catch(() => rejected++);
+    await delay(10);
+    t.equal(executed, 1, "first call should be executed");
+    const p = d2();
+    await delay(10);
+    t.equal(rejected, 0, "First call to debounced can't be rejected");
+    await p;
+});

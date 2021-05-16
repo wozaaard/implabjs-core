@@ -338,7 +338,8 @@ export function debounce<T extends any[], R, This>(func: (ct: ICancellation) => 
         pending = new Promise(_resolve => resolve = _resolve);
         try {
             await delay(wait, ct);
-            return func(ct).apply(this, args);
+            // use return await to make finally work correctly
+            return await func(ct).apply(this, args);
         } finally {
             resolve();
         }
