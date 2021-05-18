@@ -1,4 +1,5 @@
 import { Cancellation } from "../Cancellation";
+import { CancellationAggregate } from "../CancellationAggregate";
 import { delay, notImplemented } from "../safe";
 import { test } from "./TestTraits";
 
@@ -85,4 +86,21 @@ test("operation normal flow", async t => {
     } finally {
         clearTimeout(htimeout);
     }
+});
+
+test("combine cancellations", t => {
+    const ct1 = new Cancellation(cancel => {
+        cancel("cancelled");
+    });
+
+    const ct2 = new Cancellation(() => {});
+
+    const cct1 = Cancellation.combine(Cancellation.none, ct1);
+
+    t.equals(cct1, ct1, "Cancellation.combine should filter out Cancellation.none tokens");
+
+    const cct2 = Cancellation.combine(Cancellation.none, ct1, ct2);
+
+    t.assert(cct2 instanceof CancellationAggregate, "Cancellation.combine should return CancellationAggregate");
+    t.true(cct2.isRequested(), "CancellationAggregate should return isRequested true if any of cancellations is requested");
 });

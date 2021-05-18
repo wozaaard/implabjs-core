@@ -1,6 +1,5 @@
 import { Cancellation } from "../Cancellation";
-import { IAsyncComponent, ICancellation, ICancellable, IDestroyable } from "../interfaces";
-import { destroy } from "../safe";
+import { IAsyncComponent, ICancellation, ICancellable } from "../interfaces";
 
 const noop = () => void (0);
 
@@ -13,21 +12,16 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
 
     runOperation(op: (ct: ICancellation) => any, ct: ICancellation = Cancellation.none) {
         // create inner cancellation bound to the passed cancellation token
-        let h: IDestroyable;
         const inner = new Cancellation(cancel => {
-
             this._cancel = cancel;
-            h = ct.register(cancel);
         });
 
-        // TODO create cancellation source here
         const guard = async () => {
             try {
-                await op(inner);
+                return op(Cancellation.combine(ct, inner));
             } finally {
                 // after the operation is complete we need to cleanup the
                 // resources
-                destroy(h);
                 this._cancel = noop;
             }
         };
