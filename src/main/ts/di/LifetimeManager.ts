@@ -209,7 +209,7 @@ export class LifetimeManager implements IDestroyable {
                 _lifetime.store(item);
             },
             toString() {
-                return `[object ContainerLifetime, has=${_lifetime.has()}]`
+                return `[object ContainerLifetime, has=${_lifetime.has()}]`;
             }
         };
     }

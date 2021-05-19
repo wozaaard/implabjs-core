@@ -29,10 +29,48 @@ export interface IRemovable {
     remove(): void;
 }
 
+/**
+ * Interface for the cancellation token. Cancellation token is
+ * a marker indicating that the cancellation was requested, it
+ * is up to the operation to decide whether to interrupt or
+ * to complete its execution.
+ *
+ * This interface defines several methods of interaction with
+ * the cancellation i.e. either to poll its status or to react
+ * through the callback.
+ */
 export interface ICancellation {
+    /**
+     * Throws an exception if the cancellation has been requested,
+     * otherwise does nothing.
+     */
     throwIfRequested(): void;
+
+    /**
+     * Checks whether the cancellation is requested.
+     * @returns true is the cancellation has been requested,
+     *   otherwise returns false.
+     */
     isRequested(): boolean;
+
+    /**
+     * Checks the ability of the token to be signaled.
+     *
+     * @returns true if the token is able to request
+     *   the cancellation, false otherwise.
+     */
     isSupported(): boolean;
+
+    /**
+     * Registers the callback to be called when the cancellation
+     * is requested.
+     *
+     * @param cb The callback which receives the reason of the
+     *   cancellation.
+     * @returns The subscription, after the operation is completed
+     *   it should unregister the callback to free resources by
+     *   calling the `destroy()` method of the subscription.
+     */
     register(cb: (e: any) => void): IDestroyable;
 }
 

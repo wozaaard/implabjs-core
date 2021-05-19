@@ -1,4 +1,5 @@
 import { CancellationAggregate } from "./CancellationAggregate";
+import { CancelledError } from "./CancelledError";
 import { ICancellation, IDestroyable } from "./interfaces";
 import { argumentNotNull, destroyed } from "./safe";
 
@@ -57,7 +58,7 @@ export class Cancellation implements ICancellation {
         if (this._reason)
             return;
 
-        this._reason = (reason = reason || new Error("Operation cancelled"));
+        this._reason = (reason = reason || new CancelledError(undefined, this));
 
         if (this._cbs) {
             this._cbs.forEach(cb => cb(reason));
@@ -84,23 +85,23 @@ export class Cancellation implements ICancellation {
 
     /**
      * Combines multiple cancellation tokens to the single aggregated token.
-     * 
+     *
      * Aggregated token will be considered as signalled when some tokens are
      * signalled. The cancellation callback can be registered with the `register`
      * method, it will be fired once with the first signalled token, all other
      * tokens will be ignored.
-     * 
+     *
      * The tokens which don't support cancellation are filtered out, if there are
      * no tokens left in the list the method returns `Cancellation.none`.
-     * 
+     *
      * @param args The list of cancellation tokens to combine
-     * @returns 
+     * @returns Aggregated cancellation token
      */
     static combine(...args: ICancellation[]) {
         const tokens = args.filter(ct => ct.isSupported());
         return tokens.length > 1 ?
             new CancellationAggregate(tokens) :
-            tokens.length == 1 ? tokens[0] :
+            tokens.length === 1 ? tokens[0] :
                 this.none;
     }
 }

@@ -18,7 +18,10 @@ export class AsyncComponent implements IAsyncComponent, ICancellable {
 
         const guard = async () => {
             try {
-                return op(Cancellation.combine(ct, inner));
+                const combined = Cancellation.combine(ct, inner);
+                const result = await op(combined);
+                combined.throwIfRequested();
+                return result;
             } finally {
                 // after the operation is complete we need to cleanup the
                 // resources

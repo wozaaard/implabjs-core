@@ -34,7 +34,7 @@ test("Nested async configuration", async t => {
     });
 
     t.assert(container.resolve("box").getValue(), "The dependency should be set");
-    t.equals(container.resolve("box").getValue(), container.resolve("box").getValue(), "The service should be activated once")
+    t.equals(container.resolve("box").getValue(), container.resolve("box").getValue(), "The service should be activated once");
 });
 
 test("Bad fluent config", async t => {
@@ -71,7 +71,7 @@ test("Container applyConfig", async t => {
 
 test("Child container config", async t => {
     const container = await new Container<{}>().applyConfig(import("../mock/config"));
-    
+
     const fooServices: ContainerConfiguration<FooServices> = (await import("../mock/config2")).default;
 
     const child = await fooServices.apply(container.createChildContainer());
