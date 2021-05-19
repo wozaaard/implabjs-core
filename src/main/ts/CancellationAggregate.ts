@@ -26,14 +26,14 @@ export class CancellationAggregate implements ICancellation {
                 destroy();
                 cb(e);
             }
-        }
+        };
 
         const destroy = () => subscriptions
-            .splice(0,subscriptions.length) // empty array
+            .splice(0, subscriptions.length) // empty array
             .forEach(subscription => subscription.destroy()); // cleanup
 
-        const subscriptions = this._tokens.map(ct => ct.register(once))
-        
+        const subscriptions = this._tokens.map(ct => ct.register(once));
+
         return {
             destroy
         };
